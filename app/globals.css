@@ -1,0 +1,82 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+@layer base {
+  html {
+    @apply antialiased;
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-pv-bg text-pv-text font-body;
+    min-height: 100vh;
+  }
+  ::selection {
+    background: rgba(16, 185, 129, 0.2);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
+           bg-pv-text text-pv-bg
+           transition-all duration-150
+           hover:opacity-90 active:scale-[0.98]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
+           bg-transparent text-pv-muted border border-pv-border
+           transition-all duration-150
+           hover:border-pv-text/20 active:scale-[0.98];
+  }
+  .btn-cyan {
+    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
+           bg-pv-cyan text-pv-bg
+           transition-all duration-150
+           hover:opacity-90 active:scale-[0.98]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-fuch {
+    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
+           bg-pv-fuch text-white
+           transition-all duration-150
+           hover:opacity-90 active:scale-[0.98]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-emerald {
+    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
+           bg-pv-emerald text-pv-bg
+           transition-all duration-150
+           hover:opacity-90 active:scale-[0.98]
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply w-full py-4 px-6 rounded-2xl font-bold text-base
+           bg-pv-danger/5 text-pv-danger border border-pv-danger/15
+           transition-all duration-150
+           active:scale-[0.98] disabled:opacity-40;
+  }
+  .card {
+    @apply bg-pv-surface border border-white/[0.06] rounded-3xl overflow-hidden relative;
+  }
+  .input {
+    @apply w-full px-4 py-3.5 rounded-xl bg-pv-surface border border-pv-border
+           text-pv-text placeholder:text-pv-muted font-body text-[15px]
+           focus:border-pv-cyan/30 focus:ring-1 focus:ring-pv-cyan/10
+           transition-all duration-150 outline-none;
+  }
+  .label {
+    @apply block text-[11px] font-bold uppercase tracking-[0.16em] text-pv-muted mb-2;
+  }
+  .chip {
+    @apply px-3.5 py-1.5 rounded-[10px] border border-pv-border bg-transparent
+           text-sm font-semibold cursor-pointer transition-all duration-150;
+  }
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3F3F46; border-radius: 3px; }

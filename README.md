@@ -1,4 +1,4 @@
- PROVEN. ⚡
+# PROVEN. ⚡
 
 **1v1 prediction challenges — AI settles it automatically.**
 
