@@ -30,7 +30,7 @@ export default function Header() {
           <span className="font-display font-bold text-[17px] tracking-tight">
             PROVEN
             <motion.span
-              className="text-pv-emerald inline-block"
+              className="text-pv-emerald inline-block text-[1.38em] leading-none ml-[1px]"
               whileHover={{ scale: 1.3, rotate: -8 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
@@ -50,20 +50,13 @@ export default function Header() {
                   href={item.href}
                   className={`chip text-[13px] transition-all relative ${
                     item.accent
-                      ? "text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.06]"
+                      ? "text-pv-emerald border-pv-emerald/[0.28] bg-pv-emerald/[0.08]"
                       : isActive
-                      ? "text-pv-text border-white/[0.22] bg-pv-text/[0.06]"
+                      ? "text-pv-text border-white/[0.32] bg-white/[0.06]"
                       : "text-pv-muted hover:text-pv-text hover:border-white/[0.22]"
                   }`}
                 >
                   {item.label}
-                  {isActive && !item.accent && (
-                    <motion.div
-                      layoutId="nav-indicator"
-                      className="absolute -bottom-px left-2 right-2 h-0.5 bg-pv-text rounded-full"
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                    />
-                  )}
                 </Link>
               );
             })}
@@ -181,7 +174,7 @@ export default function Header() {
                     onClick={() => setMobileOpen(false)}
                     className={`px-4 py-3 rounded text-sm font-semibold transition-colors ${
                       item.accent
-                        ? "text-pv-cyan bg-pv-cyan/[0.06]"
+                        ? "text-pv-emerald bg-pv-emerald/[0.08]"
                         : isActive
                         ? "text-pv-text bg-pv-text/[0.04]"
                         : "text-pv-muted hover:text-pv-text"

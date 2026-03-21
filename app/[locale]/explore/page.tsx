@@ -85,7 +85,7 @@ export default function ExplorePage() {
               {t("title")}
             </h1>
             <div className="flex items-center gap-1.5 flex-shrink-0 pb-0.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
+              <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
               <span className="font-mono text-xs text-pv-muted">
                 {t("available", { count: open.length })}
               </span>
@@ -166,7 +166,7 @@ export default function ExplorePage() {
                   <Chip
                     key={k}
                     active={sort === k}
-                    color="#5de6ff"
+                    color="#4edea3"
                     onClick={() => setSort(k)}
                   >
                     {l}

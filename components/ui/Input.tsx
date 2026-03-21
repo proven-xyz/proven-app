@@ -25,7 +25,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           ref={ref}
-          className={`input focus-ring ${mono ? "font-mono text-xs" : ""} ${className}`}
+          className={`input ${mono ? "font-mono text-xs" : ""} ${className}`}
           {...props}
         />
       </div>

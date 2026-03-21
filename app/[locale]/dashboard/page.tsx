@@ -121,7 +121,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Link href="/vs/create" className="flex-shrink-0 mt-1">
-            <Chip className="text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.06] text-[13px] font-bold">
+            <Chip className="text-pv-emerald border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-[13px] font-bold">
               {t("new")}
             </Chip>
           </Link>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
             </GlassCard>
             <GlassCard noPad>
               <div className="p-4 text-center">
-                <TrendingUp size={16} className="text-pv-cyan mx-auto mb-1.5" />
+                <TrendingUp size={16} className="text-pv-emerald mx-auto mb-1.5" />
                 <div className="font-mono text-lg font-bold text-pv-text">
                   {winRate}%
                 </div>

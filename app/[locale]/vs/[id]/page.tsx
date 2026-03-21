@@ -287,8 +287,8 @@ export default function VSDetailPage() {
         <AnimatedItem>
           <div className="mb-6 lg:max-w-[800px] lg:mx-auto">
             <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-cyan">
+              <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
                 {t("eyebrow")}
               </span>
             </div>

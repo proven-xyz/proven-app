@@ -84,13 +84,15 @@ export default function HomePage() {
 
   const steps = [
     {
-      icon: Zap,
+      icon: null,
+      iconSrc: "/icons/handshake-logo.svg",
       title: "1. CHALLENGE",
       description:
         "Define your terms and lock your stake in the vault. The AI starts watching.",
     },
     {
-      icon: Send,
+      icon: null,
+      iconSrc: "/icons/message-chat-circle.svg",
       title: "2. INVITE",
       description:
         "Broadcast your link. Challenge a specific rival or open it to the public square.",
@@ -103,9 +105,9 @@ export default function HomePage() {
     },
     {
       icon: Shield,
-      title: "4. SETTLE",
+      title: "4. PROVEN",
       description:
-        "GenLayer AI verifies the data across the network. Winner receives instant payout.",
+        "Consensus validates the proof, and the winner gets paid on-chain instantly.",
     },
   ];
 
@@ -124,7 +126,9 @@ export default function HomePage() {
           >
             <h1 className="font-display text-[clamp(3rem,11vw,5.5rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
               {t("emptyHeroTitlePrefix")}{" "}
-              <span className="italic text-pv-emerald">PROVEN.</span>
+              <span className="italic text-pv-emerald drop-shadow-[0_0_22px_rgba(78,222,163,0.6)]">
+                PROVEN.
+              </span>
             </h1>
             <p className="text-pv-muted text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-8">
               {t("emptyHeroSubtitle")}
@@ -226,13 +230,30 @@ export default function HomePage() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {steps.map(({ icon: Icon, title, description }) => (
+            {steps.map(({ icon: Icon, iconSrc, title, description }) => (
               <div
                 key={title}
                 className="card p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.5] hover:shadow-glow-emerald group"
               >
-                <div className="w-10 h-10 bg-pv-surface2/70 border border-white/[0.14] text-pv-emerald flex items-center justify-center mb-2.5 rounded-md transition-all duration-200 group-hover:border-pv-emerald/[0.5] group-hover:bg-pv-emerald/[0.14] group-hover:shadow-glow-emerald">
-                  <Icon size={16} />
+                <div className="w-12 h-12 bg-pv-surface2/70 border border-white/[0.14] text-pv-emerald flex items-center justify-center mb-2.5 rounded-md transition-all duration-200 group-hover:border-pv-emerald/[0.5] group-hover:bg-pv-emerald/[0.14] group-hover:shadow-glow-emerald">
+                  {iconSrc ? (
+                    <span
+                      className="w-6 h-6 bg-pv-emerald"
+                      style={{
+                        WebkitMaskImage: `url(${iconSrc})`,
+                        maskImage: `url(${iconSrc})`,
+                        WebkitMaskRepeat: "no-repeat",
+                        maskRepeat: "no-repeat",
+                        WebkitMaskPosition: "center",
+                        maskPosition: "center",
+                        WebkitMaskSize: "contain",
+                        maskSize: "contain",
+                      }}
+                      aria-label={title}
+                    />
+                  ) : (
+                    Icon && <Icon size={20} />
+                  )}
                 </div>
                 <div className="font-display text-[15px] sm:text-[17px] font-bold text-pv-emerald tracking-tight mb-1.5">
                   {title}
@@ -270,7 +291,7 @@ export default function HomePage() {
       <AnimatedItem>
         <div className="mt-16 sm:mt-20 mb-12">
           <div className="relative overflow-hidden card max-w-[900px] mx-auto p-6 sm:p-8 md:p-10 text-center border-white/[0.14]">
-            <div className="pointer-events-none absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 w-36 h-36 sm:w-52 sm:h-52 rounded-full bg-pv-cyan/[0.10] blur-3xl" />
+            <div className="pointer-events-none absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 w-36 h-36 sm:w-52 sm:h-52 rounded-full bg-pv-emerald/[0.10] blur-3xl" />
             <div className="pointer-events-none absolute bottom-0 left-0 -translate-x-1/3 translate-y-1/3 w-40 h-40 sm:w-56 sm:h-56 rounded-full bg-pv-emerald/[0.12] blur-3xl" />
             <div className="relative z-10">
               <h2 className="font-display text-[clamp(1.8rem,7vw,3.2rem)] font-bold leading-[0.95] tracking-tight text-pv-text">
@@ -335,8 +356,8 @@ export default function HomePage() {
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-cyan">
+                <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
                   {t("openVS")}
                 </span>
               </div>
@@ -354,7 +375,7 @@ export default function HomePage() {
             {openVS.length > 4 && (
               <Link
                 href="/explore"
-                className="block w-full py-3.5 border border-pv-cyan/[0.2] bg-pv-cyan/[0.04] text-center font-display text-sm font-bold text-pv-cyan mt-2.5 hover:bg-pv-cyan/[0.08] transition-colors"
+                className="block w-full py-3.5 border border-pv-emerald/[0.24] bg-pv-emerald/[0.06] text-center font-display text-sm font-bold text-pv-emerald mt-2.5 hover:bg-pv-emerald/[0.1] transition-colors"
               >
                 {t("viewAllOpen", { count: openVS.length })}
               </Link>
