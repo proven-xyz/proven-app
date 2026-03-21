@@ -37,7 +37,9 @@ export interface ClaimData {
   settlement_rule: string;
   max_challengers: number;
   created_at: number;
-  challengers: ClaimChallenger[];
+  challengers?: ClaimChallenger[];
+  first_challenger?: string;
+  challenger_addresses?: string[];
   total_pot: number;
 }
 
@@ -73,6 +75,7 @@ export interface VSData {
   settlement_rule?: string;
   max_challengers?: number;
   total_pot?: number;
+  challenger_addresses?: string[];
 }
 
 export interface CreateClaimParams {
@@ -92,8 +95,170 @@ export interface CreateClaimParams {
   max_challengers?: number;
 }
 
-function mapClaimToVS(claim: ClaimData): VSData {
-  const firstChallenger = claim.challengers[0]?.address ?? ZERO_ADDRESS;
+export interface ContractWriteResult {
+  txHash: string;
+  receipt: unknown;
+}
+
+export interface ClaimWriteResult extends ContractWriteResult {
+  claimId: number | null;
+}
+
+function normalizeClaimData(claim: ClaimData): ClaimData {
+  const challengerAddresses =
+    claim.challenger_addresses ?? claim.challengers?.map((challenger) => challenger.address) ?? [];
+
+  return {
+    ...claim,
+    first_challenger: claim.first_challenger ?? challengerAddresses[0] ?? ZERO_ADDRESS,
+    challenger_addresses: challengerAddresses,
+  };
+}
+
+function isSameAddress(a: string | undefined, b: string | undefined) {
+  return !!a && !!b && a.toLowerCase() === b.toLowerCase();
+}
+
+function getConfiguredMaxChallengers(vs: VSData) {
+  if (typeof vs.max_challengers === "number" && vs.max_challengers > 0) {
+    return vs.max_challengers;
+  }
+  return 1;
+}
+
+export function getVSChallengerCount(vs: VSData) {
+  if (typeof vs.challenger_count === "number" && vs.challenger_count >= 0) {
+    return vs.challenger_count;
+  }
+  return vs.opponent !== ZERO_ADDRESS ? 1 : 0;
+}
+
+export function getVSTotalPot(vs: VSData) {
+  if (typeof vs.total_pot === "number" && Number.isFinite(vs.total_pot)) {
+    return vs.total_pot;
+  }
+  if (
+    typeof vs.creator_stake === "number" &&
+    typeof vs.total_challenger_stake === "number"
+  ) {
+    return vs.creator_stake + vs.total_challenger_stake;
+  }
+  return vs.stake_amount * (vs.opponent === ZERO_ADDRESS ? 1 : 2);
+}
+
+export function didUserChallengeVS(vs: VSData, address?: string | null) {
+  if (!address) {
+    return false;
+  }
+
+  if ((vs.challenger_addresses ?? []).some((entry) => isSameAddress(entry, address))) {
+    return true;
+  }
+
+  return vs.opponent !== ZERO_ADDRESS && isSameAddress(vs.opponent, address);
+}
+
+export function hasVSWinner(vs: VSData) {
+  if (vs.winner_side === "creator" || vs.winner_side === "challengers") {
+    return true;
+  }
+  return vs.winner !== ZERO_ADDRESS;
+}
+
+export function isVSJoinable(vs: VSData, address?: string | null) {
+  if (vs.state !== "open" && vs.state !== "accepted") {
+    return false;
+  }
+  if (address) {
+    if (isSameAddress(vs.creator, address) || didUserChallengeVS(vs, address)) {
+      return false;
+    }
+  }
+  return getVSChallengerCount(vs) < getConfiguredMaxChallengers(vs);
+}
+
+export function getVSSingleWinnerPayout(vs: VSData) {
+  if (!hasVSWinner(vs)) {
+    return 0;
+  }
+
+  if (vs.winner_side === "creator" || isSameAddress(vs.winner, vs.creator)) {
+    return getVSTotalPot(vs);
+  }
+
+  if (vs.winner_side === "challengers") {
+    if (getVSChallengerCount(vs) !== 1) {
+      return null;
+    }
+
+    const challengerStake =
+      typeof vs.total_challenger_stake === "number" && vs.total_challenger_stake > 0
+        ? vs.total_challenger_stake
+        : vs.stake_amount;
+
+    if (
+      vs.odds_mode === "fixed" &&
+      typeof vs.challenger_payout_bps === "number" &&
+      vs.challenger_payout_bps > 0
+    ) {
+      return Math.floor((challengerStake * vs.challenger_payout_bps) / 10000);
+    }
+
+    return getVSTotalPot(vs);
+  }
+
+  if (vs.winner !== ZERO_ADDRESS) {
+    return getVSTotalPot(vs);
+  }
+
+  return 0;
+}
+
+export function didUserWinVS(vs: VSData, address?: string | null) {
+  if (!address || !hasVSWinner(vs)) {
+    return false;
+  }
+  if (vs.winner_side === "creator") {
+    return isSameAddress(vs.creator, address);
+  }
+  if (vs.winner_side === "challengers") {
+    return didUserChallengeVS(vs, address);
+  }
+  return isSameAddress(vs.winner, address);
+}
+
+export function didUserLoseVS(vs: VSData, address?: string | null) {
+  if (!address || !hasVSWinner(vs)) {
+    return false;
+  }
+
+  const involved = isSameAddress(vs.creator, address) || didUserChallengeVS(vs, address);
+  if (!involved) {
+    return false;
+  }
+
+  return !didUserWinVS(vs, address);
+}
+
+export function getVSUserWinAmount(vs: VSData, address?: string | null) {
+  if (!didUserWinVS(vs, address)) {
+    return 0;
+  }
+
+  if (vs.winner_side === "creator") {
+    return getVSTotalPot(vs);
+  }
+
+  if (vs.winner_side === "challengers") {
+    return getVSSingleWinnerPayout(vs);
+  }
+
+  return getVSTotalPot(vs);
+}
+
+function mapClaimToVS(rawClaim: ClaimData): VSData {
+  const claim = normalizeClaimData(rawClaim);
+  const firstChallenger = claim.first_challenger ?? ZERO_ADDRESS;
   const compatState =
     claim.state === "active"
       ? "accepted"
@@ -135,30 +300,88 @@ async function writeAndWait(functionName: string, wallet: string, args: unknown[
     interval: 5000,
   });
 
-  return { txHash, receipt };
+  return { txHash, receipt } satisfies ContractWriteResult;
 }
 
-export async function getClaim(claimId: number): Promise<ClaimData | null> {
+async function inferCreatedClaimId(wallet: string) {
+  const userClaims = await getUserClaims(wallet);
+  if (userClaims.length > 0) {
+    return Math.max(...userClaims);
+  }
+
+  const claimCount = await getClaimCount();
+  return claimCount > 0 ? claimCount : null;
+}
+
+async function readApiJson<T>(path: string): Promise<T | null> {
   try {
-    const client = createGenlayerClient();
-    return (await client.readContract({
-      address: CONTRACT_ADDRESS,
-      functionName: "get_claim",
-      args: [claimId],
-    })) as unknown as ClaimData;
+    const response = await fetch(path);
+    if (!response.ok) {
+      return null;
+    }
+    return (await response.json()) as T;
   } catch {
     return null;
   }
 }
 
+async function readContractValue<T>(functionName: string, args: unknown[]): Promise<T> {
+  const client = createGenlayerClient();
+  return (await client.readContract({
+    address: CONTRACT_ADDRESS,
+    functionName,
+    args: args as any,
+  })) as unknown as T;
+}
+
+export async function getClaim(claimId: number): Promise<ClaimData | null> {
+  try {
+    const claim = await readContractValue<ClaimData>("get_claim", [claimId]);
+    return normalizeClaimData(claim);
+  } catch {
+    return null;
+  }
+}
+
+export async function getClaimSummary(claimId: number): Promise<ClaimData | null> {
+  try {
+    const claim = await readContractValue<ClaimData>("get_claim_summary", [claimId]);
+    return normalizeClaimData(claim);
+  } catch {
+    return getClaim(claimId);
+  }
+}
+
+export async function getClaimSummaries(
+  startId = 1,
+  limit = 50
+): Promise<ClaimData[]> {
+  try {
+    const claims = await readContractValue<ClaimData[]>("get_claim_summaries", [
+      startId,
+      limit,
+    ]);
+    return claims.map(normalizeClaimData);
+  } catch {
+    const count = await getClaimCount();
+    if (count <= 0 || startId > count || limit <= 0) {
+      return [];
+    }
+
+    const end = Math.min(count, startId + limit - 1);
+    const claims = await Promise.all(
+      Array.from({ length: end - startId + 1 }, (_, index) =>
+        getClaim(startId + index)
+      )
+    );
+
+    return claims.filter((claim): claim is ClaimData => claim !== null);
+  }
+}
+
 export async function getClaimCount(): Promise<number> {
   try {
-    const client = createGenlayerClient();
-    return (await client.readContract({
-      address: CONTRACT_ADDRESS,
-      functionName: "get_claim_count",
-      args: [],
-    })) as unknown as number;
+    return await readContractValue<number>("get_claim_count", []);
   } catch {
     return 0;
   }
@@ -166,12 +389,7 @@ export async function getClaimCount(): Promise<number> {
 
 export async function getUserClaims(address: string): Promise<number[]> {
   try {
-    const client = createGenlayerClient();
-    return (await client.readContract({
-      address: CONTRACT_ADDRESS,
-      functionName: "get_user_claims",
-      args: [address],
-    })) as unknown as number[];
+    return await readContractValue<number[]>("get_user_claims", [address]);
   } catch {
     return [];
   }
@@ -179,12 +397,7 @@ export async function getUserClaims(address: string): Promise<number[]> {
 
 export async function getOpenClaims(): Promise<number[]> {
   try {
-    const client = createGenlayerClient();
-    return (await client.readContract({
-      address: CONTRACT_ADDRESS,
-      functionName: "get_open_claims",
-      args: [],
-    })) as unknown as number[];
+    return await readContractValue<number[]>("get_open_claims", []);
   } catch {
     return [];
   }
@@ -192,19 +405,56 @@ export async function getOpenClaims(): Promise<number[]> {
 
 export async function getRivalryChain(claimId: number): Promise<number[]> {
   try {
-    const client = createGenlayerClient();
-    return (await client.readContract({
-      address: CONTRACT_ADDRESS,
-      functionName: "get_rivalry_chain",
-      args: [claimId],
-    })) as unknown as number[];
+    return await readContractValue<number[]>("get_rivalry_chain", [claimId]);
   } catch {
     return [];
   }
 }
 
-export async function createClaim(wallet: string, params: CreateClaimParams) {
-  return writeAndWait(
+export async function getUserClaimSummaries(address: string): Promise<ClaimData[]> {
+  try {
+    const claims = await readContractValue<ClaimData[]>("get_user_claim_summaries", [
+      address,
+    ]);
+    return claims.map(normalizeClaimData);
+  } catch {
+    const ids = await getUserClaims(address);
+    const claims = await Promise.all(ids.map((id) => getClaim(id)));
+    return claims.filter((claim): claim is ClaimData => claim !== null);
+  }
+}
+
+export async function getOpenClaimSummaries(): Promise<ClaimData[]> {
+  try {
+    const claims = await readContractValue<ClaimData[]>("get_open_claim_summaries", []);
+    return claims.map(normalizeClaimData);
+  } catch {
+    const ids = await getOpenClaims();
+    const claims = await Promise.all(ids.map((id) => getClaim(id)));
+    return claims.filter((claim): claim is ClaimData => claim !== null);
+  }
+}
+
+export async function getVSSummaries(
+  startId = 1,
+  limit = 50
+): Promise<VSData[]> {
+  const claims = await getClaimSummaries(startId, limit);
+  return claims.map(mapClaimToVS);
+}
+
+export async function getOpenVSSummaries(): Promise<VSData[]> {
+  const claims = await getOpenClaimSummaries();
+  return claims.map(mapClaimToVS);
+}
+
+export async function getUserVSSummaries(address: string): Promise<VSData[]> {
+  const claims = await getUserClaimSummaries(address);
+  return claims.map(mapClaimToVS);
+}
+
+export async function createClaim(wallet: string, params: CreateClaimParams): Promise<ClaimWriteResult> {
+  const writeResult = await writeAndWait(
     "create_claim",
     wallet,
     [
@@ -225,14 +475,19 @@ export async function createClaim(wallet: string, params: CreateClaimParams) {
     ],
     params.stake_amount
   );
+  const claimId = await inferCreatedClaimId(wallet);
+  return {
+    ...writeResult,
+    claimId,
+  };
 }
 
 export async function createRematch(
   wallet: string,
   parentId: number,
   params: Omit<CreateClaimParams, "parent_id">
-) {
-  return writeAndWait(
+): Promise<ClaimWriteResult> {
+  const writeResult = await writeAndWait(
     "create_rematch",
     wallet,
     [
@@ -253,6 +508,11 @@ export async function createRematch(
     ],
     params.stake_amount
   );
+  const claimId = await inferCreatedClaimId(wallet);
+  return {
+    ...writeResult,
+    claimId,
+  };
 }
 
 export async function challengeClaim(wallet: string, claimId: number, stakeAmount: number) {
@@ -273,6 +533,11 @@ export async function cancelClaim(wallet: string, claimId: number) {
 }
 
 export async function getVS(vsId: number): Promise<VSData | null> {
+  if (typeof window !== "undefined") {
+    const response = await readApiJson<{ item: VSData }>(`/api/vs/${vsId}`);
+    return response?.item ?? null;
+  }
+
   const claim = await getClaim(vsId);
   return claim ? mapClaimToVS(claim) : null;
 }
@@ -283,6 +548,40 @@ export async function getVSCount(): Promise<number> {
 
 export async function getUserVSList(address: string): Promise<number[]> {
   return getUserClaims(address);
+}
+
+export async function getAllVSFast(): Promise<VSData[]> {
+  if (typeof window !== "undefined") {
+    const response = await readApiJson<{ items: VSData[] }>("/api/vs");
+    return response?.items ?? [];
+  }
+
+  const count = await getVSCount();
+  if (count <= 0) {
+    return [];
+  }
+
+  const pageSize = 50;
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil(count / pageSize) }, (_, index) =>
+      getVSSummaries(index * pageSize + 1, pageSize)
+    )
+  );
+  const results = pages.flat();
+
+  return results.sort((a, b) => b.id - a.id);
+}
+
+export async function getUserVSFast(address: string): Promise<VSData[]> {
+  if (typeof window !== "undefined") {
+    const response = await readApiJson<{ items: VSData[] }>(
+      `/api/vs/user/${encodeURIComponent(address)}`
+    );
+    return response?.items ?? [];
+  }
+
+  const results = await getUserVSSummaries(address);
+  return results.sort((a, b) => b.id - a.id);
 }
 
 export async function createVS(

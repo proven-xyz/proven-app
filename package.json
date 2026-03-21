@@ -8,7 +8,12 @@
     "clean": "rm -rf .next",
     "build": "next build",
     "start": "next start",
-    "deploy:contract": "npx tsx deploy/deploy.ts"
+    "warm:vs-index": "tsx scripts/warm-vs-index.ts",
+    "deploy:contract": "node scripts/genlayer-deploy.mjs",
+    "deploy:contract:bradbury": "node scripts/genlayer-deploy.mjs --network testnet-bradbury",
+    "deploy:contract:localnet": "node scripts/genlayer-deploy.mjs --network localnet",
+    "deploy:contract:env": "node scripts/genlayer-deploy.mjs --write-env",
+    "deploy:contract:sdk": "npx tsx deploy/deploy.ts"
   },
   "dependencies": {
     "framer-motion": "^12.38.0",
