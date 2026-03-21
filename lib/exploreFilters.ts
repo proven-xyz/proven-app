@@ -17,7 +17,8 @@ export const DEFAULT_EXPLORE_FILTERS: ExploreFilterState = {
   search: "",
 };
 
-const MIN_STAKE_OPTIONS = [0, 2, 5, 10] as const;
+/** Valores permitidos para `minStake` (URL `?min=`) y chips del sidebar Explore */
+export const MIN_STAKE_OPTIONS = [0, 2, 5, 10, 20] as const;
 const SORT_OPTIONS: ExploreSort[] = ["newest", "highest", "expiring"];
 
 const VALID_CATEGORY_IDS = new Set<string>(CATEGORIES.map((c) => c.id));

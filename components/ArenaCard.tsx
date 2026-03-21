@@ -26,9 +26,9 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   
   return (
     <Link href={`/vs/${vs.id}`} className="block h-full group">
-      <article className="card h-full p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.35] hover:shadow-glow-emerald flex flex-col">
+      <article className="card h-full !border-pv-emerald/[0.14] p-4 text-left transition-all duration-200 hover:!border-pv-emerald/[0.35] hover:shadow-glow-emerald flex flex-col">
         <div className="mb-2.5 flex items-center justify-between gap-2">
-          <span className="rounded border border-pv-emerald/28 bg-pv-emerald/[0.08] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
+          <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
             {tCat(vs.category)}
           </span>
           <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
@@ -45,7 +45,7 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
             {["bg-pv-surface2", "bg-pv-surface", "bg-pv-emerald"].map((color, i) => (
               <span
                 key={`${vs.id}-avatar-${i}`}
-                className={`w-7 h-7 rounded-full border border-white/[0.22] ${color} ${i > 0 ? "-ml-3" : ""} flex items-center justify-center`}
+                className={`w-7 h-7 rounded-full border border-pv-emerald/25 ${color} ${i > 0 ? "-ml-3" : ""} flex items-center justify-center`}
                 style={{ zIndex: 10 - i }}
               >
                 <UserRound size={13} className="text-pv-text/85" />

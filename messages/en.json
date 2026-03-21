@@ -16,16 +16,18 @@
   },
   "header": {
     "challenge": "+ Challenge",
+    "challengeMobile": "Challenge",
     "explore": "Explore",
     "myVS": "My VS",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "walletMenu": "Wallet",
+    "disconnect": "Disconnect",
+    "mobileNavAria": "Main navigation"
   },
   "footer": {
-    "tagline": "The truth is proven.",
-    "explore": "Explore",
-    "createVS": "Create VS",
-    "poweredBy": "Powered by GenLayer AI Consensus"
+    "poweredBy": "Powered by GenLayer AI Consensus",
+    "rightsReserved": "© 2024 PROVEN. All rights reserved."
   },
   "home": {
     "vsOfDay": "VS of the day",
@@ -124,7 +126,6 @@
     "noResultsDesc": "Try changing the filters or create your own VS.",
     "challengeSomeone": "Challenge someone",
     "eyebrow": "Open Arena",
-    "sampleBadge": "Example",
     "sampleIntroEmpty": "No open VS on-chain yet. Demo cards below follow your filters and search.",
     "sampleIntroFiltered": "No live VS match your filters. Demo cards below use the same filters and search.",
     "sampleNoMatchIntro": "Nothing matches these filters — not even the demos. Try resetting or broadening your search.",

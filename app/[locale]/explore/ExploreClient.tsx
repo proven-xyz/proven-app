@@ -10,6 +10,7 @@ import { CATEGORIES, PV_EMERALD_HEX } from "@/lib/constants";
 import {
   applyExploreFilters,
   DEFAULT_EXPLORE_FILTERS,
+  MIN_STAKE_OPTIONS,
   serializeExploreFilters,
 } from "@/lib/exploreFilters";
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
@@ -179,7 +180,7 @@ export default function ExploreClient() {
                   role="group"
                   aria-label={t("minStake")}
                 >
-                  {[0, 2, 5, 10].map((v) => (
+                  {MIN_STAKE_OPTIONS.map((v) => (
                     <Chip
                       key={v}
                       active={minStake === v}
@@ -302,7 +303,7 @@ export default function ExploreClient() {
                         showCategory
                         showAcceptCTA
                         isSample
-                        sampleBadgeLabel={t("sampleBadge")}
+                        showChallengesLabel={false}
                         categoryFilterHref={`/explore?${serializeExploreFilters({
                           ...DEFAULT_EXPLORE_FILTERS,
                           cat: vs.category,
@@ -329,6 +330,7 @@ export default function ExploreClient() {
                       vs={vs}
                       showCategory={cat === "all"}
                       showAcceptCTA
+                      showChallengesLabel={false}
                     />
                   </motion.div>
                 ))}

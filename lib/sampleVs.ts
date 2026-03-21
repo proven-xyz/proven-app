@@ -4,6 +4,12 @@ import { ZERO_ADDRESS } from "@/lib/constants";
 /**
  * VS de demostración (ids negativos). La página /vs/[id] los resuelve sin llamar al contrato.
  * Categorías alineadas con filtros Explore: deportes (Sports), crypto, tech.
+ *
+ * `stake_amount` define el pool en VS abiertos (píldora $X) y debe encajar con `applyExploreFilters`
+ * (min stake: $2+ → ≥2, $5+ → ≥5, $10+ → ≥10, $20+ → ≥20):
+ * - crypto $12 → pasa hasta $10+; falla en $20+
+ * - tech $4 → solo Any y $2+
+ * - deportes $8 → Any, $2+, $5+; falla en $10+ y $20+
  */
 export const SAMPLE_VS: Record<number, VSData> = {
   [-1]: {
@@ -14,7 +20,7 @@ export const SAMPLE_VS: Record<number, VSData> = {
     creator_position: "BTC breaks $100k",
     opponent_position: "BTC stays below $100k",
     resolution_url: "coingecko.com/en/coins/bitcoin",
-    stake_amount: 200,
+    stake_amount: 12,
     deadline: Math.floor(Date.now() / 1000) + 86400 * 5,
     state: "open",
     winner: ZERO_ADDRESS,
@@ -30,7 +36,7 @@ export const SAMPLE_VS: Record<number, VSData> = {
     creator_position: "OpenAI announces GPT-5 before June",
     opponent_position: "No official announcement before June",
     resolution_url: "openai.com",
-    stake_amount: 400,
+    stake_amount: 4,
     deadline: Math.floor(Date.now() / 1000) + 86400 * 12,
     state: "open",
     winner: ZERO_ADDRESS,
@@ -46,7 +52,7 @@ export const SAMPLE_VS: Record<number, VSData> = {
     creator_position: "Lakers win the West",
     opponent_position: "Any other team wins the West",
     resolution_url: "nba.com",
-    stake_amount: 140,
+    stake_amount: 8,
     deadline: Math.floor(Date.now() / 1000) + 86400 * 18,
     state: "open",
     winner: ZERO_ADDRESS,

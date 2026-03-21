@@ -45,7 +45,7 @@ export default function HomePage() {
       vs: {
         id: -1,
         question: "BTC Price will break $100k before March 31",
-        stake_amount: 200,
+        stake_amount: 12,
         opponent: ZERO_ADDRESS,
         category: "crypto",
         state: "open" as const,
@@ -56,9 +56,9 @@ export default function HomePage() {
       vs: {
         id: -2,
         question: "GPT-5 Announced by OpenAI before June",
-        stake_amount: 400,
+        stake_amount: 4,
         opponent: ZERO_ADDRESS,
-        category: "custom",
+        category: "tech",
         state: "open" as const,
       },
       challengersCount: 13,
@@ -67,7 +67,7 @@ export default function HomePage() {
       vs: {
         id: -3,
         question: "Lakers win the western conference",
-        stake_amount: 140,
+        stake_amount: 8,
         opponent: ZERO_ADDRESS,
         category: "deportes",
         state: "open" as const,

@@ -3,15 +3,21 @@
 @tailwind utilities;
 
 @layer base {
+  /**
+   * Evita scroll horizontal en mobile (elementos 100vw, márgenes negativos, etc.).
+   * Aplicar en html + body es el patrón habitual; el contenido sigue scrolleando en Y.
+   */
   html {
-    @apply antialiased;
+    @apply antialiased overflow-x-hidden;
     color-scheme: dark;
   }
 
   body {
-    @apply bg-pv-bg text-pv-text font-body;
+    @apply bg-pv-bg text-pv-text font-body overflow-x-hidden;
     min-height: 100vh;
     position: relative;
+    width: 100%;
+    max-width: 100%;
   }
 
   /* Grain texture overlay */

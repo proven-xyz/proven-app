@@ -19,10 +19,13 @@ interface VSCardProps {
    * Usa overlay + `pointer-events` para evitar `<a>` anidados.
    */
   categoryFilterHref?: string;
+  /** Texto "challenges" junto al creador (p. ej. Explore lo oculta) */
+  showChallengesLabel?: boolean;
 }
 
-const categoryPillClass =
-  "rounded border border-pv-emerald/28 bg-pv-emerald/[0.08] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-pv-emerald";
+/** Misma píldora que ArenaCard (categoría + POOL): sin borde blanco del `.chip` global */
+const vsCardPillClass =
+  "rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90";
 
 export default function VSCard({
   vs,
@@ -31,6 +34,7 @@ export default function VSCard({
   isSample = false,
   sampleBadgeLabel,
   categoryFilterHref,
+  showChallengesLabel = true,
 }: VSCardProps) {
   const catInfo = getCategoryInfo(vs.category);
   const isOpen = vs.opponent === ZERO_ADDRESS;
@@ -60,31 +64,31 @@ export default function VSCard({
         <div className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             {isSample && sampleBadgeLabel ? (
-              <span className="shrink-0 rounded border border-pv-emerald/40 bg-pv-emerald/[0.1] px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-pv-emerald">
+              <span className={`shrink-0 ${vsCardPillClass} tracking-[0.14em]`}>
                 {sampleBadgeLabel}
               </span>
             ) : null}
             <span className="text-[13px] font-semibold">
               {shortenAddress(vs.creator)}
             </span>
-            <span className="text-xs text-pv-muted">{t("challenges")}</span>
+            {showChallengesLabel ? (
+              <span className="text-xs text-pv-muted">{t("challenges")}</span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {showCategory &&
               (categoryFilterHref ? (
                 <Link
                   href={categoryFilterHref}
-                  className={`pointer-events-auto inline-block ${categoryPillClass} transition-colors hover:border-pv-emerald/45 hover:bg-pv-emerald/[0.12]`}
+                  className={`pointer-events-auto inline-block ${vsCardPillClass} transition-colors hover:border-pv-emerald/35 hover:bg-pv-emerald/[0.1]`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   {tCat(catInfo.id)}
                 </Link>
               ) : (
-                <span className={categoryPillClass}>{tCat(catInfo.id)}</span>
+                <span className={vsCardPillClass}>{tCat(catInfo.id)}</span>
               ))}
-            <span className="font-mono text-[13px] font-bold text-pv-emerald/90">
-              ${pool}
-            </span>
+            <span className={`inline-block shrink-0 ${vsCardPillClass}`}>${pool}</span>
           </div>
         </div>
 
