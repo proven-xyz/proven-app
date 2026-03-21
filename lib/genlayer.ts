@@ -1,8 +1,6 @@
 import { createClient, createAccount } from "genlayer-js";
-// @ts-ignore — exported in some versions of genlayer-js
-import * as chains from "genlayer-js/chains";
 
-const CHAIN = (chains as any).testnetBradbury ?? { id: 1, name: "testnet-bradbury" };
+const CHAIN = { id: 1, name: "testnet-bradbury" };
 const ENDPOINT = process.env.NEXT_PUBLIC_GENLAYER_RPC || undefined;
 
 export function createGenlayerClient(accountAddress?: string) {

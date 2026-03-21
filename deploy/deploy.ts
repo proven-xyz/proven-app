@@ -21,8 +21,6 @@ async function deploy() {
     "utf-8"
   );
 
-  await client.initializeConsensusSmartContract();
-
   const hash = await client.deployContract({
     code: contractCode,
     args: [],

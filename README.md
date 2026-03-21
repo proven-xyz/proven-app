@@ -54,13 +54,13 @@ PROVEN te permite desafiar a cualquiera a una apuesta sobre hechos verificables 
 │  ┌──────────────────────────────┐    │
 │  │    PROVEN Intelligent Contract│    │
 │  │                              │    │
-│  │  create_vs()  ← lock stake  │    │
-│  │  accept_vs()  ← match stake │    │
-│  │  resolve_vs():              │    │
+│  │  create_claim() ← lock stake │    │
+│  │  challenge_claim() ← join   │    │
+│  │  resolve_claim():           │    │
 │  │    ├─ gl.nondet.web.get()   │    │
 │  │    ├─ gl.nondet.exec_prompt()│   │
 │  │    └─ emit_transfer → winner│    │
-│  │  cancel_vs() ← refund      │    │
+│  │  cancel_claim() ← refund    │    │
 │  └──────────────────────────────┘    │
 │                                      │
 │  Optimistic Democracy consensus      │
@@ -247,9 +247,9 @@ Add env var in Railway dashboard.
 ### In GenLayer Studio
 
 1. Deploy `contracts/proven.py`
-2. Call `create_vs` with value (stake amount)
-3. Switch accounts, call `accept_vs`
-4. Call `resolve_vs` — watch the AI verdict
+2. Call `create_claim` with value (stake amount)
+3. Switch accounts, call `challenge_claim`
+4. Call `resolve_claim` — watch the AI verdict
 
 ### Local with GLSim
 
