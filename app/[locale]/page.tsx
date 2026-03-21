@@ -11,6 +11,7 @@ import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
+import ArenaCard from "@/components/ArenaCard";
 import { Zap, Send, UserRoundPlus, Shield } from "lucide-react";
 
 export default function HomePage() {
@@ -39,6 +40,47 @@ export default function HomePage() {
   const openVS     = allVS.filter((v) => v.state === "open");
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
   const featuredVS = allVS[0];
+  const fallbackArenaCards = [
+    {
+      vs: {
+        id: -1,
+        question: "BTC Price will break $100k before March 31",
+        stake_amount: 200,
+        opponent: ZERO_ADDRESS,
+        category: "crypto",
+        state: "open" as const,
+      },
+      challengersCount: 7,
+    },
+    {
+      vs: {
+        id: -2,
+        question: "GPT-5 Announced by OpenAI before June",
+        stake_amount: 400,
+        opponent: ZERO_ADDRESS,
+        category: "custom",
+        state: "open" as const,
+      },
+      challengersCount: 13,
+    },
+    {
+      vs: {
+        id: -3,
+        question: "Lakers win the western conference",
+        stake_amount: 140,
+        opponent: ZERO_ADDRESS,
+        category: "deportes",
+        state: "open" as const,
+      },
+      challengersCount: 4,
+    },
+  ];
+
+  const arenaFromData = [...openVS, ...allVS.filter((v) => v.state !== "open")]
+    .slice(0, 3)
+    .map((vs) => ({ vs, challengersCount: undefined as number | undefined }));
+  const arenaCards = [...arenaFromData, ...fallbackArenaCards].slice(0, 3);
+  const isArenaFallback = openVS.length === 0;
 
   const steps = [
     {
@@ -80,7 +122,7 @@ export default function HomePage() {
             transition={{ duration: 0.3 }}
             style={{ position: featuredVS ? "absolute" : "relative", inset: 0 }}
           >
-            <h1 className="font-display text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
+            <h1 className="font-display text-[clamp(3rem,11vw,5.5rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
               {t("emptyHeroTitlePrefix")}{" "}
               <span className="italic text-pv-emerald">PROVEN.</span>
             </h1>
@@ -151,7 +193,7 @@ export default function HomePage() {
               <div key={item.label} className="p-5 sm:p-6 text-center bg-transparent border-0">
                 <div className="overflow-hidden">
                   <motion.div
-                    className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-pv-emerald"
+                    className="font-display text-[32px] sm:text-[32px] font-bold tracking-tight text-pv-emerald"
                     initial={{ y: 26, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{
@@ -163,7 +205,7 @@ export default function HomePage() {
                     {item.value}
                   </motion.div>
                 </div>
-                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                <p className="mt-1 text-[12px] sm:text-[11px] font-bold uppercase tracking-[0.14em] text-pv-muted">
                   {item.label}
                 </p>
               </div>
@@ -179,17 +221,17 @@ export default function HomePage() {
             <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
               THE PROTOCOL
             </h2>
-            <p className="text-pv-muted text-sm mt-2 font-mono tracking-wide">
+            <p className="text-pv-muted text-sm mt-5 sm:mt-6 font-mono tracking-wide">
               Zero trust. Pure code. Total proof.
             </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {steps.map(({ icon: Icon, title, description }) => (
               <div
                 key={title}
-                className="card p-5 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.5] hover:shadow-glow-emerald group"
+                className="card p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.5] hover:shadow-glow-emerald group"
               >
-                <div className="w-10 h-10 bg-pv-surface2/70 border border-white/[0.14] text-pv-emerald flex items-center justify-center mb-3 rounded-md transition-all duration-200 group-hover:border-pv-emerald/[0.5] group-hover:bg-pv-emerald/[0.14] group-hover:shadow-glow-emerald">
+                <div className="w-10 h-10 bg-pv-surface2/70 border border-white/[0.14] text-pv-emerald flex items-center justify-center mb-2.5 rounded-md transition-all duration-200 group-hover:border-pv-emerald/[0.5] group-hover:bg-pv-emerald/[0.14] group-hover:shadow-glow-emerald">
                   <Icon size={16} />
                 </div>
                 <div className="font-display text-[15px] sm:text-[17px] font-bold text-pv-emerald tracking-tight mb-1.5">
@@ -198,6 +240,53 @@ export default function HomePage() {
                 <div className="text-[13px] text-pv-muted leading-relaxed">{description}</div>
               </div>
             ))}
+          </div>
+        </div>
+      </AnimatedItem>
+
+      {/* LIVE ARENA */}
+      {arenaCards.length > 0 && (
+        <AnimatedItem>
+          <div className="mb-12">
+            <div className="mb-5 text-left">
+              <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
+                LIVE ARENA
+              </h2>
+            <p className="text-pv-muted text-sm mt-5 sm:mt-6 font-mono tracking-wide">
+                {isArenaFallback ? t("arenaSubtitleFallback") : t("arenaSubtitle")}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {arenaCards.map(({ vs, challengersCount }) => (
+                <ArenaCard key={vs.id} vs={vs} challengersCount={challengersCount} />
+              ))}
+            </div>
+          </div>
+        </AnimatedItem>
+      )}
+
+      {/* READY TO WIN CTA */}
+      <AnimatedItem>
+        <div className="mt-16 sm:mt-20 mb-12">
+          <div className="relative overflow-hidden card max-w-[900px] mx-auto p-6 sm:p-8 md:p-10 text-center border-white/[0.14]">
+            <div className="pointer-events-none absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 w-36 h-36 sm:w-52 sm:h-52 rounded-full bg-pv-cyan/[0.10] blur-3xl" />
+            <div className="pointer-events-none absolute bottom-0 left-0 -translate-x-1/3 translate-y-1/3 w-40 h-40 sm:w-56 sm:h-56 rounded-full bg-pv-emerald/[0.12] blur-3xl" />
+            <div className="relative z-10">
+              <h2 className="font-display text-[clamp(1.8rem,7vw,3.2rem)] font-bold leading-[0.95] tracking-tight text-pv-text">
+                READY TO <span className="text-pv-emerald">WIN?</span>
+              </h2>
+              <p className="mt-5 text-sm sm:text-base text-pv-muted max-w-[620px] mx-auto leading-relaxed">
+                Don&apos;t just talk. Stake your claim and let the AI settle the score.
+              </p>
+              <div className="mt-6 flex justify-center">
+                <Link href="/vs/create" className="block w-full sm:w-auto">
+                  <Button variant="primary" className="w-full sm:w-auto px-8">
+                    START CHALLENGE
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </AnimatedItem>
