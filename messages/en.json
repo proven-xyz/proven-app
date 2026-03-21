@@ -109,6 +109,7 @@
     "available": "{count} available",
     "subtitle": "Accept someone's VS. Pick your fight.",
     "searchPlaceholder": "Search VS...",
+    "clearSearch": "Clear search",
     "category": "Category",
     "all": "All",
     "minStake": "Min stake",
@@ -122,7 +123,15 @@
     "noResults": "No VS match these filters",
     "noResultsDesc": "Try changing the filters or create your own VS.",
     "challengeSomeone": "Challenge someone",
-    "eyebrow": "Open Arena"
+    "eyebrow": "Open Arena",
+    "sampleBadge": "Example",
+    "sampleIntroEmpty": "No open VS on-chain yet. Demo cards below follow your filters and search.",
+    "sampleIntroFiltered": "No live VS match your filters. Demo cards below use the same filters and search.",
+    "sampleNoMatchIntro": "Nothing matches these filters — not even the demos. Try resetting or broadening your search.",
+    "sampleNoMatchHint": "No demo card matches the current filters. Reset filters or adjust search to see examples again.",
+    "sampleCreateHint": "Create your own challenge to go live on the protocol.",
+    "resetFilters": "Reset filters",
+    "filtersAriaLabel": "Filters: category, minimum stake, and sort order"
   },
   "dashboard": {
     "title": "My VS",
@@ -206,6 +215,7 @@
     "deportes": "Sports",
     "clima": "Weather",
     "crypto": "Crypto",
+    "tech": "Tech",
     "cultura": "Culture",
     "custom": "Custom"
   },

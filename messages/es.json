@@ -109,6 +109,7 @@
     "available": "{count} disponibles",
     "subtitle": "Aceptá el VS de alguien más. Elegí tu pelea.",
     "searchPlaceholder": "Buscar VS...",
+    "clearSearch": "Borrar búsqueda",
     "category": "Categoría",
     "all": "Todos",
     "minStake": "Apuesta mínima",
@@ -122,7 +123,15 @@
     "noResults": "No hay VS con estos filtros",
     "noResultsDesc": "Probá cambiando los filtros o creá tu propio VS.",
     "challengeSomeone": "Desafiar a alguien",
-    "eyebrow": "Arena Abierta"
+    "eyebrow": "Arena Abierta",
+    "sampleBadge": "Ejemplo",
+    "sampleIntroEmpty": "Todavía no hay VS abiertos en cadena. Las cards de demostración respetan tus filtros y búsqueda.",
+    "sampleIntroFiltered": "Ningún VS en vivo coincide. Las demos de abajo usan los mismos filtros y búsqueda.",
+    "sampleNoMatchIntro": "Nada coincide con estos filtros, ni siquiera las demos. Probá restablecer o ampliar la búsqueda.",
+    "sampleNoMatchHint": "Ninguna demo coincide con los filtros actuales. Restablecé o ajustá la búsqueda para ver ejemplos.",
+    "sampleCreateHint": "Creá tu propio desafío para publicarlo en el protocolo.",
+    "resetFilters": "Restablecer filtros",
+    "filtersAriaLabel": "Filtros: categoría, apuesta mínima y orden"
   },
   "dashboard": {
     "title": "Mis VS",
@@ -206,6 +215,7 @@
     "deportes": "Deportes",
     "clima": "Clima",
     "crypto": "Crypto",
+    "tech": "Tech",
     "cultura": "Cultura",
     "custom": "Custom"
   },

@@ -2,7 +2,7 @@
 
 import { Link } from "@/i18n/navigation";
 import type { VSData } from "@/lib/contract";
-import { ZERO_ADDRESS, getCategoryInfo } from "@/lib/constants";
+import { ZERO_ADDRESS } from "@/lib/constants";
 import { useTranslations } from "next-intl";
 import { UserRound } from "lucide-react";
 
@@ -20,7 +20,6 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   const t = useTranslations("home");
   const tCat = useTranslations("categories");
 
-  const catInfo = getCategoryInfo(vs.category);
   const isOpen = vs.opponent === ZERO_ADDRESS;
   const pool = vs.stake_amount * (isOpen ? 1 : 2);
   const activeChallengers = challengersCount ?? (isOpen ? 1 : 2);
@@ -28,18 +27,11 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   return (
     <Link href={`/vs/${vs.id}`} className="block h-full group">
       <article className="card h-full p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.35] hover:shadow-glow-emerald flex flex-col">
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <span
-            className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border"
-            style={{
-              backgroundColor: `${catInfo.color}14`,
-              borderColor: `${catInfo.color}4A`,
-              color: catInfo.color,
-            }}
-          >
-            {tCat(catInfo.id)}
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+          <span className="rounded border border-pv-emerald/28 bg-pv-emerald/[0.08] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
+            {tCat(vs.category)}
           </span>
-          <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
+          <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
             POOL: ${pool}
           </span>
         </div>

@@ -6,6 +6,8 @@ interface ChipProps {
   color?: string;
   onClick?: () => void;
   className?: string;
+  /** Si se pasa, anula el `aria-pressed` derivado de `active` (p. ej. filtros URL). */
+  "aria-pressed"?: boolean;
 }
 
 export default function Chip({
@@ -14,6 +16,7 @@ export default function Chip({
   color,
   onClick,
   className = "",
+  "aria-pressed": ariaPressedProp,
 }: ChipProps) {
   const dynamicStyle = color
     ? {
@@ -23,9 +26,13 @@ export default function Chip({
       }
     : {};
 
+  const ariaPressed = ariaPressedProp ?? active;
+
   return (
     <button
+      type="button"
       onClick={onClick}
+      aria-pressed={ariaPressed}
       className={`chip focus-ring whitespace-nowrap ${
         active && !color
           ? "bg-pv-text/[0.07] text-pv-text border-white/[0.22]"

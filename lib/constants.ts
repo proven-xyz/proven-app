@@ -1,9 +1,13 @@
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+/** Coincide con `theme.extend.colors.pv.emerald` — acento principal UI (chips, CTAs). */
+export const PV_EMERALD_HEX = "#4edea3";
+
 export const CATEGORIES = [
   { id: "deportes", label: "Deportes", color: "#22D3EE" },
   { id: "clima", label: "Clima", color: "#E879F9" },
   { id: "crypto", label: "Crypto", color: "#FBBF24" },
+  { id: "tech", label: "Tech", color: "#818CF8" },
   { id: "cultura", label: "Cultura", color: "#10B981" },
   { id: "custom", label: "Custom", color: "#A1A1AA" },
 ] as const;
@@ -26,6 +30,12 @@ export const PREFILLS: Record<string, { q: string; a: string; b: string; u: stri
     a: "BTC supera $100k",
     b: "BTC NO supera $100k",
     u: "https://coingecko.com/en/coins/bitcoin",
+  },
+  tech: {
+    q: "¿GPT-5 se anuncia antes de junio?",
+    a: "OpenAI anuncia GPT-5 antes de junio",
+    b: "Sin anuncio oficial antes de junio",
+    u: "https://openai.com",
   },
   cultura: {
     q: "¿Shakira tiene más Grammys que Bad Bunny?",
@@ -68,7 +78,10 @@ export function getShareUrl(vsId: number): string {
 }
 
 export function getCategoryInfo(cat: string) {
-  return CATEGORIES.find((c) => c.id === cat) || CATEGORIES[4];
+  return (
+    CATEGORIES.find((c) => c.id === cat) ??
+    CATEGORIES.find((c) => c.id === "custom")!
+  );
 }
 
 export const STATE_LABELS: Record<string, string> = {
