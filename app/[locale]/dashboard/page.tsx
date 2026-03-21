@@ -5,9 +5,15 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
-import { getUserVSList, getVS } from "@/lib/contract";
-import type { VSData } from "@/lib/contract";
-import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
+import {
+  didUserLoseVS,
+  didUserWinVS,
+  getUserVSFast,
+  getVSUserWinAmount,
+  getVSTotalPot,
+  type VSData,
+} from "@/lib/contract";
+import { ZERO_ADDRESS } from "@/lib/constants";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import {
   GlassCard,
@@ -34,11 +40,9 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const ids     = await getUserVSList(address);
-        const results = await Promise.all(ids.map((id) => getVS(id)));
-        const valid   = results.filter((v): v is VSData => v !== null);
-        valid.sort((a, b) => b.id - a.id);
-        setDuels(valid);
+        const results = await getUserVSFast(address);
+        results.sort((a, b) => b.id - a.id);
+        setDuels(results);
       } catch (e) {
         console.error(e);
       } finally {
@@ -67,23 +71,14 @@ export default function DashboardPage() {
       : duels.filter((d) => d.state === "resolved" || d.state === "cancelled");
 
   const won = duels.filter(
-    (d) =>
-      d.state === "resolved" &&
-      d.winner.toLowerCase() === address!.toLowerCase()
+    (d) => d.state === "resolved" && didUserWinVS(d, address)
   ).length;
   const lost = duels.filter(
-    (d) =>
-      d.state === "resolved" &&
-      d.winner !== ZERO_ADDRESS &&
-      d.winner.toLowerCase() !== address!.toLowerCase()
+    (d) => d.state === "resolved" && didUserLoseVS(d, address)
   ).length;
   const totalWon = duels
-    .filter(
-      (d) =>
-        d.state === "resolved" &&
-        d.winner.toLowerCase() === address!.toLowerCase()
-    )
-    .reduce((s, d) => s + d.stake_amount * 2, 0);
+    .filter((d) => d.state === "resolved" && didUserWinVS(d, address))
+    .reduce((sum, duel) => sum + (getVSUserWinAmount(duel, address) ?? 0), 0);
   const winRate =
     won + lost > 0 ? Math.round((won / (won + lost)) * 100) : 0;
 
@@ -213,13 +208,8 @@ export default function DashboardPage() {
       ) : (
         <motion.div layout className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
           {filtered.map((vs) => {
-            const iWon =
-              vs.state === "resolved" &&
-              vs.winner.toLowerCase() === address!.toLowerCase();
-            const iLost =
-              vs.state === "resolved" &&
-              vs.winner !== ZERO_ADDRESS &&
-              vs.winner.toLowerCase() !== address!.toLowerCase();
+            const iWon = vs.state === "resolved" && didUserWinVS(vs, address);
+            const iLost = vs.state === "resolved" && didUserLoseVS(vs, address);
             const st = iWon ? "won" : iLost ? "lost" : vs.state;
 
             return (
@@ -235,9 +225,7 @@ export default function DashboardPage() {
                     <div className="flex justify-between items-center mb-3">
                       <Badge status={st} />
                       <span className="font-mono text-[13px] font-bold text-pv-gold">
-                        $
-                        {vs.stake_amount *
-                          (vs.opponent === ZERO_ADDRESS ? 1 : 2)}
+                        ${getVSTotalPot(vs)}
                       </span>
                     </div>
                     <div className="font-display text-[17px] font-bold leading-snug mb-3 tracking-tight">

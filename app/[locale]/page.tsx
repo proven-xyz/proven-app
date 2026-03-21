@@ -5,8 +5,15 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
-import { getVS, getVSCount } from "@/lib/contract";
-import type { VSData } from "@/lib/contract";
+import {
+  getAllVSFast,
+  getVSChallengerCount,
+  getVSSingleWinnerPayout,
+  getVSTotalPot,
+  hasVSWinner,
+  isVSJoinable,
+  type VSData,
+} from "@/lib/contract";
 import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
@@ -19,15 +26,13 @@ export default function HomePage() {
   const [allVS, setAllVS]     = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
   const t  = useTranslations("home");
-  const tc = useTranslations("common");
+  const tStamp = useTranslations("stamp");
 
   useEffect(() => {
     async function load() {
       try {
-        const count    = await getVSCount();
-        const promises = Array.from({ length: count }, (_, i) => getVS(i + 1));
-        const results  = await Promise.all(promises);
-        setAllVS(results.filter((v): v is VSData => v !== null));
+        const results = await getAllVSFast();
+        setAllVS(results);
       } catch (e) {
         console.error("Failed to load VS:", e);
       } finally {
@@ -37,8 +42,9 @@ export default function HomePage() {
     load();
   }, []);
 
-  const openVS     = allVS.filter((v) => v.state === "open");
+  const openVS     = allVS.filter((v) => isVSJoinable(v));
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
+  const decidedResolvedVS = resolvedVS.filter((v) => hasVSWinner(v));
   const featuredVS = allVS[0];
   const fallbackArenaCards = [
     {
@@ -154,11 +160,8 @@ export default function HomePage() {
                   <h1 className="font-display text-[clamp(30px,5vw,48px)] font-bold leading-[0.92] tracking-tight mb-7">
                     {featuredVS.question}
                   </h1>
-                  <PoolBadge
-                    amount={
-                      featuredVS.stake_amount *
-                      (featuredVS.opponent === ZERO_ADDRESS ? 1 : 2)
-                    }
+              <PoolBadge
+                    amount={getVSTotalPot(featuredVS)}
                     large
                   />
                 </div>
@@ -316,8 +319,7 @@ export default function HomePage() {
                 $
                 {allVS.reduce(
                   (sum, v) =>
-                    sum +
-                    v.stake_amount * (v.opponent === ZERO_ADDRESS ? 1 : 2),
+                    sum + getVSTotalPot(v),
                   0
                 )}
               </div>
@@ -364,7 +366,7 @@ export default function HomePage() {
       )}
 
       {/* Recently proven — 2 cols en desktop */}
-      {resolvedVS.length > 0 && (
+      {decidedResolvedVS.length > 0 && (
         <AnimatedItem>
           <div>
             <div className="flex items-center gap-2 mb-4">
@@ -374,7 +376,15 @@ export default function HomePage() {
               </span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-              {resolvedVS.slice(0, 4).map((vs) => (
+              {decidedResolvedVS.slice(0, 4).map((vs) => {
+                const payout = getVSSingleWinnerPayout(vs);
+                const winnerLabel =
+                  vs.winner_side === "challengers" &&
+                  getVSChallengerCount(vs) > 1
+                    ? tStamp("challengersWon")
+                    : tStamp("won", { address: shortenAddress(vs.winner) });
+
+                return (
                 <Link key={vs.id} href={`/vs/${vs.id}`} className="block group">
                   <motion.div
                     whileHover={{ x: 4 }}
@@ -384,19 +394,17 @@ export default function HomePage() {
                       <div className="w-7 h-7 rounded-full bg-pv-emerald/[0.1] border border-pv-emerald/[0.25] flex items-center justify-center flex-shrink-0">
                         <div className="w-2 h-2 rounded-full bg-pv-emerald" />
                       </div>
-                      <span className="text-[13px] truncate">
-                        <span className="font-semibold">
-                          {shortenAddress(vs.winner)}
-                        </span>
-                        <span className="text-pv-muted"> {t("won")}</span>
+                      <span className="text-[13px] truncate font-semibold">
+                        {winnerLabel}
                       </span>
                     </div>
                     <span className="font-mono text-[13px] font-bold text-pv-gold flex-shrink-0 ml-2">
-                      +${vs.stake_amount * 2}
+                      {payout === null ? `$${getVSTotalPot(vs)}` : `+$${payout}`}
                     </span>
                   </motion.div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           </div>
         </AnimatedItem>

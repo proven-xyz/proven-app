@@ -102,7 +102,87 @@
     },
     "eyebrow": "Nuevo Desafío",
     "pageTitle": "DEFINÍ LOS TÉRMINOS.",
-    "pageSubtitle": "Establecé tu posición. Bloqueá tu apuesta. El protocolo decide."
+    "pageSubtitle": "Establecé tu posición. Bloqueá tu apuesta. El protocolo decide.",
+    "challengerSideBets": "El lado retador apuesta",
+    "createRematchAndFund": "Crear revancha y fondear ${amount}",
+    "rematchCreatedAndFunded": "Revancha creada y fondeada",
+    "invalidFixedOdds": "Ingresa odds fijas validas (minimo 1.00x)",
+    "invalidDeadline": "Elige un deadline futuro",
+    "invalidStake": "La apuesta debe ser mayor que cero",
+    "rematchEyebrow": "Modo Rivalidad",
+    "rematchFrom": "Revancha del claim #{id}",
+    "rematchHint": "Precargamos los terminos del mercado original. Ajusta lo que quieras antes de publicarla.",
+    "rematchLoading": "Cargando los terminos originales...",
+    "rematchPending": "Vamos a reutilizar los terminos anteriores cuando cargue el claim original.",
+    "rematchNotFound": "No se encontro el claim original",
+    "advancedToggle": "Terminos avanzados del mercado",
+    "advancedHint": "Usalo para odds custom, handicaps, reglas especiales de settlement o formatos 1 contra varios.",
+    "marketType": "Tipo de mercado",
+    "oddsMode": "Modo de odds",
+    "format": "Formato",
+    "pricing": "Pricing",
+    "headToHeadSummary": "1 vs 1",
+    "oneToManySummary": "1 vs {count}",
+    "maxChallengers": "Maximo de retadores",
+    "slotsHelp": "Ponlo arriba de 1 para abrir el claim a varios retadores.",
+    "fixedOddsLabel": "Pago al retador (retorno total)",
+    "fixedOddsHint": "Ejemplo: 1.80 significa que una apuesta de 1 devuelve 1.8 total si gana el lado retador.",
+    "fixedOddsPreview": "Preview actual: ${amount} devueltos en una apuesta retadora ganadora.",
+    "handicapLine": "Handicap / linea",
+    "handicapPlaceholder": "Ejemplo: Team A -1.5, Over 2.5, BTC > 100k",
+    "settlementRule": "Regla de settlement",
+    "settlementPlaceholder": "Dile a PROVEN exactamente como debe juzgar este claim.",
+    "settlementRuleHint": "Agrega instrucciones de juicio cuando el mercado necesita mas que el texto crudo de la pregunta.",
+    "marketTypes": {
+      "binary": "Binario",
+      "moneyline": "Moneyline",
+      "spread": "Spread",
+      "total": "Total",
+      "prop": "Prop",
+      "custom": "Custom"
+    },
+    "oddsModes": {
+      "pool": "Odds de pool",
+      "fixed": "Odds fijas"
+    },
+    "invalidStakeMin": "La apuesta debe ser de al menos ${amount}",
+    "sourceRequired": "Agrega una fuente real de verificacion antes de publicar",
+    "settlementRuleRequired": "Agrega una regla de settlement para mercados custom o avanzados",
+    "minimumStakeHint": "La apuesta minima para el demo es ${amount}.",
+    "sourceGuidance": "Guia para la fuente de verificacion",
+    "useRecommendedRule": "Usar regla recomendada",
+    "qualityReview": "Revision de seguridad para el demo",
+    "qualityReady": "Este claim ya se ve lo bastante especifico para las reglas actuales del demo.",
+    "qualitySpecificity": "Haz la pregunta mas especifica para que el resultado se pueda verificar desde una sola fuente.",
+    "qualitySource": "Usa una pagina fuente concreta en vez de dejar la verificacion vacia o demasiado generica.",
+    "qualitySettlement": "Los mercados avanzados o custom deben tener una regla de settlement explicita.",
+    "guidance": {
+      "deportes": {
+        "sourceHint": "Usa la pagina oficial del partido, liga, o scoreboard del evento exacto que quieres resolver.",
+        "questionHint": "Nombra los equipos, la competencia, y el periodo directamente en el claim.",
+        "settlementTemplate": "Resuelve esto contra el resultado final oficial del evento enlazado. Aclara si cuentan tiempo extra, penales, u overtime."
+      },
+      "clima": {
+        "sourceHint": "Usa una fuente de clima que nombre claramente la ubicacion y la fecha medidas.",
+        "questionHint": "Nombra la ciudad o region y el dia exacto que se va a juzgar.",
+        "settlementTemplate": "Resuelve esto usando el clima reportado para la ubicacion y fecha nombradas en la fuente enlazada. Usa exactamente la condicion de precipitacion o temperatura escrita aqui."
+      },
+      "crypto": {
+        "sourceHint": "Usa una pagina de precio que siga mostrando el activo y el valor cotizado en el momento de settlement.",
+        "questionHint": "Nombra el activo, el umbral, y el deadline de forma explicita.",
+        "settlementTemplate": "Resuelve esto usando el spot price visible en la fuente enlazada al momento del deadline. Aplica cualquier umbral o linea exactamente como fue escrito."
+      },
+      "cultura": {
+        "sourceHint": "Prefiere la publicacion oficial, la pagina del premio, o la fuente primaria de entretenimiento detras del claim.",
+        "questionHint": "Ancla el claim a un lanzamiento, premio, ranking, o publicacion concretos.",
+        "settlementTemplate": "Resuelve esto solo con la fuente oficial o autoritativa enlazada. No infieras mas alla del resultado publicado exacto."
+      },
+      "custom": {
+        "sourceHint": "Los claims custom necesitan una fuente muy especifica y una regla de settlement clara para ser seguros en el demo.",
+        "questionHint": "Haz que el resultado sea medible y facil de verificar desde una sola fuente.",
+        "settlementTemplate": "Resuelve esto exactamente como esta escrito usando solo la fuente enlazada. Si el wording o la fuente son ambiguos, marcala como unresolvable."
+      }
+    }
   },
   "explore": {
     "title": "VS Abiertos",
@@ -175,12 +255,60 @@
     "progressVerifying": "Verificando",
     "progressProven": "PROVEN",
     "sampleMode": "Desafío de vista previa: esta es una card de ejemplo de la arena. Creá un VS real para interactuar onchain.",
-    "sampleModeCTA": "Crear Desafío Real"
+    "sampleModeCTA": "Crear Desafío Real",
+    "challengerSide": "Lado retador",
+    "challengersJoined": "{count} retadores activos",
+    "creatorStake": "Apuesta del creador",
+    "challengerStake": "Apuesta",
+    "potentialPayout": "Pago potencial",
+    "slots": "Cupos",
+    "slotsFilled": "{count}/{total} ocupados",
+    "marketTerms": "Terminos del mercado",
+    "marketTermsHint": "Estas son las reglas y la economia exactas codificadas en el contrato.",
+    "marketType": "Tipo de mercado",
+    "oddsMode": "Modo de odds",
+    "format": "Formato",
+    "headToHeadSummary": "1 vs 1",
+    "oneToManySummary": "1 vs {count}",
+    "challengerCapacity": "Capacidad de retadores",
+    "fixedPayout": "Pago fijo",
+    "handicapLine": "Handicap / linea",
+    "settlementRule": "Regla de settlement",
+    "challengers": "Retadores",
+    "noChallengersYet": "Todavia no hay retadores.",
+    "challengeStake": "Tu apuesta",
+    "joinAndStake": "Unirse y poner ${amount}",
+    "joinedToast": "Entraste con ${amount}. El pozo total ahora es ${total}.",
+    "invalidChallengeStake": "Ingresa una apuesta valida",
+    "challengeStakeHintFixed": "Con las odds fijas actuales, una apuesta retadora ganadora devuelve ${payout}.",
+    "challengeStakeHintPool": "Las odds de pool reparten la apuesta del creador proporcionalmente entre el lado retador.",
+    "challengeStakeHintHeadToHead": "Usa cualquier monto valido que tu wallet pueda fondear.",
+    "sendLinkToChallengers": "Manda este link a los retadores",
+    "rivalry": "Cadena de rivalidad",
+    "rivalryHint": "Cada revancha de esta rivalidad queda enlazada onchain mediante parent claims.",
+    "rivalryEmpty": "Todavia no hay revancha. Liquida esta ronda y lanza la siguiente.",
+    "createRematch": "Crear revancha",
+    "roundLabel": "Ronda {round}",
+    "marketTypes": {
+      "binary": "Binario",
+      "moneyline": "Moneyline",
+      "spread": "Spread",
+      "total": "Total",
+      "prop": "Prop",
+      "custom": "Custom"
+    },
+    "oddsModes": {
+      "pool": "Odds de pool",
+      "fixed": "Odds fijas"
+    },
+    "invalidChallengeStakeMin": "Ingresa una apuesta de al menos ${amount}",
+    "minimumStakeHint": "La apuesta minima para el demo es ${amount}."
   },
   "stamp": {
     "provenDecided": "PROVEN ya decidió",
     "won": "Ganó @{address}",
-    "draw": "Empate"
+    "draw": "Empate",
+    "challengersWon": "Lado ganador: retadores"
   },
   "terminal": {
     "searchingEvidence": "IA buscando pruebas...",

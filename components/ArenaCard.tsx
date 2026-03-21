@@ -1,13 +1,22 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import type { VSData } from "@/lib/contract";
+import { getVSChallengerCount, getVSTotalPot, type VSData } from "@/lib/contract";
 import { ZERO_ADDRESS, getCategoryInfo } from "@/lib/constants";
 import { useTranslations } from "next-intl";
 
 type ArenaVS = Pick<
   VSData,
-  "id" | "question" | "stake_amount" | "opponent" | "category" | "state"
+  | "id"
+  | "question"
+  | "stake_amount"
+  | "opponent"
+  | "category"
+  | "state"
+  | "challenger_count"
+  | "market_type"
+  | "total_pot"
+  | "max_challengers"
 >;
 
 interface ArenaCardProps {
@@ -18,11 +27,17 @@ interface ArenaCardProps {
 export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   const t = useTranslations("home");
   const tCat = useTranslations("categories");
+  const tDetail = useTranslations("vsDetail");
 
   const catInfo = getCategoryInfo(vs.category);
   const isOpen = vs.opponent === ZERO_ADDRESS;
-  const pool = vs.stake_amount * (isOpen ? 1 : 2);
-  const activeChallengers = challengersCount ?? (isOpen ? 1 : 2);
+  const pool = getVSTotalPot(vs as VSData);
+  const activeChallengers = challengersCount ?? getVSChallengerCount(vs as VSData);
+  const maxChallengers =
+    typeof vs.max_challengers === "number" && vs.max_challengers > 0
+      ? vs.max_challengers
+      : 1;
+  const marketType = vs.market_type ?? "binary";
   
   return (
     <Link href={`/vs/${vs.id}`} className="block h-full group">
@@ -60,6 +75,15 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
           <p className="text-xs text-pv-muted font-medium">
             {t("arenaChallengers", { count: activeChallengers })}
           </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mb-3.5">
+          <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-cyan/[0.25] bg-pv-cyan/[0.08] text-pv-cyan">
+            {tDetail(`marketTypes.${marketType}`)}
+          </span>
+          <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-white/[0.12] text-pv-muted">
+            {activeChallengers}/{maxChallengers}
+          </span>
         </div>
 
         <div className="w-full mt-auto py-2.5 rounded border border-pv-cyan/[0.25] bg-pv-cyan/[0.07] text-center font-display text-sm font-bold text-pv-cyan transition-colors group-hover:bg-pv-cyan/[0.12]">

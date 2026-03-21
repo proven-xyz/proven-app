@@ -1,4 +1,5 @@
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+export const MIN_STAKE = 2;
 
 export const CATEGORIES = [
   { id: "deportes", label: "Deportes", color: "#22D3EE" },
@@ -7,6 +8,73 @@ export const CATEGORIES = [
   { id: "cultura", label: "Cultura", color: "#10B981" },
   { id: "custom", label: "Custom", color: "#A1A1AA" },
 ] as const;
+
+export type CategoryId = (typeof CATEGORIES)[number]["id"];
+
+type CategoryDemoGuidance = {
+  sourceExamples: string[];
+  sourceHint: string;
+  settlementTemplate: string;
+  questionHint: string;
+};
+
+export const CATEGORY_DEMO_GUIDANCE: Record<CategoryId, CategoryDemoGuidance> = {
+  deportes: {
+    sourceExamples: [
+      "espn.com",
+      "bbc.com/sport",
+      "nba.com",
+    ],
+    sourceHint: "Use the official match, league, or scoreboard page for the event you want to settle.",
+    settlementTemplate:
+      "Resolve this against the official final result of the linked event. State whether extra time, penalties, or overtime count.",
+    questionHint: "Include the teams, competition, and timeframe in the question itself.",
+  },
+  clima: {
+    sourceExamples: [
+      "weather.com",
+      "weather.gov",
+      "open-meteo.com",
+    ],
+    sourceHint: "Use a weather source that clearly names the location and date being measured.",
+    settlementTemplate:
+      "Resolve this using the weather reported for the named location and date on the linked source. Use the exact precipitation or temperature condition written here.",
+    questionHint: "Name the city or region and the exact day being judged.",
+  },
+  crypto: {
+    sourceExamples: [
+      "coingecko.com",
+      "coinmarketcap.com",
+      "binance.com",
+    ],
+    sourceHint: "Use a price page that will still show the asset and quoted value at settlement time.",
+    settlementTemplate:
+      "Resolve this using the visible spot price on the linked source at the deadline time. Apply any threshold or line exactly as written.",
+    questionHint: "Name the asset, threshold, and deadline explicitly.",
+  },
+  cultura: {
+    sourceExamples: [
+      "grammy.com",
+      "billboard.com",
+      "imdb.com",
+    ],
+    sourceHint: "Prefer the official publication, awards page, or primary entertainment source behind the claim.",
+    settlementTemplate:
+      "Resolve this only from the linked official or authoritative source. Do not infer beyond the exact published result.",
+    questionHint: "Anchor the claim to a concrete release, award, ranking, or publication event.",
+  },
+  custom: {
+    sourceExamples: [
+      "official source",
+      "newsroom or issuer",
+      "event results page",
+    ],
+    sourceHint: "Custom claims need a very specific source and a clear settlement rule to be demo-safe.",
+    settlementTemplate:
+      "Resolve this exactly as written using the linked source only. If the wording or source leaves room for interpretation, mark it unresolvable.",
+    questionHint: "Make the outcome measurable and easy to verify from one source.",
+  },
+};
 
 export const PREFILLS: Record<string, { q: string; a: string; b: string; u: string }> = {
   deportes: {
@@ -65,6 +133,22 @@ export function getTimeRemaining(deadline: number) {
 export function getShareUrl(vsId: number): string {
   if (typeof window !== "undefined") return `${window.location.origin}/vs/${vsId}`;
   return `/vs/${vsId}`;
+}
+
+export function normalizeResolutionSource(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    return "";
+  }
+
+  try {
+    if (/^https?:\/\//i.test(normalized)) {
+      return new URL(normalized).toString();
+    }
+    return new URL(`https://${normalized}`).toString();
+  } catch {
+    return "";
+  }
 }
 
 export function getCategoryInfo(cat: string) {

@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
-import { getVS, getVSCount } from "@/lib/contract";
-import type { VSData } from "@/lib/contract";
+import { getAllVSFast, isVSJoinable, type VSData } from "@/lib/contract";
 import { CATEGORIES } from "@/lib/constants";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Chip, VSCardSkeleton } from "@/components/ui";
@@ -29,10 +28,8 @@ export default function ExplorePage() {
   useEffect(() => {
     async function load() {
       try {
-        const count    = await getVSCount();
-        const promises = Array.from({ length: count }, (_, i) => getVS(i + 1));
-        const results  = await Promise.all(promises);
-        setAllVS(results.filter((v): v is VSData => v !== null));
+        const results = await getAllVSFast();
+        setAllVS(results);
       } catch (e) {
         console.error(e);
       } finally {
@@ -42,7 +39,7 @@ export default function ExplorePage() {
     load();
   }, []);
 
-  const open = allVS.filter((v) => v.state === "open");
+  const open = allVS.filter((v) => isVSJoinable(v));
 
   let filtered = open;
   if (cat !== "all") filtered = filtered.filter((v) => v.category === cat);

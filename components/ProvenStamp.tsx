@@ -3,19 +3,16 @@
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import GlassCard from "./ui/GlassCard";
-import { shortenAddress } from "@/lib/constants";
 
 interface ProvenStampProps {
-  winner: string;
-  hasWinner: boolean;
-  stakeAmount: number;
+  title: string;
+  amountLabel?: string | null;
   resolutionSummary?: string;
 }
 
 export default function ProvenStamp({
-  winner,
-  hasWinner,
-  stakeAmount,
+  title,
+  amountLabel,
   resolutionSummary,
 }: ProvenStampProps) {
   const t = useTranslations("stamp");
@@ -48,19 +45,17 @@ export default function ProvenStamp({
           transition={{ delay: 0.3, duration: 0.4 }}
           className="font-display text-2xl font-bold mb-3 tracking-tight"
         >
-          {hasWinner
-            ? t("won", { address: shortenAddress(winner) })
-            : t("draw")}
+          {title}
         </motion.h2>
 
-        {hasWinner && (
+        {amountLabel && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.4 }}
             className="font-mono text-3xl font-bold text-pv-gold mb-5 [text-shadow:0_0_20px_rgba(251,191,36,0.4)]"
           >
-            +${stakeAmount * 2}
+            {amountLabel}
           </motion.div>
         )}
 

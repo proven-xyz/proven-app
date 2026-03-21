@@ -26,6 +26,7 @@ ODDS_FIXED = "fixed"
 
 MAX_CHALLENGERS = 100
 DEFAULT_FIXED_PAYOUT_BPS = 20000
+MIN_STAKE = 2
 
 
 @allow_storage
@@ -121,9 +122,42 @@ class ProvenContract(gl.Contract):
             raise gl.vm.UserError("Fixed odds payout must be at least 10000 bps")
         return normalized
 
+    def _default_settlement_rule(self, category: str, market_type: str) -> str:
+        if category == "deportes":
+            if market_type == MARKET_SPREAD:
+                return "Use the official final score from the linked event and apply the handicap exactly as written."
+            if market_type == MARKET_TOTAL:
+                return "Use the official final score from the linked event and grade the total exactly as written."
+            return "Use the official final result from the linked event and count overtime, extra time, or penalties only if the market text says so."
+
+        if category == "crypto":
+            return "Use the linked source as the price reference and grade the threshold or line exactly at the deadline."
+
+        if category == "clima":
+            return "Use the linked weather source for the named place and date, and grade the condition exactly as written."
+
+        if category == "cultura":
+            return "Use the linked official or authoritative publication and grade only the exact published result."
+
+        if market_type == MARKET_CUSTOM:
+            return "Use the linked source only. If the wording or source is ambiguous, return UNRESOLVABLE."
+
+        return "Use the market positions exactly as written."
+
+    def _category_resolution_guidance(self, category: str) -> str:
+        if category == "deportes":
+            return "Prefer the official league, team, or scoreboard result page for the linked event."
+        if category == "crypto":
+            return "Treat the linked page as the canonical price source and avoid inferring across multiple exchanges."
+        if category == "clima":
+            return "Use the linked location-specific weather source and do not infer from nearby cities."
+        if category == "cultura":
+            return "Prefer the official publication, awards page, or primary entertainment source behind the claim."
+        return "Prefer the linked primary source over general knowledge."
+
     def _require_stake_value(self, stake_amount: u256):
-        if stake_amount <= u256(0):
-            raise gl.vm.UserError("Stake must be greater than zero")
+        if stake_amount < u256(MIN_STAKE):
+            raise gl.vm.UserError(f"Stake must be at least {MIN_STAKE}")
         if gl.message.value != stake_amount:
             raise gl.vm.UserError("Sent value must equal stake amount")
 
@@ -141,6 +175,11 @@ class ProvenContract(gl.Contract):
             return u256(0)
         return u256(claim.creator_stake - claim.reserved_creator_liability)
 
+    def _coerce_address(self, value) -> Address:
+        if isinstance(value, Address):
+            return value
+        return Address(str(value))
+
     def _transfer(self, addr: Address, amount: u256):
         if amount <= u256(0):
             return
@@ -157,6 +196,73 @@ class ProvenContract(gl.Contract):
         if addr in self.losses:
             current = self.losses[addr]
         self.losses[addr] = u256(current + u256(1))
+
+    def _claim_to_dict(self, claim_id: u256, include_challengers: bool) -> dict:
+        if claim_id not in self.claims:
+            raise gl.vm.UserError("Claim not found")
+
+        claim = self.claims[claim_id]
+        ch_count = int(claim.challenger_count)
+
+        challengers = []
+        challenger_addresses = []
+        first_challenger = ""
+
+        for i in range(ch_count):
+            key = self._ch_key(claim_id, u256(i))
+            challenger_address = str(self.ch_addr[key])
+            if i == 0:
+                first_challenger = challenger_address
+            challenger_addresses.append(challenger_address)
+
+            if include_challengers:
+                stake = self.ch_amount[key]
+                potential_payout = stake
+                if claim.odds_mode == ODDS_FIXED:
+                    potential_payout = self._gross_payout(stake, claim.challenger_payout_bps)
+                challengers.append(
+                    {
+                        "address": challenger_address,
+                        "stake": int(stake),
+                        "potential_payout": int(potential_payout),
+                    }
+                )
+
+        result = {
+            "id": int(claim_id),
+            "creator": str(claim.creator),
+            "question": claim.question,
+            "creator_position": claim.creator_position,
+            "counter_position": claim.counter_position,
+            "resolution_url": claim.resolution_url,
+            "creator_stake": int(claim.creator_stake),
+            "total_challenger_stake": int(claim.total_challenger_stake),
+            "reserved_creator_liability": int(claim.reserved_creator_liability),
+            "available_creator_liability": int(self._available_creator_liability(claim)),
+            "deadline": int(claim.deadline),
+            "state": claim.state,
+            "winner_side": claim.winner_side,
+            "resolution_summary": claim.resolution_summary,
+            "confidence": int(claim.confidence),
+            "category": claim.category,
+            "parent_id": int(claim.parent_id),
+            "challenger_count": ch_count,
+            "market_type": claim.market_type,
+            "odds_mode": claim.odds_mode,
+            "challenger_payout_bps": int(claim.challenger_payout_bps),
+            "handicap_line": claim.handicap_line,
+            "settlement_rule": claim.settlement_rule,
+            "max_challengers": int(claim.max_challengers),
+            "created_at": int(claim.created_at),
+            "first_challenger": first_challenger,
+            "challenger_addresses": challenger_addresses,
+            "total_pot": int(claim.creator_stake + claim.total_challenger_stake),
+        }
+
+        if include_challengers:
+            result["challengers"] = challengers
+
+        return result
 
     def _create_claim_internal(
         self,
@@ -193,6 +299,8 @@ class ProvenContract(gl.Contract):
             raise gl.vm.UserError("Creator position cannot be empty")
         if not counter_position:
             raise gl.vm.UserError("Counter position cannot be empty")
+        if not resolution_url:
+            raise gl.vm.UserError("Verification source is required")
         self._require_stake_value(stake_amount)
 
         if parent_id > u256(0) and parent_id not in self.claims:
@@ -377,6 +485,7 @@ class ProvenContract(gl.Contract):
         m_odds_mode = str(claim.odds_mode)
         m_handicap_line = str(claim.handicap_line)
         m_rule = str(claim.settlement_rule)
+        m_category = str(claim.category)
 
         def leader_fn():
             web_data = ""
@@ -398,8 +507,9 @@ Use your general knowledge to evaluate this claim.
 Only rule CREATOR_WINS or CHALLENGERS_WIN if you are highly confident.
 Otherwise respond UNRESOLVABLE."""
 
-            settlement_rule = m_rule if m_rule else "Use the market positions exactly as written."
+            settlement_rule = m_rule if m_rule else self._default_settlement_rule(m_category, m_market_type)
             handicap_line = m_handicap_line if m_handicap_line else "none"
+            category_guidance = self._category_resolution_guidance(m_category)
 
             prompt = f"""You are PROVEN, an impartial AI judge resolving a public market.
 
@@ -407,10 +517,12 @@ THE MARKET:
 Question: "{m_q}"
 Creator side: "{m_cp}"
 Challenger side: "{m_counter}"
+Category: "{m_category}"
 Market type: "{m_market_type}"
 Odds mode: "{m_odds_mode}"
 Handicap / line: "{handicap_line}"
 Settlement rule: "{settlement_rule}"
+Category guidance: "{category_guidance}"
 
 {evidence}
 
@@ -534,56 +646,38 @@ Confidence: integer 0-100."""
 
     @gl.public.view
     def get_claim(self, claim_id: u256) -> dict:
-        if claim_id not in self.claims:
-            raise gl.vm.UserError("Claim not found")
+        return self._claim_to_dict(claim_id, True)
 
-        c = self.claims[claim_id]
-        ch_count = int(c.challenger_count)
+    @gl.public.view
+    def get_claim_summary(self, claim_id: u256) -> dict:
+        return self._claim_to_dict(claim_id, False)
 
-        challengers = []
-        for i in range(ch_count):
-            key = self._ch_key(claim_id, u256(i))
-            stake = self.ch_amount[key]
-            potential_payout = stake
-            if c.odds_mode == ODDS_FIXED:
-                potential_payout = self._gross_payout(stake, c.challenger_payout_bps)
-            challengers.append(
-                {
-                    "address": str(self.ch_addr[key]),
-                    "stake": int(stake),
-                    "potential_payout": int(potential_payout),
-                }
-            )
+    @gl.public.view
+    def get_claim_summaries(self, start_id: u256 = u256(1), limit: u256 = u256(50)) -> list:
+        result = []
+        total = int(self.claim_count)
+        start = int(start_id)
+        page_limit = int(limit)
 
-        return {
-            "id": int(claim_id),
-            "creator": str(c.creator),
-            "question": c.question,
-            "creator_position": c.creator_position,
-            "counter_position": c.counter_position,
-            "resolution_url": c.resolution_url,
-            "creator_stake": int(c.creator_stake),
-            "total_challenger_stake": int(c.total_challenger_stake),
-            "reserved_creator_liability": int(c.reserved_creator_liability),
-            "available_creator_liability": int(self._available_creator_liability(c)),
-            "deadline": int(c.deadline),
-            "state": c.state,
-            "winner_side": c.winner_side,
-            "resolution_summary": c.resolution_summary,
-            "confidence": int(c.confidence),
-            "category": c.category,
-            "parent_id": int(c.parent_id),
-            "challenger_count": ch_count,
-            "market_type": c.market_type,
-            "odds_mode": c.odds_mode,
-            "challenger_payout_bps": int(c.challenger_payout_bps),
-            "handicap_line": c.handicap_line,
-            "settlement_rule": c.settlement_rule,
-            "max_challengers": int(c.max_challengers),
-            "created_at": int(c.created_at),
-            "challengers": challengers,
-            "total_pot": int(c.creator_stake + c.total_challenger_stake),
-        }
+        if start < 1:
+            start = 1
+        if page_limit <= 0:
+            return result
+        if page_limit > 100:
+            page_limit = 100
+        if start > total:
+            return result
+
+        end = start + page_limit
+        if end > total + 1:
+            end = total + 1
+
+        for cid_int in range(start, end):
+            cid = u256(cid_int)
+            if cid in self.claims:
+                result.append(self._claim_to_dict(cid, False))
+
+        return result
 
     @gl.public.view
     def get_claim_count(self) -> int:
@@ -591,7 +685,7 @@ Confidence: integer 0-100."""
 
     @gl.public.view
     def get_user_claims(self, user_address: str) -> list:
-        addr = Address(user_address)
+        addr = self._coerce_address(user_address)
         result = []
         total = int(self.claim_count)
         for i in range(total):
@@ -613,6 +707,13 @@ Confidence: integer 0-100."""
         return result
 
     @gl.public.view
+    def get_user_claim_summaries(self, user_address: str) -> list:
+        result = []
+        for claim_id in self.get_user_claims(user_address):
+            result.append(self._claim_to_dict(u256(claim_id), False))
+        return result
+
+    @gl.public.view
     def get_open_claims(self) -> list:
         result = []
         total = int(self.claim_count)
@@ -623,6 +724,13 @@ Confidence: integer 0-100."""
             claim = self.claims[cid]
             if claim.state == ST_OPEN or claim.state == ST_ACTIVE:
                 result.append(int(cid))
+        return result
+
+    @gl.public.view
+    def get_open_claim_summaries(self) -> list:
+        result = []
+        for claim_id in self.get_open_claims():
+            result.append(self._claim_to_dict(u256(claim_id), False))
         return result
 
     @gl.public.view
@@ -640,7 +748,7 @@ Confidence: integer 0-100."""
 
     @gl.public.view
     def get_user_stats(self, user_address: str) -> dict:
-        addr = Address(user_address)
+        addr = self._coerce_address(user_address)
         wins = int(self.wins[addr]) if addr in self.wins else 0
         losses = int(self.losses[addr]) if addr in self.losses else 0
         return {"wins": wins, "losses": losses, "total": wins + losses}
