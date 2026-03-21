@@ -79,7 +79,14 @@ export default function HomePage() {
     <PageTransition>
       {/* Hero */}
       <AnimatedItem>
-        {featuredVS ? (
+        {loading ? (
+          <div className="rounded-3xl border border-pv-surface2 bg-pv-surface mb-6 p-8 text-center animate-pulse">
+            <div className="h-3 w-24 bg-pv-surface2 rounded-full mx-auto mb-6" />
+            <div className="h-8 w-3/4 bg-pv-surface2 rounded-xl mx-auto mb-3" />
+            <div className="h-8 w-1/2 bg-pv-surface2 rounded-xl mx-auto mb-7" />
+            <div className="h-10 w-32 bg-pv-surface2 rounded-2xl mx-auto" />
+          </div>
+        ) : featuredVS ? (
           <GlassCard glow="both" className="mb-6">
             <div className="p-2 text-center">
               <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald mb-6">
@@ -111,18 +118,16 @@ export default function HomePage() {
             </div>
           </GlassCard>
         ) : (
-          !loading && (
-            <GlassCard glow="emerald" className="mb-6">
-              <div className="p-6 text-center">
-                <div className="font-display text-4xl font-extrabold text-pv-emerald mb-3">
-                  PROVEN.
-                </div>
-                <p className="text-pv-muted text-sm">
-                  {t("tagline")}
-                </p>
+          <GlassCard glow="emerald" className="mb-6">
+            <div className="p-6 text-center">
+              <div className="font-display text-4xl font-extrabold text-pv-emerald mb-3">
+                PROVEN.
               </div>
-            </GlassCard>
-          )
+              <p className="text-pv-muted text-sm">
+                {t("tagline")}
+              </p>
+            </div>
+          </GlassCard>
         )}
       </AnimatedItem>
 

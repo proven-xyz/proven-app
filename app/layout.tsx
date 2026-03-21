@@ -2,6 +2,7 @@ import "./globals.css";
 import { fontDisplay, fontBody, fontMono } from "@/lib/fonts";
 import { WalletProvider } from "@/lib/wallet";
 import { Toaster } from "sonner";
+import NextTopLoader from "nextjs-toploader";
 
 export default function RootLayout({
   children,
@@ -13,6 +14,12 @@ export default function RootLayout({
       className={`${fontDisplay.variable} ${fontBody.variable} ${fontMono.variable}`}
     >
       <body>
+        <NextTopLoader
+          color="#22D3EE"
+          height={2}
+          showSpinner={false}
+          shadow={false}
+        />
         <WalletProvider>
           {children}
           <Toaster
