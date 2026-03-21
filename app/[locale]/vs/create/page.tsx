@@ -480,7 +480,7 @@ export default function CreatePage() {
       <AnimatedItem>
         <textarea
           rows={3}
-          className="w-full lg:max-w-[720px] lg:mx-auto block py-6 bg-transparent border-b-2 border-white/[0.1] text-pv-text placeholder:text-pv-muted font-display font-bold text-[clamp(24px,4vw,36px)] leading-[1.05] tracking-tight resize-none outline-none mb-7 focus:border-pv-cyan/50 transition-colors"
+          className="w-full lg:max-w-[720px] lg:mx-auto block py-6 bg-transparent border-b-2 border-white/[0.1] text-pv-text placeholder:text-pv-muted font-display font-bold text-[clamp(24px,4vw,36px)] leading-[1.05] tracking-tight resize-none outline-none mb-7 focus:border-pv-emerald/50 transition-colors"
           placeholder={t("whatWillHappen")}
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
@@ -538,7 +538,7 @@ export default function CreatePage() {
                   onClick={() => setStake(amount)}
                   className={`py-4 rounded font-mono text-[17px] font-bold cursor-pointer transition-all border-2 focus-ring ${
                     stake === amount
-                      ? "border-pv-cyan bg-pv-cyan/[0.1] text-pv-cyan shadow-glow"
+                      ? "border-pv-emerald bg-pv-emerald/[0.1] text-pv-emerald shadow-glow-emerald"
                       : "border-white/[0.12] bg-pv-surface text-pv-muted hover:border-white/[0.22]"
                   }`}
                 >

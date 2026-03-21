@@ -111,7 +111,7 @@
   .input {
     @apply w-full px-4 py-3.5 rounded bg-pv-surface2 border border-white/[0.1]
            text-pv-text placeholder:text-pv-muted font-body text-[15px]
-           focus:border-pv-cyan/60 focus:border
+           focus:border-pv-emerald/60 focus:border
            transition-colors duration-150 outline-none;
   }
 
@@ -166,7 +166,7 @@
 
   /* ── Focus ring for accessibility ── */
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-cyan/40
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40
            focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg;
   }
 }

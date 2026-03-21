@@ -4,6 +4,7 @@ import { Link } from "@/i18n/navigation";
 import { getVSChallengerCount, getVSTotalPot, type VSData } from "@/lib/contract";
 import { ZERO_ADDRESS, getCategoryInfo } from "@/lib/constants";
 import { useTranslations } from "next-intl";
+import { UserRound } from "lucide-react";
 
 type ArenaVS = Pick<
   VSData,
@@ -41,7 +42,7 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   
   return (
     <Link href={`/vs/${vs.id}`} className="block h-full group">
-      <article className="card h-full p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-cyan/[0.35] hover:shadow-glow flex flex-col">
+      <article className="card h-full p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.35] hover:shadow-glow-emerald flex flex-col">
         <div className="flex items-center justify-between gap-2 mb-2.5">
           <span
             className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border"
@@ -64,21 +65,23 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
 
         <div className="flex items-center gap-2.5 mb-3.5">
           <div className="flex items-center">
-            {["bg-pv-cyan", "bg-pv-fuch", "bg-pv-emerald"].map((color, i) => (
+            {["bg-pv-surface2", "bg-pv-surface", "bg-pv-emerald"].map((color, i) => (
               <span
                 key={`${vs.id}-avatar-${i}`}
-                className={`w-7 h-7 rounded-full border border-pv-surface2 ${color} ${i > 0 ? "-ml-3" : ""}`}
+                className={`w-7 h-7 rounded-full border border-white/[0.22] ${color} ${i > 0 ? "-ml-3" : ""} flex items-center justify-center`}
                 style={{ zIndex: 10 - i }}
-              />
+              >
+                <UserRound size={13} className="text-pv-text/85" />
+              </span>
             ))}
           </div>
-          <p className="text-xs text-pv-muted font-medium">
+          <p className="text-xs text-pv-text/70 font-medium">
             {t("arenaChallengers", { count: activeChallengers })}
           </p>
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3.5">
-          <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-cyan/[0.25] bg-pv-cyan/[0.08] text-pv-cyan">
+          <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-emerald/[0.25] bg-pv-emerald/[0.08] text-pv-emerald">
             {tDetail(`marketTypes.${marketType}`)}
           </span>
           <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-white/[0.12] text-pv-muted">
@@ -86,7 +89,7 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
           </span>
         </div>
 
-        <div className="w-full mt-auto py-2.5 rounded border border-pv-cyan/[0.25] bg-pv-cyan/[0.07] text-center font-display text-sm font-bold text-pv-cyan transition-colors group-hover:bg-pv-cyan/[0.12]">
+        <div className="w-full mt-auto py-2.5 rounded border border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-center font-display text-sm font-bold text-pv-emerald transition-colors group-hover:bg-pv-emerald/[0.13]">
           {t("arenaJoin")}
         </div>
       </article>

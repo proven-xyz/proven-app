@@ -189,6 +189,7 @@
     "available": "{count} available",
     "subtitle": "Accept someone's VS. Pick your fight.",
     "searchPlaceholder": "Search VS...",
+    "clearSearch": "Clear search",
     "category": "Category",
     "all": "All",
     "minStake": "Min stake",
@@ -202,7 +203,9 @@
     "noResults": "No VS match these filters",
     "noResultsDesc": "Try changing the filters or create your own VS.",
     "challengeSomeone": "Challenge someone",
-    "eyebrow": "Open Arena"
+    "eyebrow": "Open Arena",
+    "resetFilters": "Reset filters",
+    "filtersAriaLabel": "Filters: category, minimum stake, and sort order"
   },
   "dashboard": {
     "title": "My VS",

@@ -189,6 +189,7 @@
     "available": "{count} disponibles",
     "subtitle": "Aceptá el VS de alguien más. Elegí tu pelea.",
     "searchPlaceholder": "Buscar VS...",
+    "clearSearch": "Borrar bÃºsqueda",
     "category": "Categoría",
     "all": "Todos",
     "minStake": "Apuesta mínima",
@@ -202,7 +203,9 @@
     "noResults": "No hay VS con estos filtros",
     "noResultsDesc": "Probá cambiando los filtros o creá tu propio VS.",
     "challengeSomeone": "Desafiar a alguien",
-    "eyebrow": "Arena Abierta"
+    "eyebrow": "Arena Abierta",
+    "resetFilters": "Restablecer filtros",
+    "filtersAriaLabel": "Filtros: categorÃ­a, apuesta mÃ­nima y orden"
   },
   "dashboard": {
     "title": "Mis VS",
