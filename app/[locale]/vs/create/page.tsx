@@ -17,29 +17,29 @@ import { ArrowLeft, Copy, Check, Clock } from "lucide-react";
 export default function CreatePage() {
   const router = useRouter();
   const { address, isConnected, connect } = useWallet();
-  const t = useTranslations("create");
-  const tc = useTranslations("common");
+  const t    = useTranslations("create");
+  const tc   = useTranslations("common");
   const tCat = useTranslations("categories");
 
   const DEADLINE_PRESETS = [
-    { label: t("presets.1h"), seconds: 3600 },
-    { label: t("presets.24h"), seconds: 86400 },
-    { label: t("presets.3days"), seconds: 259200 },
-    { label: t("presets.1week"), seconds: 604800 },
+    { label: t("presets.1h"),     seconds: 3600 },
+    { label: t("presets.24h"),    seconds: 86400 },
+    { label: t("presets.3days"),  seconds: 259200 },
+    { label: t("presets.1week"),  seconds: 604800 },
   ];
 
-  const [question, setQuestion] = useState("");
-  const [creatorPos, setCreatorPos] = useState("");
-  const [opponentPos, setOpponentPos] = useState("");
-  const [url, setUrl] = useState("");
+  const [question, setQuestion]             = useState("");
+  const [creatorPos, setCreatorPos]         = useState("");
+  const [opponentPos, setOpponentPos]       = useState("");
+  const [url, setUrl]                       = useState("");
   const [deadlinePreset, setDeadlinePreset] = useState(7200);
   const [customDeadline, setCustomDeadline] = useState("");
-  const [stake, setStake] = useState(5);
-  const [category, setCategory] = useState("custom");
-  const [loading, setLoading] = useState(false);
-  const [created, setCreated] = useState<number | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [stake, setStake]                   = useState(5);
+  const [category, setCategory]             = useState("custom");
+  const [loading, setLoading]               = useState(false);
+  const [created, setCreated]               = useState<number | null>(null);
+  const [copied, setCopied]                 = useState(false);
+  const [showConfetti, setShowConfetti]     = useState(false);
 
   function prefill(catId: string) {
     setCategory(catId);
@@ -70,11 +70,11 @@ export default function CreatePage() {
 
       const result = await createVS(address, {
         question,
-        creator_position: creatorPos,
+        creator_position:  creatorPos,
         opponent_position: opponentPos,
-        resolution_url: url || "https://google.com",
-        deadline: dlTimestamp,
-        stake_amount: stake,
+        resolution_url:    url || "https://google.com",
+        deadline:          dlTimestamp,
+        stake_amount:      stake,
         category,
       });
 
@@ -108,11 +108,11 @@ export default function CreatePage() {
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="font-display text-5xl font-extrabold text-pv-emerald mb-4"
+                className="font-display text-5xl font-extrabold text-pv-emerald mb-4 tracking-tight"
               >
                 PROVEN.
               </motion.div>
-              <h2 className="font-display text-2xl font-bold mb-2">
+              <h2 className="font-display text-2xl font-bold mb-2 tracking-tight">
                 {t("vsCreatedAndFunded")}
               </h2>
               <p className="text-pv-muted mb-7">{t("sendThisLink")}</p>
@@ -126,13 +126,9 @@ export default function CreatePage() {
                   />
                   <button
                     onClick={copyLink}
-                    className="px-5 py-3 rounded-xl bg-pv-text text-pv-bg font-bold text-sm flex items-center gap-2 hover:opacity-90 transition-opacity focus-ring"
+                    className="px-5 py-3 rounded bg-pv-emerald text-pv-bg font-bold text-sm flex items-center gap-2 hover:brightness-110 transition-all focus-ring"
                   >
-                    {copied ? (
-                      <Check size={16} />
-                    ) : (
-                      <Copy size={16} />
-                    )}
+                    {copied ? <Check size={16} /> : <Copy size={16} />}
                     {copied ? tc("copied") : tc("copy")}
                   </button>
                 </div>
@@ -143,7 +139,7 @@ export default function CreatePage() {
                   href={`https://wa.me/?text=${encodeURIComponent(`Te desafío: ${getShareUrl(created)}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="chip text-pv-muted hover:text-pv-emerald transition-colors"
+                  className="chip text-pv-muted hover:text-pv-emerald hover:border-pv-emerald/[0.3] transition-colors"
                 >
                   WhatsApp
                 </a>
@@ -151,7 +147,7 @@ export default function CreatePage() {
                   href={`https://t.me/share/url?url=${encodeURIComponent(getShareUrl(created))}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="chip text-pv-muted hover:text-pv-emerald transition-colors"
+                  className="chip text-pv-muted hover:text-pv-emerald hover:border-pv-emerald/[0.3] transition-colors"
                 >
                   Telegram
                 </a>
@@ -159,12 +155,7 @@ export default function CreatePage() {
 
               <div className="flex gap-3 justify-center">
                 <Link href={`/vs/${created}`}>
-                  <Button
-                    variant="primary"
-                    fullWidth={false}
-                    className="px-7"
-                    size="sm"
-                  >
+                  <Button variant="primary" fullWidth={false} className="px-7" size="sm">
                     {t("viewVS")}
                   </Button>
                 </Link>
@@ -207,9 +198,9 @@ export default function CreatePage() {
       <AnimatedItem>
         <textarea
           rows={3}
-          className="w-full py-6 bg-transparent border-b-2 border-pv-surface2 text-pv-text placeholder:text-pv-muted
-                     font-display font-bold text-[clamp(24px,6vw,36px)] leading-[1.05] tracking-tight resize-none outline-none mb-7
-                     focus:border-pv-cyan/40 transition-colors"
+          className="w-full lg:max-w-[720px] lg:mx-auto block py-6 bg-transparent border-b-2 border-white/[0.1] text-pv-text placeholder:text-pv-muted
+                     font-display font-bold text-[clamp(24px,4vw,36px)] leading-[1.05] tracking-tight resize-none outline-none mb-7
+                     focus:border-pv-cyan/50 transition-colors"
           placeholder={t("whatWillHappen")}
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
@@ -218,7 +209,7 @@ export default function CreatePage() {
 
       {/* Category chips */}
       <AnimatedItem>
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
+        <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none lg:max-w-[720px] lg:mx-auto">
           {CATEGORIES.filter((c) => c.id !== "custom").map((c) => (
             <motion.button
               key={c.id}
@@ -226,9 +217,9 @@ export default function CreatePage() {
               onClick={() => prefill(c.id)}
               className="chip whitespace-nowrap text-[13px]"
               style={{
-                borderColor: category === c.id ? c.color + "40" : undefined,
+                borderColor:     category === c.id ? c.color + "40" : undefined,
                 backgroundColor: category === c.id ? c.color + "12" : undefined,
-                color: category === c.id ? c.color : undefined,
+                color:           category === c.id ? c.color : undefined,
               }}
             >
               {tCat(c.id)}
@@ -237,20 +228,20 @@ export default function CreatePage() {
         </div>
       </AnimatedItem>
 
-      <div className="flex flex-col gap-5">
-        {/* Positions */}
+      <div className="flex flex-col gap-5 lg:max-w-[720px] lg:mx-auto">
+        {/* Positions — stacked en mobile, 2 cols en tablet+ */}
         <AnimatedItem>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label={t("ibet")}
-              dot="#22D3EE"
+              dot="#5de6ff"
               placeholder="Argentina gana"
               value={creatorPos}
               onChange={(e) => setCreatorPos(e.target.value)}
             />
             <Input
               label={t("rivalBets")}
-              dot="#E879F9"
+              dot="#f8acff"
               placeholder="Brasil gana"
               value={opponentPos}
               onChange={(e) => setOpponentPos(e.target.value)}
@@ -262,16 +253,16 @@ export default function CreatePage() {
         <AnimatedItem>
           <div>
             <label className="label">{t("raiseStake")}</label>
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {[2, 5, 10, 25].map((v) => (
                 <motion.button
                   key={v}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setStake(v)}
-                  className={`py-4 rounded-xl font-mono text-[17px] font-bold cursor-pointer transition-all border-2 focus-ring ${
+                  className={`py-4 rounded font-mono text-[17px] font-bold cursor-pointer transition-all border-2 focus-ring ${
                     stake === v
-                      ? "border-pv-cyan bg-pv-cyan/10 text-pv-cyan shadow-glow"
-                      : "border-pv-surface2 bg-pv-surface text-pv-muted hover:border-pv-border"
+                      ? "border-pv-cyan bg-pv-cyan/[0.1] text-pv-cyan shadow-glow"
+                      : "border-white/[0.12] bg-pv-surface text-pv-muted hover:border-white/[0.22]"
                   }`}
                 >
                   ${v}
@@ -298,7 +289,7 @@ export default function CreatePage() {
               <Clock size={12} />
               {t("deadline")}
             </label>
-            <div className="grid grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
               {DEADLINE_PRESETS.map((preset) => (
                 <motion.button
                   key={preset.seconds}
@@ -307,10 +298,10 @@ export default function CreatePage() {
                     setDeadlinePreset(preset.seconds);
                     setCustomDeadline("");
                   }}
-                  className={`py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-all border focus-ring ${
+                  className={`py-2.5 rounded text-sm font-semibold cursor-pointer transition-all border focus-ring ${
                     deadlinePreset === preset.seconds && !customDeadline
-                      ? "border-pv-fuch/30 bg-pv-fuch/10 text-pv-fuch"
-                      : "border-pv-surface2 bg-pv-surface text-pv-muted hover:border-pv-border"
+                      ? "border-pv-fuch/[0.35] bg-pv-fuch/[0.1] text-pv-fuch"
+                      : "border-white/[0.12] bg-pv-surface text-pv-muted hover:border-white/[0.22]"
                   }`}
                 >
                   {preset.label}
@@ -330,11 +321,7 @@ export default function CreatePage() {
         {/* Submit */}
         <AnimatedItem>
           {isConnected ? (
-            <Button
-              variant="cyan"
-              onClick={handleSubmit}
-              loading={loading}
-            >
+            <Button variant="cyan" onClick={handleSubmit} loading={loading}>
               {loading ? t("funding") : t("createAndFund", { amount: stake })}
             </Button>
           ) : (

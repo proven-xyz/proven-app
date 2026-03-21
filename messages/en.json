@@ -30,6 +30,11 @@
   "home": {
     "vsOfDay": "VS of the day",
     "tagline": "The truth is proven. Create the first VS.",
+    "emptyHeroTitle": "THE TRUTH IS PROVEN.",
+    "emptyHeroTitlePrefix": "THE TRUTH IS",
+    "emptyHeroSubtitle": "AI finds the proof. Winner gets paid instantly. Decentralized resolution for the bold.",
+    "heroChallengeSomeone": "CHALLENGE SOMEONE",
+    "heroExploreChallenges": "EXPLORE CHALLENGES",
     "challengeSomeone": "Challenge someone",
     "connectWalletToStart": "Connect Wallet to start",
     "exploreOpenVS": "Explore open VS",
@@ -55,7 +60,16 @@
     "waitingRival": "{count} waiting for rival",
     "viewAllOpen": "View all open VS ({count})",
     "recentlyProven": "Recently proven",
-    "won": "won"
+    "won": "won",
+    "manifestEyebrow": "Manifest",
+    "manifestTitle": "Truth resolves disputes. Code enforces outcomes.",
+    "manifestSubtitle": "No referees, no endless arguments, no manual arbitration. The protocol verifies evidence and settles with finality.",
+    "manifestPillar1Title": "No referees",
+    "manifestPillar1Body": "No single authority decides your result. Consensus and verifiable inputs drive the outcome.",
+    "manifestPillar2Title": "No arguments",
+    "manifestPillar2Body": "Outcomes are tied to explicit terms and proof sources, not opinion battles after the fact.",
+    "manifestPillar3Title": "No waiting",
+    "manifestPillar3Body": "When conditions resolve, settlement executes immediately and payouts are distributed automatically."
   },
   "create": {
     "whatWillHappen": "What will happen?",

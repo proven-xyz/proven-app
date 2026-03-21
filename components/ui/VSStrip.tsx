@@ -23,18 +23,18 @@ export default function VSStrip({
   const t = useTranslations("strip");
 
   return (
-    <div className="flex rounded-xl overflow-hidden border border-pv-surface2">
-      <div className={`flex-1 bg-pv-cyan/[0.03] ${compact ? "px-3 py-2" : "p-4"}`}>
-        <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-cyan/50">
+    <div className="flex rounded overflow-hidden border border-white/[0.12]">
+      <div className={`flex-1 min-w-0 bg-pv-cyan/[0.04] ${compact ? "px-3 py-2" : "p-4"}`}>
+        <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-cyan/60">
           {t("creator")}
         </div>
         {!compact && (
-          <div className="text-sm font-semibold mt-1">
+          <div className="text-sm font-semibold mt-1 truncate">
             {shortenAddress(creator)}
           </div>
         )}
         <div
-          className={`font-medium text-pv-cyan ${
+          className={`font-medium text-pv-cyan truncate ${
             compact ? "text-xs mt-0.5" : "text-xs mt-1"
           }`}
         >
@@ -42,10 +42,10 @@ export default function VSStrip({
         </div>
       </div>
 
-      <div className="w-px bg-pv-surface2" />
+      <div className="w-px bg-white/[0.08] flex-shrink-0" />
 
-      <div className={`flex-1 bg-pv-fuch/[0.03] ${compact ? "px-3 py-2" : "p-4"}`}>
-        <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-fuch/50">
+      <div className={`flex-1 min-w-0 bg-pv-fuch/[0.04] ${compact ? "px-3 py-2" : "p-4"}`}>
+        <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-fuch/60">
           {t("rival")}
         </div>
         {isOpen ? (
@@ -59,12 +59,12 @@ export default function VSStrip({
         ) : (
           <>
             {!compact && (
-              <div className="text-sm font-semibold mt-1">
+              <div className="text-sm font-semibold mt-1 truncate">
                 {shortenAddress(opponent)}
               </div>
             )}
             <div
-              className={`font-medium text-pv-fuch ${
+              className={`font-medium text-pv-fuch truncate ${
                 compact ? "text-xs mt-0.5" : "text-xs mt-1"
               }`}
             >

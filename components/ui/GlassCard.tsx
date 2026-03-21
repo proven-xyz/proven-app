@@ -9,6 +9,7 @@ interface GlassCardProps extends Omit<HTMLMotionProps<"div">, "children"> {
   glow?: GlowSide;
   hoverable?: boolean;
   noPad?: boolean;
+  glass?: boolean;
 }
 
 const glowStyles: Record<GlowSide, React.ReactNode> = {
@@ -20,8 +21,8 @@ const glowStyles: Record<GlowSide, React.ReactNode> = {
   ),
   both: (
     <>
-      <div className="absolute top-0 left-0 w-1/2 h-full bg-[radial-gradient(ellipse_at_0%_40%,rgba(34,211,238,0.07),transparent_65%)] pointer-events-none" />
-      <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(ellipse_at_100%_40%,rgba(232,121,249,0.07),transparent_65%)] pointer-events-none" />
+      <div className="absolute top-0 left-0 w-1/2 h-full bg-[radial-gradient(ellipse_at_0%_40%,rgba(93,230,255,0.07),transparent_65%)] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(ellipse_at_100%_40%,rgba(248,172,255,0.07),transparent_65%)] pointer-events-none" />
     </>
   ),
   emerald: (
@@ -35,12 +36,17 @@ export default function GlassCard({
   glow = "none",
   hoverable = false,
   noPad = false,
+  glass = false,
   className = "",
   ...props
 }: GlassCardProps) {
+  const baseClass = glass
+    ? "bg-pv-surface/70 backdrop-blur-[20px] border border-white/[0.15] rounded overflow-hidden relative transition-all duration-200"
+    : "card";
+
   return (
     <motion.div
-      className={`card ${hoverable ? "card-hover cursor-pointer" : ""} ${className}`}
+      className={`${baseClass} ${hoverable ? "card-hover cursor-pointer" : ""} ${className}`}
       {...props}
     >
       {glowStyles[glow]}
@@ -48,3 +54,5 @@ export default function GlassCard({
     </motion.div>
   );
 }
+  
+

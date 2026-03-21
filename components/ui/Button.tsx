@@ -20,11 +20,11 @@ interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary: "btn-primary",
-  cyan: "btn-cyan",
-  fuch: "btn-fuch",
+  cyan:    "btn-cyan",
+  fuch:    "btn-fuch",
   emerald: "btn-emerald",
-  ghost: "btn-ghost",
-  danger: "btn-danger",
+  ghost:   "btn-ghost",
+  danger:  "btn-danger",
 };
 
 export default function Button({
@@ -37,7 +37,7 @@ export default function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const sizeClass = size === "sm" ? "!py-2.5 !px-4 !text-sm" : "";
+  const sizeClass  = size === "sm" ? "!py-2.5 !px-4 !text-sm" : "";
   const widthClass = fullWidth ? "" : "!w-auto";
 
   return (

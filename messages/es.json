@@ -30,6 +30,11 @@
   "home": {
     "vsOfDay": "VS del día",
     "tagline": "La verdad se demuestra. Creá el primer VS.",
+    "emptyHeroTitle": "LA VERDAD QUEDA PROBADA.",
+    "emptyHeroTitlePrefix": "LA VERDAD ES",
+    "emptyHeroSubtitle": "La IA encuentra las pruebas. El ganador cobra al instante. Resolución descentralizada para los audaces.",
+    "heroChallengeSomeone": "DESAFIÁ A ALGUIEN",
+    "heroExploreChallenges": "EXPLORAR DESAFÍOS",
     "challengeSomeone": "Desafiar a alguien",
     "connectWalletToStart": "Conectar Wallet para empezar",
     "exploreOpenVS": "Explorar VS abiertos",
@@ -55,7 +60,16 @@
     "waitingRival": "{count} esperando rival",
     "viewAllOpen": "Ver todos los VS abiertos ({count})",
     "recentlyProven": "Recientemente proven",
-    "won": "ganó"
+    "won": "ganó",
+    "manifestEyebrow": "Manifiesto",
+    "manifestTitle": "La verdad resuelve disputas. El código ejecuta resultados.",
+    "manifestSubtitle": "Sin árbitros, sin discusiones eternas, sin arbitraje manual. El protocolo verifica evidencia y liquida con finalidad.",
+    "manifestPillar1Title": "Sin árbitros",
+    "manifestPillar1Body": "Ninguna autoridad única define el resultado. El consenso y las entradas verificables determinan el cierre.",
+    "manifestPillar2Title": "Sin discusiones",
+    "manifestPillar2Body": "Los resultados se atan a términos explícitos y fuentes de prueba, no a debates de opinión tardíos.",
+    "manifestPillar3Title": "Sin esperar",
+    "manifestPillar3Body": "Cuando se cumplen las condiciones, la liquidación se ejecuta al instante y los pagos se distribuyen automáticamente."
   },
   "create": {
     "whatWillHappen": "¿Qué va a pasar?",

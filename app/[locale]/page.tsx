@@ -11,21 +11,21 @@ import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
-import { Zap, Send, UserCheck, Shield } from "lucide-react";
+import { Zap, Send, UserRoundPlus, Shield } from "lucide-react";
 
 export default function HomePage() {
   const { isConnected, connect } = useWallet();
-  const [allVS, setAllVS] = useState<VSData[]>([]);
+  const [allVS, setAllVS]     = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
-  const t = useTranslations("home");
+  const t  = useTranslations("home");
   const tc = useTranslations("common");
 
   useEffect(() => {
     async function load() {
       try {
-        const count = await getVSCount();
+        const count    = await getVSCount();
         const promises = Array.from({ length: count }, (_, i) => getVS(i + 1));
-        const results = await Promise.all(promises);
+        const results  = await Promise.all(promises);
         setAllVS(results.filter((v): v is VSData => v !== null));
       } catch (e) {
         console.error("Failed to load VS:", e);
@@ -36,160 +36,167 @@ export default function HomePage() {
     load();
   }, []);
 
-  const openVS = allVS.filter((v) => v.state === "open");
+  const openVS     = allVS.filter((v) => v.state === "open");
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
   const featuredVS = allVS[0];
 
   const steps = [
     {
       icon: Zap,
-      label: t("stepChallenge"),
-      sub: t("stepChallengeSub"),
-      color: "text-pv-cyan",
-      bg: "bg-pv-cyan/10",
-      border: "border-pv-cyan/20",
+      title: "1. CHALLENGE",
+      description:
+        "Define your terms and lock your stake in the vault. The AI starts watching.",
     },
     {
       icon: Send,
-      label: t("stepSend"),
-      sub: t("stepSendSub"),
-      color: "text-pv-fuch",
-      bg: "bg-pv-fuch/10",
-      border: "border-pv-fuch/20",
+      title: "2. INVITE",
+      description:
+        "Broadcast your link. Challenge a specific rival or open it to the public square.",
     },
     {
-      icon: UserCheck,
-      label: t("stepAccept"),
-      sub: t("stepAcceptSub"),
-      color: "text-pv-gold",
-      bg: "bg-pv-gold/10",
-      border: "border-pv-gold/20",
+      icon: UserRoundPlus,
+      title: "3. ACCEPT",
+      description:
+        "Rival stakes their matching amount. Smart contract activates and locks the pool.",
     },
     {
       icon: Shield,
-      label: t("stepProven"),
-      sub: t("stepProvenSub"),
-      color: "text-pv-emerald",
-      bg: "bg-pv-emerald/10",
-      border: "border-pv-emerald/20",
+      title: "4. SETTLE",
+      description:
+        "GenLayer AI verifies the data across the network. Winner receives instant payout.",
     },
   ];
 
   return (
     <PageTransition>
-      {/* Hero */}
+      {/* Hero — altura reservada siempre desde el primer render para evitar CLS */}
       <AnimatedItem>
-        {loading ? (
-          <div className="rounded-3xl border border-pv-surface2 bg-pv-surface mb-6 p-8 text-center animate-pulse">
-            <div className="h-3 w-24 bg-pv-surface2 rounded-full mx-auto mb-6" />
-            <div className="h-8 w-3/4 bg-pv-surface2 rounded-xl mx-auto mb-3" />
-            <div className="h-8 w-1/2 bg-pv-surface2 rounded-xl mx-auto mb-7" />
-            <div className="h-10 w-32 bg-pv-surface2 rounded-2xl mx-auto" />
-          </div>
-        ) : featuredVS ? (
-          <GlassCard glow="both" className="mb-6">
-            <div className="p-2 text-center">
-              <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald mb-6">
-                {t("vsOfDay")}
-              </div>
+        <div className="relative lg:max-w-[800px] lg:mx-auto mb-6">
 
-              <motion.h1
-                className="font-display text-[clamp(30px,8vw,48px)] font-bold leading-[0.92] tracking-tight mb-7"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15, duration: 0.5 }}
-              >
-                {featuredVS.question}
-              </motion.h1>
-
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-              >
-                <PoolBadge
-                  amount={
-                    featuredVS.stake_amount *
-                    (featuredVS.opponent === ZERO_ADDRESS ? 1 : 2)
-                  }
-                  large
-                />
-              </motion.div>
+          {/* Hero vacío: siempre visible, se oculta con fade cuando carga un VS destacado */}
+          <motion.div
+            className="px-5 py-14 sm:px-8 sm:py-20 text-center"
+            animate={{ opacity: featuredVS ? 0 : 1, pointerEvents: featuredVS ? "none" : "auto" }}
+            transition={{ duration: 0.3 }}
+            style={{ position: featuredVS ? "absolute" : "relative", inset: 0 }}
+          >
+            <h1 className="font-display text-[clamp(2.5rem,8vw,5.5rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
+              {t("emptyHeroTitlePrefix")}{" "}
+              <span className="italic text-pv-emerald">PROVEN.</span>
+            </h1>
+            <p className="text-pv-muted text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-8">
+              {t("emptyHeroSubtitle")}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
+              <Link href="/vs/create" className="block sm:flex-1 sm:min-w-0">
+                <Button variant="primary">{t("heroChallengeSomeone")}</Button>
+              </Link>
+              <Link href="/explore" className="block sm:flex-1 sm:min-w-0">
+                <Button variant="ghost">{t("heroExploreChallenges")}</Button>
+              </Link>
             </div>
-          </GlassCard>
-        ) : (
-          <GlassCard glow="emerald" className="mb-6">
-            <div className="p-6 text-center">
-              <div className="font-display text-4xl font-extrabold text-pv-emerald mb-3">
-                PROVEN.
-              </div>
-              <p className="text-pv-muted text-sm">
-                {t("tagline")}
-              </p>
-            </div>
-          </GlassCard>
-        )}
-      </AnimatedItem>
+          </motion.div>
 
-      {/* CTAs */}
-      <AnimatedItem>
-        <div className="flex flex-col gap-3 mb-12">
-          {isConnected ? (
-            <Link href="/vs/create" className="block">
-              <Button variant="primary">{t("challengeSomeone")}</Button>
-            </Link>
-          ) : (
-            <Button onClick={connect}>{t("connectWalletToStart")}</Button>
+          {/* VS del día: aparece con fade sobre el mismo espacio cuando hay datos */}
+          {featuredVS && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4 }}
+            >
+              <GlassCard glow="both">
+                <div className="p-2 text-center">
+                  <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald mb-6">
+                    {t("vsOfDay")}
+                  </div>
+                  <h1 className="font-display text-[clamp(30px,5vw,48px)] font-bold leading-[0.92] tracking-tight mb-7">
+                    {featuredVS.question}
+                  </h1>
+                  <PoolBadge
+                    amount={
+                      featuredVS.stake_amount *
+                      (featuredVS.opponent === ZERO_ADDRESS ? 1 : 2)
+                    }
+                    large
+                  />
+                </div>
+              </GlassCard>
+              {/* CTAs solo cuando hay VS destacado */}
+              <div className="flex flex-col sm:flex-row gap-3 mt-3">
+                {isConnected ? (
+                  <Link href="/vs/create" className="block sm:flex-1">
+                    <Button variant="primary">{t("challengeSomeone")}</Button>
+                  </Link>
+                ) : (
+                  <Button onClick={connect} className="sm:flex-1">{t("connectWalletToStart")}</Button>
+                )}
+                <Link href="/explore" className="block sm:flex-1">
+                  <Button variant="ghost">{t("exploreOpenVS")}</Button>
+                </Link>
+              </div>
+            </motion.div>
           )}
-          <Link href="/explore" className="block">
-            <Button variant="ghost">{t("exploreOpenVS")}</Button>
-          </Link>
         </div>
       </AnimatedItem>
 
       {/* Differentiator */}
       <AnimatedItem>
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-4 mb-3">
-            <div className="h-px w-10 bg-pv-surface2" />
-            <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_10px_rgba(16,185,129,0.6)]" />
-            <div className="h-px w-10 bg-pv-surface2" />
+        <div className="mb-12">
+          <div className="max-w-[900px] mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            {[
+              { value: "1.2M+", label: "TOTAL BETS SETTLED" },
+              { value: "$450M+", label: "TOTAL PAID OUT" },
+              { value: "99.9%", label: "AI ACCURACY" },
+            ].map((item, index) => (
+              <div key={item.label} className="p-5 sm:p-6 text-center bg-transparent border-0">
+                <div className="overflow-hidden">
+                  <motion.div
+                    className="font-display text-[28px] sm:text-[32px] font-bold tracking-tight text-pv-emerald"
+                    initial={{ y: 26, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{
+                      duration: 0.45,
+                      ease: "easeOut",
+                      delay: 0.08 * index,
+                    }}
+                  >
+                    {item.value}
+                  </motion.div>
+                </div>
+                <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                  {item.label}
+                </p>
+              </div>
+            ))}
           </div>
-          <p className="text-[15px] text-pv-muted max-w-[380px] mx-auto leading-relaxed">
-            <span className="text-pv-text font-semibold">{t("noReferees")}</span>{" "}
-            <span className="text-pv-text font-semibold">{t("noArguments")}</span>{" "}
-            <span className="text-pv-text font-semibold">{t("noWaiting")}</span>
-            <br />
-            {t("aiFindsProof")}{" "}
-            <span className="text-pv-emerald font-semibold">{t("provenDecides")}</span>{" "}
-            {t("winnerPaidInstantly")}
-          </p>
         </div>
       </AnimatedItem>
 
-      {/* How it works */}
+      {/* How it works — 2 cols en mobile, 4 en tablet+ */}
       <AnimatedItem>
         <div className="mb-12">
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-muted text-center mb-5">
-            {t("howItWorks")}
+          <div className="mb-5 text-left">
+            <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
+              THE PROTOCOL
+            </h2>
+            <p className="text-pv-muted text-sm mt-2 font-mono tracking-wide">
+              Zero trust. Pure code. Total proof.
+            </p>
           </div>
-          <div className="grid grid-cols-4 gap-2.5">
-            {steps.map(({ icon: Icon, label, sub, color, bg, border }) => (
-              <motion.div
-                key={label}
-                whileHover={{ y: -3 }}
-                className="card p-4 text-center"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {steps.map(({ icon: Icon, title, description }) => (
+              <div
+                key={title}
+                className="card p-5 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.5] hover:shadow-glow-emerald group"
               >
-                <div
-                  className={`w-10 h-10 rounded-xl ${bg} border ${border} flex items-center justify-center mx-auto mb-2.5`}
-                >
-                  <Icon size={16} className={color} />
+                <div className="w-10 h-10 bg-pv-surface2/70 border border-white/[0.14] text-pv-emerald flex items-center justify-center mb-3 rounded-md transition-all duration-200 group-hover:border-pv-emerald/[0.5] group-hover:bg-pv-emerald/[0.14] group-hover:shadow-glow-emerald">
+                  <Icon size={16} />
                 </div>
-                <div className={`font-display text-[13px] font-bold ${color}`}>
-                  {label}
+                <div className="font-display text-[15px] sm:text-[17px] font-bold text-pv-emerald tracking-tight mb-1.5">
+                  {title}
                 </div>
-                <div className="text-[11px] text-pv-muted mt-0.5">{sub}</div>
-              </motion.div>
+                <div className="text-[13px] text-pv-muted leading-relaxed">{description}</div>
+              </div>
             ))}
           </div>
         </div>
@@ -198,7 +205,7 @@ export default function HomePage() {
       {/* Global stats */}
       {!loading && allVS.length > 0 && (
         <AnimatedItem>
-          <div className="grid grid-cols-3 gap-2.5 mb-12">
+          <div className="grid grid-cols-3 gap-2.5 lg:gap-4 mb-12">
             <div className="card p-4 text-center">
               <div className="font-mono text-xl font-bold text-pv-text">
                 {allVS.length}
@@ -233,13 +240,13 @@ export default function HomePage() {
         </AnimatedItem>
       )}
 
-      {/* Open VS preview */}
+      {/* Open VS preview — 2 cols en desktop */}
       {openVS.length > 0 && (
         <AnimatedItem>
           <div className="mb-10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
+                <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-cyan">
                   {t("openVS")}
                 </span>
@@ -249,16 +256,16 @@ export default function HomePage() {
               </span>
             </div>
 
-            <div className="flex flex-col gap-2.5">
-              {openVS.slice(0, 2).map((vs) => (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+              {openVS.slice(0, 4).map((vs) => (
                 <VSCard key={vs.id} vs={vs} showAcceptCTA />
               ))}
             </div>
 
-            {openVS.length > 2 && (
+            {openVS.length > 4 && (
               <Link
                 href="/explore"
-                className="block w-full py-3.5 rounded-xl border border-pv-cyan/15 bg-pv-cyan/[0.04] text-center font-display text-sm font-bold text-pv-cyan mt-2.5 hover:bg-pv-cyan/[0.08] transition-colors"
+                className="block w-full py-3.5 border border-pv-cyan/[0.2] bg-pv-cyan/[0.04] text-center font-display text-sm font-bold text-pv-cyan mt-2.5 hover:bg-pv-cyan/[0.08] transition-colors"
               >
                 {t("viewAllOpen", { count: openVS.length })}
               </Link>
@@ -267,32 +274,32 @@ export default function HomePage() {
         </AnimatedItem>
       )}
 
-      {/* Recently proven */}
+      {/* Recently proven — 2 cols en desktop */}
       {resolvedVS.length > 0 && (
         <AnimatedItem>
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald text-center mb-4">
               {t("recentlyProven")}
             </div>
-            <div className="flex flex-col gap-2">
-              {resolvedVS.slice(0, 3).map((vs) => (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+              {resolvedVS.slice(0, 4).map((vs) => (
                 <Link key={vs.id} href={`/vs/${vs.id}`} className="block group">
                   <motion.div
                     whileHover={{ x: 4 }}
-                    className="flex items-center justify-between p-3 rounded-xl bg-pv-surface border border-pv-surface2 group-hover:border-pv-emerald/20 transition-colors"
+                    className="flex items-center justify-between p-3 bg-pv-surface border border-white/[0.1] group-hover:border-pv-emerald/[0.25] transition-colors"
                   >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-pv-emerald/10 border border-pv-emerald/20 flex items-center justify-center">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-pv-emerald/[0.1] border border-pv-emerald/[0.25] flex items-center justify-center flex-shrink-0">
                         <div className="w-2 h-2 rounded-full bg-pv-emerald" />
                       </div>
-                      <span className="text-[13px]">
+                      <span className="text-[13px] truncate">
                         <span className="font-semibold">
                           {shortenAddress(vs.winner)}
                         </span>
                         <span className="text-pv-muted"> {t("won")}</span>
                       </span>
                     </div>
-                    <span className="font-mono text-[13px] font-bold text-pv-gold">
+                    <span className="font-mono text-[13px] font-bold text-pv-gold flex-shrink-0 ml-2">
                       +${vs.stake_amount * 2}
                     </span>
                   </motion.div>
@@ -303,9 +310,9 @@ export default function HomePage() {
         </AnimatedItem>
       )}
 
-      {/* Loading */}
+      {/* Loading skeletons */}
       {loading && (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <VSCardSkeleton />
           <VSCardSkeleton />
         </div>

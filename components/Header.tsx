@@ -14,18 +14,18 @@ export default function Header() {
   const pathname = usePathname();
   const locale = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const t = useTranslations("header");
+  const t  = useTranslations("header");
   const tc = useTranslations("common");
 
   const NAV_ITEMS = [
     { href: "/vs/create" as const, label: t("challenge"), accent: true },
-    { href: "/explore" as const, label: t("explore") },
+    { href: "/explore"   as const, label: t("explore") },
     { href: "/dashboard" as const, label: t("myVS") },
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-pv-surface bg-pv-bg/92 backdrop-blur-2xl">
-      <div className="max-w-[640px] mx-auto px-5 h-14 flex items-center justify-between">
+    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 backdrop-blur-[20px]">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
           <span className="font-display font-bold text-[17px] tracking-tight">
             PROVEN
@@ -40,7 +40,7 @@ export default function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden sm:flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2 lg:gap-3">
           {isConnected &&
             NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
@@ -50,10 +50,10 @@ export default function Header() {
                   href={item.href}
                   className={`chip text-[13px] transition-all relative ${
                     item.accent
-                      ? "text-pv-cyan border-pv-cyan/15 bg-pv-cyan/[0.06]"
+                      ? "text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.06]"
                       : isActive
-                      ? "text-pv-text border-pv-text/10 bg-pv-text/[0.06]"
-                      : "text-pv-muted hover:text-pv-text"
+                      ? "text-pv-text border-white/[0.22] bg-pv-text/[0.06]"
+                      : "text-pv-muted hover:text-pv-text hover:border-white/[0.22]"
                   }`}
                 >
                   {item.label}
@@ -61,11 +61,7 @@ export default function Header() {
                     <motion.div
                       layoutId="nav-indicator"
                       className="absolute -bottom-px left-2 right-2 h-0.5 bg-pv-text rounded-full"
-                      transition={{
-                        type: "spring",
-                        stiffness: 380,
-                        damping: 30,
-                      }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
                 </Link>
@@ -102,7 +98,7 @@ export default function Header() {
           {isConnected ? (
             <button
               onClick={disconnect}
-              className="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/12 focus-ring"
+              className="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
             >
               {shortenAddress(address!)}
             </button>
@@ -110,23 +106,20 @@ export default function Header() {
             <button
               onClick={connect}
               disabled={isConnecting}
-              className="px-4 py-1.5 rounded-[10px] bg-pv-text text-pv-bg text-[13px] font-bold border-none cursor-pointer focus-ring transition-opacity hover:opacity-90"
+              className="px-4 py-1.5 rounded bg-pv-emerald text-pv-bg text-[13px] font-bold cursor-pointer focus-ring transition-all hover:brightness-110 disabled:opacity-50"
             >
               {isConnecting ? "..." : tc("connect")}
             </button>
           )}
         </div>
 
-        {/* Mobile hamburger */}
-        <div className="flex sm:hidden items-center gap-2">
-          {/* Language switcher mobile */}
+        {/* Mobile */}
+        <div className="flex md:hidden items-center gap-2">
           <div className="flex items-center gap-0.5 text-[10px] font-mono">
             <Link
               href={pathname || "/"}
               locale="es"
-              className={`px-0.5 ${
-                locale === "es" ? "text-pv-text font-bold" : "text-pv-muted"
-              }`}
+              className={`px-0.5 ${locale === "es" ? "text-pv-text font-bold" : "text-pv-muted"}`}
             >
               ES
             </Link>
@@ -134,9 +127,7 @@ export default function Header() {
             <Link
               href={pathname || "/"}
               locale="en"
-              className={`px-0.5 ${
-                locale === "en" ? "text-pv-text font-bold" : "text-pv-muted"
-              }`}
+              className={`px-0.5 ${locale === "en" ? "text-pv-text font-bold" : "text-pv-muted"}`}
             >
               EN
             </Link>
@@ -145,7 +136,7 @@ export default function Header() {
           {isConnected ? (
             <button
               onClick={disconnect}
-              className="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/12"
+              className="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
             >
               {shortenAddress(address!)}
             </button>
@@ -153,7 +144,7 @@ export default function Header() {
             <button
               onClick={connect}
               disabled={isConnecting}
-              className="px-3 py-1.5 rounded-[10px] bg-pv-text text-pv-bg text-[12px] font-bold"
+              className="px-3 py-1.5 rounded bg-pv-emerald text-pv-bg text-[12px] font-bold"
             >
               {isConnecting ? "..." : tc("connect")}
             </button>
@@ -161,7 +152,7 @@ export default function Header() {
           {isConnected && (
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-1.5 rounded-lg text-pv-muted hover:text-pv-text transition-colors"
+              className="p-1.5 rounded text-pv-muted hover:text-pv-text transition-colors"
               aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -178,7 +169,7 @@ export default function Header() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="sm:hidden border-t border-pv-surface2 overflow-hidden"
+            className="md:hidden border-t border-white/[0.08] overflow-hidden"
           >
             <nav className="px-5 py-3 flex flex-col gap-1">
               {NAV_ITEMS.map((item) => {
@@ -188,7 +179,7 @@ export default function Header() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
-                    className={`px-4 py-3 rounded-xl text-sm font-semibold transition-colors ${
+                    className={`px-4 py-3 rounded text-sm font-semibold transition-colors ${
                       item.accent
                         ? "text-pv-cyan bg-pv-cyan/[0.06]"
                         : isActive

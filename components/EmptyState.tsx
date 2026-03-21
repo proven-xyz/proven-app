@@ -25,11 +25,12 @@ export default function EmptyState({
       animate={{ opacity: 1, y: 0 }}
       className="text-center py-16"
     >
-      <div className="w-16 h-16 rounded-full bg-pv-emerald/10 border border-pv-emerald/20 flex items-center justify-center mx-auto mb-5">
+      {/* rounded-full permitido para el ícono de estado */}
+      <div className="w-16 h-16 rounded-full bg-pv-emerald/[0.1] border border-pv-emerald/[0.25] flex items-center justify-center mx-auto mb-5">
         <div className="font-display text-2xl font-bold text-pv-emerald">P</div>
       </div>
-      <h3 className="font-display text-xl font-bold mb-2">{title}</h3>
-      <p className="text-sm text-pv-muted mb-6 max-w-[280px] mx-auto">
+      <h3 className="font-display text-xl font-bold mb-2 tracking-tight">{title}</h3>
+      <p className="text-sm text-pv-muted mb-6 max-w-[320px] sm:max-w-[280px] mx-auto">
         {description}
       </p>
       {actionLabel && actionHref && (

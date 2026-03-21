@@ -59,20 +59,20 @@ function ProgressBar({ state }: { state: string }) {
   return (
     <div className="flex items-center gap-1 mb-6">
       {PROGRESS_STEPS.map((step, i) => {
-        const isActive = i <= stepIndex;
+        const isActive  = i <= stepIndex;
         const isCurrent = i === stepIndex;
         return (
           <div key={step} className="flex-1 flex flex-col items-center gap-1.5">
-            <div className="w-full h-1 rounded-full overflow-hidden bg-pv-surface2">
+            <div className="w-full h-0.5 overflow-hidden bg-pv-surface2">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: isActive ? "100%" : "0%" }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="h-full rounded-full bg-pv-emerald"
+                className="h-full bg-pv-emerald"
               />
             </div>
             <span
-              className={`text-[9px] font-bold uppercase tracking-wider ${
+              className={`text-[10px] font-bold uppercase tracking-wider ${
                 isCurrent
                   ? "text-pv-emerald"
                   : isActive
@@ -91,17 +91,17 @@ function ProgressBar({ state }: { state: string }) {
 
 export default function VSDetailPage() {
   const params = useParams();
-  const vsId = Number(params.id);
+  const vsId   = Number(params.id);
   const { address, isConnected, connect } = useWallet();
-  const t = useTranslations("vsDetail");
+  const t  = useTranslations("vsDetail");
   const tc = useTranslations("common");
 
-  const [vs, setVS] = useState<VSData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [vs, setVS]                       = useState<VSData | null>(null);
+  const [loading, setLoading]             = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [resolvePhase, setResolvePhase] = useState(-1);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [copied, setCopied]               = useState(false);
+  const [resolvePhase, setResolvePhase]   = useState(-1);
+  const [showConfetti, setShowConfetti]   = useState(false);
 
   const countdown = useCountdown(vs?.deadline || 0);
 
@@ -139,14 +139,14 @@ export default function VSDetailPage() {
     );
   }
 
-  const isCreator = address?.toLowerCase() === vs.creator.toLowerCase();
+  const isCreator  = address?.toLowerCase() === vs.creator.toLowerCase();
   const isOpponent = address?.toLowerCase() === vs.opponent.toLowerCase();
-  const canAccept = vs.state === "open" && isConnected && !isCreator;
+  const canAccept  = vs.state === "open" && isConnected && !isCreator;
   const canResolve = vs.state === "accepted" && countdown.expired;
-  const canCancel = vs.state === "open" && isCreator;
-  const hasWinner = vs.winner !== ZERO_ADDRESS;
-  const isOpen = vs.opponent === ZERO_ADDRESS;
-  const pool = vs.stake_amount * (isOpen ? 1 : 2);
+  const canCancel  = vs.state === "open" && isCreator;
+  const hasWinner  = vs.winner !== ZERO_ADDRESS;
+  const isOpen     = vs.opponent === ZERO_ADDRESS;
+  const pool       = vs.stake_amount * (isOpen ? 1 : 2);
 
   async function handleAccept() {
     if (!address) return;
@@ -202,6 +202,8 @@ export default function VSDetailPage() {
   return (
     <>
       <Confetti active={showConfetti} />
+      {/* Rivalry ambient background */}
+      <div className="fixed inset-0 rivalry-bg pointer-events-none" style={{ zIndex: 0 }} />
       <PageTransition>
         <AnimatedItem>
           <Link
@@ -246,7 +248,7 @@ export default function VSDetailPage() {
         {(vs.state !== "resolved" || resolvePhase !== -1) &&
           actionLoading !== "resolve" && (
             <AnimatedItem>
-              <GlassCard glow="both" noPad className="mb-5">
+              <GlassCard glow="both" noPad className="mb-5 lg:max-w-[800px] lg:mx-auto">
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-5">
                     {vs.state === "open" && !isCreator ? (
@@ -265,9 +267,9 @@ export default function VSDetailPage() {
                     {vs.question}
                   </h1>
 
-                  {/* VS Split */}
-                  <div className="flex rounded-2xl overflow-hidden border-2 border-pv-surface2 mb-6">
-                    <div className="flex-1 p-4 bg-pv-cyan/[0.03]">
+                  {/* VS Split — stacked en mobile, fila en sm+ */}
+                  <div className="flex flex-col sm:flex-row overflow-hidden border border-white/[0.12] mb-6">
+                    <div className="flex-1 p-4 bg-pv-cyan/[0.04]">
                       <div className="flex items-center gap-2 mb-2">
                         <Avatar side="creator" size={28} />
                         <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-cyan/60">
@@ -287,16 +289,17 @@ export default function VSDetailPage() {
                       </div>
                     </div>
 
-                    <div className="w-px bg-pv-surface2 flex items-center justify-center relative">
-                      <span className="absolute bg-pv-surface2 text-pv-muted text-[10px] font-bold px-1 py-0.5 rounded">
+                    {/* Divider — vertical en sm+, horizontal en mobile */}
+                    <div className="w-full h-px sm:w-px sm:h-auto bg-white/[0.08] flex items-center justify-center relative">
+                      <span className="absolute bg-pv-surface2 text-pv-muted text-[10px] font-bold px-1.5 py-0.5">
                         VS
                       </span>
                     </div>
 
-                    <div className="flex-1 p-4 bg-pv-fuch/[0.03]">
+                    <div className="flex-1 p-4 bg-pv-fuch/[0.04]">
                       {isOpen ? (
                         <div className="text-center py-2">
-                          <div className="w-7 h-7 rounded-full border-2 border-dashed border-pv-border flex items-center justify-center mx-auto mb-2 text-pv-muted font-bold text-xs">
+                          <div className="w-7 h-7 border-2 border-dashed border-white/[0.2] flex items-center justify-center mx-auto mb-2 text-pv-muted font-bold text-xs">
                             ?
                           </div>
                           <div className="text-xs text-pv-muted italic">
@@ -329,7 +332,7 @@ export default function VSDetailPage() {
 
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-pv-surface2 rounded-2xl p-4">
+                    <div className="bg-pv-surface2 p-4">
                       <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
                         {t("pool")}
                       </div>
@@ -337,7 +340,7 @@ export default function VSDetailPage() {
                         ${pool}
                       </div>
                     </div>
-                    <div className="bg-pv-surface2 rounded-2xl p-4">
+                    <div className="bg-pv-surface2 p-4">
                       <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
                         {t("deadline")}
                       </div>
@@ -349,9 +352,9 @@ export default function VSDetailPage() {
                   </div>
                 </div>
 
-                <div className="border-t border-pv-surface2 px-6 py-3 flex items-center justify-between">
+                <div className="border-t border-white/[0.08] px-6 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
                     <span className="text-xs text-pv-muted">
                       {t("provenVerifies")}
                     </span>
@@ -432,18 +435,18 @@ export default function VSDetailPage() {
                       toast.success(tc("copied"));
                       setTimeout(() => setCopied(false), 2000);
                     }}
-                    className="px-4 py-3 rounded-xl bg-pv-text text-pv-bg font-bold text-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity focus-ring"
+                    className="px-4 py-3 rounded bg-pv-emerald text-pv-bg font-bold text-sm flex items-center gap-1.5 hover:brightness-110 transition-all focus-ring"
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />}
                     {copied ? tc("copied") : tc("copy")}
                   </button>
                 </div>
-                <div className="flex gap-2 mt-3">
+                <div className="flex flex-col sm:flex-row gap-2 mt-3">
                   <a
                     href={`https://wa.me/?text=${encodeURIComponent(`Te desafío: ${getShareUrl(vsId)}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-2.5 rounded-xl border border-pv-border text-center text-xs font-semibold text-pv-muted hover:text-pv-text transition-colors"
+                    className="flex-1 py-2.5 border border-white/[0.15] text-center text-xs font-semibold text-pv-muted hover:text-pv-text hover:border-white/[0.28] transition-colors"
                   >
                     WhatsApp
                   </a>
@@ -451,7 +454,7 @@ export default function VSDetailPage() {
                     href={`https://t.me/share/url?url=${encodeURIComponent(getShareUrl(vsId))}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex-1 py-2.5 rounded-xl border border-pv-border text-center text-xs font-semibold text-pv-muted hover:text-pv-text transition-colors"
+                    className="flex-1 py-2.5 border border-white/[0.15] text-center text-xs font-semibold text-pv-muted hover:text-pv-text hover:border-white/[0.28] transition-colors"
                   >
                     Telegram
                   </a>

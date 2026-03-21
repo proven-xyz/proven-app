@@ -32,14 +32,12 @@ export default function ProvenStamp({
           {t("provenDecided")}
         </motion.div>
 
+        {/* Monolithic stamp — 4px radius, square-edged */}
         <motion.div
           initial={{ opacity: 0, scale: 2.5, rotate: -12 }}
           animate={{ opacity: 1, scale: 1, rotate: -12 }}
-          transition={{
-            duration: 0.6,
-            ease: [0.25, 0.46, 0.45, 0.94],
-          }}
-          className="inline-block px-8 py-3 rounded-lg border-[3px] border-pv-emerald text-pv-emerald font-display text-3xl font-bold uppercase tracking-widest shadow-glow-emerald-lg mb-6"
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="inline-block px-8 py-3 rounded border-[3px] border-pv-emerald text-pv-emerald font-display text-3xl font-bold uppercase tracking-widest shadow-glow-emerald mb-6"
         >
           PROVEN.
         </motion.div>
@@ -48,7 +46,7 @@ export default function ProvenStamp({
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3, duration: 0.4 }}
-          className="font-display text-2xl font-bold mb-3"
+          className="font-display text-2xl font-bold mb-3 tracking-tight"
         >
           {hasWinner
             ? t("won", { address: shortenAddress(winner) })

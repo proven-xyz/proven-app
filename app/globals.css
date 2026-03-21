@@ -21,7 +21,7 @@
     inset: 0;
     z-index: 9999;
     pointer-events: none;
-    opacity: 0.03;
+    opacity: 0.025;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
     background-repeat: repeat;
     background-size: 256px 256px;
@@ -37,95 +37,105 @@
     background: radial-gradient(
       ellipse at 50% 50%,
       transparent 50%,
-      rgba(9, 9, 11, 0.4) 100%
+      rgba(19, 19, 21, 0.45) 100%
     );
   }
 
   ::selection {
-    background: rgba(16, 185, 129, 0.25);
+    background: rgba(78, 222, 163, 0.22);
   }
 }
 
 @layer components {
   /* ── Buttons ── */
   .btn-primary {
-    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
-           bg-pv-text text-pv-bg
-           transition-all duration-200
-           hover:opacity-90 hover:shadow-elevated active:scale-[0.97]
+    @apply w-full py-4 px-6 rounded font-display font-bold text-base
+           bg-pv-emerald text-pv-bg
+           transition-all duration-150
+           hover:brightness-110 active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-ghost {
-    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
-           bg-transparent text-pv-muted border border-pv-border
-           transition-all duration-200
-           hover:border-pv-text/20 hover:text-pv-text active:scale-[0.97];
+    @apply w-full py-4 px-6 rounded font-display font-bold text-base
+           bg-transparent text-pv-muted border border-white/[0.15]
+           transition-all duration-150
+           hover:border-white/[0.28] hover:text-pv-text active:scale-[0.97];
   }
 
   .btn-cyan {
-    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
-           bg-pv-cyan text-pv-bg
-           transition-all duration-200
-           hover:shadow-glow active:scale-[0.97]
+    @apply w-full py-4 px-6 rounded font-display font-bold text-base
+           bg-transparent text-pv-cyan border border-pv-cyan/[0.3]
+           transition-all duration-150
+           hover:bg-pv-cyan hover:text-pv-bg hover:border-pv-cyan
+           active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-fuch {
-    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
-           bg-pv-fuch text-white
-           transition-all duration-200
-           hover:shadow-glow-fuch active:scale-[0.97]
+    @apply w-full py-4 px-6 rounded font-display font-bold text-base
+           bg-transparent text-pv-fuch border border-pv-fuch/[0.3]
+           transition-all duration-150
+           hover:bg-pv-fuch hover:text-pv-bg hover:border-pv-fuch
+           active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-emerald {
-    @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
+    @apply w-full py-4 px-6 rounded font-display font-bold text-base
            bg-pv-emerald text-pv-bg
-           transition-all duration-200
-           hover:shadow-glow-emerald active:scale-[0.97]
+           transition-all duration-150
+           hover:brightness-110 active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
   .btn-danger {
-    @apply w-full py-4 px-6 rounded-2xl font-bold text-base
-           bg-pv-danger/5 text-pv-danger border border-pv-danger/15
-           transition-all duration-200
-           active:scale-[0.97] disabled:opacity-40;
+    @apply w-full py-4 px-6 rounded font-bold text-base
+           bg-pv-danger/[0.06] text-pv-danger border border-pv-danger/[0.2]
+           transition-all duration-150
+           hover:bg-pv-danger/[0.12] active:scale-[0.97]
+           disabled:opacity-40;
   }
 
   /* ── Card ── */
   .card {
-    @apply bg-pv-surface border border-white/[0.06] rounded-3xl overflow-hidden relative
+    @apply bg-pv-surface border border-white/[0.15] rounded overflow-hidden relative
            transition-all duration-200;
   }
 
   .card-hover {
-    @apply hover:border-white/[0.12] hover:shadow-elevated;
+    @apply hover:border-white/[0.25] hover:bg-pv-surface/80;
   }
 
   /* ── Form elements ── */
   .input {
-    @apply w-full px-4 py-3.5 rounded-xl bg-pv-surface border border-pv-border
+    @apply w-full px-4 py-3.5 rounded bg-pv-surface2 border border-white/[0.1]
            text-pv-text placeholder:text-pv-muted font-body text-[15px]
-           focus:border-pv-cyan/40 focus:ring-2 focus:ring-pv-cyan/10
-           transition-all duration-200 outline-none;
+           focus:border-pv-cyan/60 focus:border
+           transition-colors duration-150 outline-none;
   }
 
   .label {
-    @apply block text-[11px] font-bold uppercase tracking-[0.16em] text-pv-muted mb-2;
+    @apply block text-[11px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2;
   }
 
   .chip {
-    @apply px-3.5 py-1.5 rounded-[10px] border border-pv-border bg-transparent
-           text-sm font-semibold cursor-pointer transition-all duration-200;
+    @apply px-3.5 py-1.5 rounded border border-white/[0.15] bg-transparent
+           text-sm font-semibold cursor-pointer transition-all duration-150;
+  }
+
+  /* ── Ambient rivalry glow (for VS detail pages) ── */
+  .rivalry-bg {
+    background:
+      radial-gradient(ellipse 60% 40% at 0% 30%, rgba(93,230,255,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 70%, rgba(248,172,255,0.06) 0%, transparent 70%);
   }
 
   /* ── Glow utilities ── */
   .glow-cyan {
     background: radial-gradient(
       ellipse at 0% 50%,
-      rgba(34, 211, 238, 0.06),
+      rgba(93, 230, 255, 0.07),
       transparent 65%
     );
   }
@@ -133,7 +143,7 @@
   .glow-fuch {
     background: radial-gradient(
       ellipse at 100% 50%,
-      rgba(232, 121, 249, 0.06),
+      rgba(248, 172, 255, 0.07),
       transparent 65%
     );
   }
@@ -141,7 +151,7 @@
   .glow-emerald {
     background: radial-gradient(
       ellipse at 50% 50%,
-      rgba(16, 185, 129, 0.06),
+      rgba(78, 222, 163, 0.07),
       transparent 65%
     );
   }
@@ -149,7 +159,7 @@
   .glow-gold {
     background: radial-gradient(
       ellipse at 50% 50%,
-      rgba(251, 191, 36, 0.06),
+      rgba(251, 191, 36, 0.07),
       transparent 65%
     );
   }
@@ -172,5 +182,5 @@
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #3F3F46; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #52525B; }
+::-webkit-scrollbar-thumb { background: #353437; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4a4850; }
