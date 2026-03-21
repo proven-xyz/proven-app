@@ -187,11 +187,22 @@ export default function CreatePage() {
       <AnimatedItem>
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-5 transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-6 transition-colors"
         >
           <ArrowLeft size={14} />
           {tc("back")}
         </Link>
+        <div className="mb-6 lg:max-w-[720px] lg:mx-auto">
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald/80 mb-2">
+            {t("eyebrow")}
+          </div>
+          <h1 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight leading-none text-pv-text">
+            {t("pageTitle")}
+          </h1>
+          <p className="font-mono text-sm text-pv-muted mt-2 tracking-wide">
+            {t("pageSubtitle")}
+          </p>
+        </div>
       </AnimatedItem>
 
       {/* Question textarea */}

@@ -95,7 +95,10 @@
       "24h": "24h",
       "3days": "3 días",
       "1week": "1 sem"
-    }
+    },
+    "eyebrow": "Nuevo Desafío",
+    "pageTitle": "DEFINÍ LOS TÉRMINOS.",
+    "pageSubtitle": "Establecé tu posición. Bloqueá tu apuesta. El protocolo decide."
   },
   "explore": {
     "title": "VS Abiertos",
@@ -114,7 +117,8 @@
     "resultsPlural": "{count} resultados",
     "noResults": "No hay VS con estos filtros",
     "noResultsDesc": "Probá cambiando los filtros o creá tu propio VS.",
-    "challengeSomeone": "Desafiar a alguien"
+    "challengeSomeone": "Desafiar a alguien",
+    "eyebrow": "Arena Abierta"
   },
   "dashboard": {
     "title": "Mis VS",
@@ -131,7 +135,8 @@
     "challengeSomeone": "Desafiar a alguien",
     "connectTitle": "PROVEN.",
     "connectDesc": "Conectá tu wallet para ver tus VS.",
-    "connect": "Conectar"
+    "connect": "Conectar",
+    "eyebrow": "Tu Arena"
   },
   "vsDetail": {
     "challenges": "desafía",

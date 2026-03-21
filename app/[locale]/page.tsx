@@ -278,8 +278,11 @@ export default function HomePage() {
       {resolvedVS.length > 0 && (
         <AnimatedItem>
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald text-center mb-4">
-              {t("recentlyProven")}
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
+                {t("recentlyProven")}
+              </span>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
               {resolvedVS.slice(0, 4).map((vs) => (

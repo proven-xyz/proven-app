@@ -76,16 +76,23 @@ export default function ExplorePage() {
       </AnimatedItem>
 
       <AnimatedItem>
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="font-display text-2xl font-bold tracking-tight">{t("title")}</h1>
-          <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
-            <span className="font-mono text-xs text-pv-muted">
-              {t("available", { count: open.length })}
-            </span>
+        <div className="mb-6">
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald/80 mb-2">
+            {t("eyebrow")}
           </div>
+          <div className="flex items-end justify-between gap-3">
+            <h1 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight leading-none">
+              {t("title")}
+            </h1>
+            <div className="flex items-center gap-1.5 flex-shrink-0 pb-0.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
+              <span className="font-mono text-xs text-pv-muted">
+                {t("available", { count: open.length })}
+              </span>
+            </div>
+          </div>
+          <p className="font-mono text-sm text-pv-muted mt-2 tracking-wide">{t("subtitle")}</p>
         </div>
-        <p className="text-sm text-pv-muted mb-6">{t("subtitle")}</p>
       </AnimatedItem>
 
       {/* Search */}

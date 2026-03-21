@@ -108,14 +108,19 @@ export default function DashboardPage() {
   return (
     <PageTransition>
       <AnimatedItem>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start justify-between mb-6 gap-3">
           <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight">{t("title")}</h1>
-            <p className="font-mono text-xs text-pv-muted mt-1">
+            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald/80 mb-2">
+              {t("eyebrow")}
+            </div>
+            <h1 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight leading-none">
+              {t("title")}
+            </h1>
+            <p className="font-mono text-xs text-pv-muted mt-2 tracking-wide">
               {t("total", { count: duels.length })}
             </p>
           </div>
-          <Link href="/vs/create">
+          <Link href="/vs/create" className="flex-shrink-0 mt-1">
             <Chip className="text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.06] text-[13px] font-bold">
               {t("new")}
             </Chip>

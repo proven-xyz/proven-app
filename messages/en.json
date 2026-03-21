@@ -95,7 +95,10 @@
       "24h": "24h",
       "3days": "3 days",
       "1week": "1 week"
-    }
+    },
+    "eyebrow": "New Challenge",
+    "pageTitle": "SET THE TERMS.",
+    "pageSubtitle": "Define your claim. Lock your stake. Let the protocol decide."
   },
   "explore": {
     "title": "Open VS",
@@ -114,7 +117,8 @@
     "resultsPlural": "{count} results",
     "noResults": "No VS match these filters",
     "noResultsDesc": "Try changing the filters or create your own VS.",
-    "challengeSomeone": "Challenge someone"
+    "challengeSomeone": "Challenge someone",
+    "eyebrow": "Open Arena"
   },
   "dashboard": {
     "title": "My VS",
@@ -131,7 +135,8 @@
     "challengeSomeone": "Challenge someone",
     "connectTitle": "PROVEN.",
     "connectDesc": "Connect your wallet to see your VS.",
-    "connect": "Connect"
+    "connect": "Connect",
+    "eyebrow": "Your Arena"
   },
   "vsDetail": {
     "challenges": "challenges",
