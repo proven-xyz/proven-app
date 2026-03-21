@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { getUserVSList, getVS } from "@/lib/contract";
 import type { VSData } from "@/lib/contract";
-import { ZERO_ADDRESS, shortenAddress, STATE_LABELS } from "@/lib/constants";
+import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import {
   GlassCard,
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const [duels, setDuels] = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"all" | "active" | "done">("all");
+  const t = useTranslations("dashboard");
 
   useEffect(() => {
     async function load() {
@@ -49,9 +51,9 @@ export default function DashboardPage() {
   if (!isConnected) {
     return (
       <EmptyState
-        title="PROVEN."
-        description="Conectá tu wallet para ver tus VS."
-        actionLabel="Conectar"
+        title={t("connectTitle")}
+        description={t("connectDesc")}
+        actionLabel={t("connect")}
         onAction={connect}
       />
     );
@@ -85,16 +87,16 @@ export default function DashboardPage() {
   const winRate = won + lost > 0 ? Math.round((won / (won + lost)) * 100) : 0;
 
   const tabs = [
-    { l: "Todos", v: "all" as const, count: duels.length },
+    { l: t("tabAll"), v: "all" as const, count: duels.length },
     {
-      l: "Activos",
+      l: t("tabActive"),
       v: "active" as const,
       count: duels.filter(
         (d) => d.state === "open" || d.state === "accepted"
       ).length,
     },
     {
-      l: "Resueltos",
+      l: t("tabDone"),
       v: "done" as const,
       count: duels.filter(
         (d) => d.state === "resolved" || d.state === "cancelled"
@@ -107,16 +109,16 @@ export default function DashboardPage() {
       <AnimatedItem>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="font-display text-2xl font-bold">Mis VS</h1>
+            <h1 className="font-display text-2xl font-bold">{t("title")}</h1>
             <p className="font-mono text-xs text-pv-muted mt-1">
-              {duels.length} total
+              {t("total", { count: duels.length })}
             </p>
           </div>
           <Link href="/vs/create">
             <Chip
               className="text-pv-cyan border-pv-cyan/15 bg-pv-cyan/[0.06] text-[13px] font-bold"
             >
-              + Nuevo
+              {t("new")}
             </Chip>
           </Link>
         </div>
@@ -133,7 +135,7 @@ export default function DashboardPage() {
                   {won}W – {lost}L
                 </div>
                 <div className="text-[10px] text-pv-muted font-bold uppercase tracking-wider mt-0.5">
-                  Récord
+                  {t("record")}
                 </div>
               </div>
             </GlassCard>
@@ -144,7 +146,7 @@ export default function DashboardPage() {
                   {winRate}%
                 </div>
                 <div className="text-[10px] text-pv-muted font-bold uppercase tracking-wider mt-0.5">
-                  Win rate
+                  {t("winRate")}
                 </div>
               </div>
             </GlassCard>
@@ -155,7 +157,7 @@ export default function DashboardPage() {
                   ${totalWon}
                 </div>
                 <div className="text-[10px] text-pv-muted font-bold uppercase tracking-wider mt-0.5">
-                  Ganado
+                  {t("totalWon")}
                 </div>
               </div>
             </GlassCard>
@@ -203,9 +205,9 @@ export default function DashboardPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="No hay VS acá"
-          description="Desafiá a alguien y empezá a competir."
-          actionLabel="Desafiar a alguien"
+          title={t("noVSHere")}
+          description={t("noVSDesc")}
+          actionLabel={t("challengeSomeone")}
           actionHref="/vs/create"
         />
       ) : (

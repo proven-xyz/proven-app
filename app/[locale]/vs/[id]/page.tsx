@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { getVS, acceptVS, resolveVS, cancelVS } from "@/lib/contract";
 import type { VSData } from "@/lib/contract";
@@ -11,7 +12,6 @@ import {
   ZERO_ADDRESS,
   shortenAddress,
   getShareUrl,
-  STATE_LABELS,
 } from "@/lib/constants";
 import { useCountdown } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -34,9 +34,15 @@ import {
   Share2,
 } from "lucide-react";
 
-const PROGRESS_STEPS = ["Creado", "Aceptado", "Verificando", "PROVEN"];
-
 function ProgressBar({ state }: { state: string }) {
+  const t = useTranslations("vsDetail");
+  const PROGRESS_STEPS = [
+    t("progressCreated"),
+    t("progressAccepted"),
+    t("progressVerifying"),
+    t("progressProven"),
+  ];
+
   const stepIndex =
     state === "open"
       ? 0
@@ -87,6 +93,8 @@ export default function VSDetailPage() {
   const params = useParams();
   const vsId = Number(params.id);
   const { address, isConnected, connect } = useWallet();
+  const t = useTranslations("vsDetail");
+  const tc = useTranslations("common");
 
   const [vs, setVS] = useState<VSData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -113,7 +121,7 @@ export default function VSDetailPage() {
     return (
       <div className="text-center py-20">
         <div className="w-10 h-10 border-2 border-transparent border-t-pv-emerald rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-pv-muted text-sm">Cargando...</p>
+        <p className="text-pv-muted text-sm">{tc("loading")}</p>
       </div>
     );
   }
@@ -121,10 +129,10 @@ export default function VSDetailPage() {
   if (!vs) {
     return (
       <div className="text-center py-20">
-        <p className="font-display font-bold text-lg mb-4">VS no encontrado</p>
+        <p className="font-display font-bold text-lg mb-4">{t("notFound")}</p>
         <Link href="/">
           <Button variant="primary" fullWidth={false} className="px-8">
-            Volver
+            {tc("back")}
           </Button>
         </Link>
       </div>
@@ -145,10 +153,10 @@ export default function VSDetailPage() {
     setActionLoading("accept");
     try {
       await acceptVS(address, vsId, vs!.stake_amount);
-      toast.success(`Aceptaste — hay $${vs!.stake_amount * 2} en juego`);
+      toast.success(t("acceptedToast", { amount: vs!.stake_amount * 2 }));
       fetchVS();
     } catch (err: any) {
-      toast.error(err.message || "Error al aceptar");
+      toast.error(err.message || t("errorAccepting"));
     }
     setActionLoading(null);
   }
@@ -164,12 +172,12 @@ export default function VSDetailPage() {
 
     try {
       await resolveVS(address, vsId);
-      toast.success("PROVEN.");
+      toast.success(t("proven"));
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
       fetchVS();
     } catch (err: any) {
-      toast.error(err.message || "Error al resolver");
+      toast.error(err.message || t("errorResolving"));
     }
     clearTimeout(t1);
     clearTimeout(t2);
@@ -183,10 +191,10 @@ export default function VSDetailPage() {
     setActionLoading("cancel");
     try {
       await cancelVS(address, vsId);
-      toast.success("VS cancelado");
+      toast.success(t("cancelledToast"));
       fetchVS();
     } catch (err: any) {
-      toast.error(err.message || "Error al cancelar");
+      toast.error(err.message || t("errorCancelling"));
     }
     setActionLoading(null);
   }
@@ -201,7 +209,7 @@ export default function VSDetailPage() {
             className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-5 transition-colors"
           >
             <ArrowLeft size={14} />
-            Volver
+            {tc("back")}
           </Link>
         </AnimatedItem>
 
@@ -243,7 +251,7 @@ export default function VSDetailPage() {
                   <div className="flex justify-between items-center mb-5">
                     {vs.state === "open" && !isCreator ? (
                       <div className="text-sm font-bold text-pv-fuch">
-                        @{shortenAddress(vs.creator)} te desafía
+                        {t("challengesYou", { address: shortenAddress(vs.creator) })}
                       </div>
                     ) : (
                       <Badge status={vs.state} large />
@@ -263,14 +271,14 @@ export default function VSDetailPage() {
                       <div className="flex items-center gap-2 mb-2">
                         <Avatar side="creator" size={28} />
                         <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-cyan/60">
-                          Creador
+                          {t("creator")}
                         </div>
                       </div>
                       <div className="text-sm font-semibold">
                         {shortenAddress(vs.creator)}
                         {isCreator && (
                           <span className="text-pv-emerald text-[10px] ml-1">
-                            (vos)
+                            {t("you")}
                           </span>
                         )}
                       </div>
@@ -292,7 +300,7 @@ export default function VSDetailPage() {
                             ?
                           </div>
                           <div className="text-xs text-pv-muted italic">
-                            Esperando rival...
+                            {t("waitingRival")}
                           </div>
                         </div>
                       ) : (
@@ -300,14 +308,14 @@ export default function VSDetailPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <Avatar side="opponent" size={28} />
                             <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-fuch/60">
-                              Rival
+                              {t("rival")}
                             </div>
                           </div>
                           <div className="text-sm font-semibold">
                             {shortenAddress(vs.opponent)}
                             {isOpponent && (
                               <span className="text-pv-emerald text-[10px] ml-1">
-                                (vos)
+                                {t("you")}
                               </span>
                             )}
                           </div>
@@ -323,7 +331,7 @@ export default function VSDetailPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-pv-surface2 rounded-2xl p-4">
                       <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                        Pozo
+                        {t("pool")}
                       </div>
                       <div className="font-mono text-2xl font-bold text-pv-gold">
                         ${pool}
@@ -331,7 +339,7 @@ export default function VSDetailPage() {
                     </div>
                     <div className="bg-pv-surface2 rounded-2xl p-4">
                       <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                        Deadline
+                        {t("deadline")}
                       </div>
                       <CountdownTimer
                         deadline={vs.deadline}
@@ -345,7 +353,7 @@ export default function VSDetailPage() {
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                     <span className="text-xs text-pv-muted">
-                      PROVEN verifica automáticamente
+                      {t("provenVerifies")}
                     </span>
                   </div>
                   {vs.resolution_url && (
@@ -360,7 +368,7 @@ export default function VSDetailPage() {
                       className="text-[10px] text-pv-muted hover:text-pv-cyan transition-colors flex items-center gap-1"
                     >
                       <ExternalLink size={10} />
-                      Fuente
+                      {t("source")}
                     </a>
                   )}
                 </div>
@@ -378,20 +386,20 @@ export default function VSDetailPage() {
                 loading={actionLoading === "accept"}
               >
                 {actionLoading === "accept"
-                  ? "Aceptando..."
-                  : `Aceptar y Poner $${vs.stake_amount}`}
+                  ? t("accepting")
+                  : t("acceptAndStake", { amount: vs.stake_amount })}
               </Button>
             )}
 
             {vs.state === "open" && !isConnected && (
               <Button onClick={connect}>
-                Conectar Wallet para aceptar
+                {t("connectToAccept")}
               </Button>
             )}
 
             {canResolve && actionLoading !== "resolve" && (
               <Button variant="emerald" onClick={handleResolve}>
-                Resolver VS
+                {t("resolveVS")}
               </Button>
             )}
 
@@ -400,7 +408,7 @@ export default function VSDetailPage() {
               actionLoading !== "resolve" && (
                 <GlassCard className="text-center">
                   <p className="text-sm text-pv-muted">
-                    Esperando deadline para resolver...
+                    {t("waitingDeadline")}
                   </p>
                 </GlassCard>
               )}
@@ -409,7 +417,7 @@ export default function VSDetailPage() {
               <GlassCard>
                 <div className="text-sm font-semibold mb-3 flex items-center gap-2">
                   <Share2 size={14} className="text-pv-cyan" />
-                  Mandá este link a tu rival
+                  {t("sendLink")}
                 </div>
                 <div className="flex gap-2.5">
                   <input
@@ -421,13 +429,13 @@ export default function VSDetailPage() {
                     onClick={async () => {
                       await navigator.clipboard.writeText(getShareUrl(vsId));
                       setCopied(true);
-                      toast.success("Link copiado");
+                      toast.success(tc("copied"));
                       setTimeout(() => setCopied(false), 2000);
                     }}
                     className="px-4 py-3 rounded-xl bg-pv-text text-pv-bg font-bold text-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity focus-ring"
                   >
                     {copied ? <Check size={14} /> : <Copy size={14} />}
-                    {copied ? "Listo" : "Copiar"}
+                    {copied ? tc("copied") : tc("copy")}
                   </button>
                 </div>
                 <div className="flex gap-2 mt-3">
@@ -458,8 +466,8 @@ export default function VSDetailPage() {
                 loading={actionLoading === "cancel"}
               >
                 {actionLoading === "cancel"
-                  ? "Cancelando..."
-                  : "Cancelar VS"}
+                  ? t("cancelling")
+                  : t("cancelVS")}
               </Button>
             )}
           </div>

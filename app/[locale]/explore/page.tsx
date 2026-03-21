@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { getVS, getVSCount } from "@/lib/contract";
 import type { VSData } from "@/lib/contract";
@@ -23,6 +24,9 @@ export default function ExplorePage() {
     "newest"
   );
   const [search, setSearch] = useState("");
+  const t = useTranslations("explore");
+  const tc = useTranslations("common");
+  const tCat = useTranslations("categories");
 
   useEffect(() => {
     async function load() {
@@ -68,22 +72,22 @@ export default function ExplorePage() {
           className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-5 transition-colors"
         >
           <ArrowLeft size={14} />
-          Volver
+          {tc("back")}
         </Link>
       </AnimatedItem>
 
       <AnimatedItem>
         <div className="flex items-center justify-between mb-2">
-          <h1 className="font-display text-2xl font-bold">VS Abiertos</h1>
+          <h1 className="font-display text-2xl font-bold">{t("title")}</h1>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
             <span className="font-mono text-xs text-pv-muted">
-              {open.length} disponibles
+              {t("available", { count: open.length })}
             </span>
           </div>
         </div>
         <p className="text-sm text-pv-muted mb-6">
-          Aceptá el VS de alguien más. Elegí tu pelea.
+          {t("subtitle")}
         </p>
       </AnimatedItem>
 
@@ -96,7 +100,7 @@ export default function ExplorePage() {
           />
           <input
             type="text"
-            placeholder="Buscar VS..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="input pl-10 focus-ring"
@@ -108,13 +112,13 @@ export default function ExplorePage() {
       <AnimatedItem>
         <div className="card p-5 mb-6">
           <div className="mb-4">
-            <label className="label">Categoría</label>
+            <label className="label">{t("category")}</label>
             <div className="flex gap-1.5 flex-wrap">
               <Chip
                 active={cat === "all"}
                 onClick={() => setCat("all")}
               >
-                Todos
+                {t("all")}
               </Chip>
               {CATEGORIES.filter((c) => c.id !== "custom").map((c) => (
                 <Chip
@@ -123,14 +127,14 @@ export default function ExplorePage() {
                   color={c.color}
                   onClick={() => setCat(c.id)}
                 >
-                  {c.label}
+                  {tCat(c.id)}
                 </Chip>
               ))}
             </div>
           </div>
 
           <div className="mb-4">
-            <label className="label">Apuesta mínima</label>
+            <label className="label">{t("minStake")}</label>
             <div className="flex gap-1.5">
               {[0, 2, 5, 10].map((v) => (
                 <Chip
@@ -139,20 +143,20 @@ export default function ExplorePage() {
                   color="#FBBF24"
                   onClick={() => setMinStake(v)}
                 >
-                  {v === 0 ? "Cualquiera" : `$${v}+`}
+                  {v === 0 ? t("any") : `$${v}+`}
                 </Chip>
               ))}
             </div>
           </div>
 
           <div>
-            <label className="label">Ordenar</label>
+            <label className="label">{t("sortBy")}</label>
             <div className="flex gap-1.5">
               {(
                 [
-                  { k: "newest" as const, l: "Más nuevos" },
-                  { k: "highest" as const, l: "Mayor apuesta" },
-                  { k: "expiring" as const, l: "Por vencer" },
+                  { k: "newest" as const, l: t("newest") },
+                  { k: "highest" as const, l: t("highestStake") },
+                  { k: "expiring" as const, l: t("expiring") },
                 ] as const
               ).map(({ k, l }) => (
                 <Chip
@@ -172,7 +176,9 @@ export default function ExplorePage() {
       {/* Results count */}
       <AnimatedItem>
         <div className="text-xs text-pv-muted mb-4">
-          {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+          {filtered.length === 1
+            ? t("results", { count: filtered.length })
+            : t("resultsPlural", { count: filtered.length })}
         </div>
       </AnimatedItem>
 
@@ -185,9 +191,9 @@ export default function ExplorePage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="No hay VS con estos filtros"
-          description="Probá cambiando los filtros o creá tu propio VS."
-          actionLabel="Desafiar a alguien"
+          title={t("noResults")}
+          description={t("noResultsDesc")}
+          actionLabel={t("challengeSomeone")}
           actionHref="/vs/create"
         />
       ) : (

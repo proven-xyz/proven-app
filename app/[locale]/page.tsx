@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { getVS, getVSCount } from "@/lib/contract";
 import type { VSData } from "@/lib/contract";
@@ -16,6 +17,8 @@ export default function HomePage() {
   const { isConnected, connect } = useWallet();
   const [allVS, setAllVS] = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
+  const t = useTranslations("home");
+  const tc = useTranslations("common");
 
   useEffect(() => {
     async function load() {
@@ -37,6 +40,41 @@ export default function HomePage() {
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
   const featuredVS = allVS[0];
 
+  const steps = [
+    {
+      icon: Zap,
+      label: t("stepChallenge"),
+      sub: t("stepChallengeSub"),
+      color: "text-pv-cyan",
+      bg: "bg-pv-cyan/10",
+      border: "border-pv-cyan/20",
+    },
+    {
+      icon: Send,
+      label: t("stepSend"),
+      sub: t("stepSendSub"),
+      color: "text-pv-fuch",
+      bg: "bg-pv-fuch/10",
+      border: "border-pv-fuch/20",
+    },
+    {
+      icon: UserCheck,
+      label: t("stepAccept"),
+      sub: t("stepAcceptSub"),
+      color: "text-pv-gold",
+      bg: "bg-pv-gold/10",
+      border: "border-pv-gold/20",
+    },
+    {
+      icon: Shield,
+      label: t("stepProven"),
+      sub: t("stepProvenSub"),
+      color: "text-pv-emerald",
+      bg: "bg-pv-emerald/10",
+      border: "border-pv-emerald/20",
+    },
+  ];
+
   return (
     <PageTransition>
       {/* Hero */}
@@ -45,7 +83,7 @@ export default function HomePage() {
           <GlassCard glow="both" className="mb-6">
             <div className="p-2 text-center">
               <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald mb-6">
-                VS del día
+                {t("vsOfDay")}
               </div>
 
               <motion.h1
@@ -80,7 +118,7 @@ export default function HomePage() {
                   PROVEN.
                 </div>
                 <p className="text-pv-muted text-sm">
-                  La verdad se demuestra. Creá el primer VS.
+                  {t("tagline")}
                 </p>
               </div>
             </GlassCard>
@@ -93,13 +131,13 @@ export default function HomePage() {
         <div className="flex flex-col gap-3 mb-12">
           {isConnected ? (
             <Link href="/vs/create" className="block">
-              <Button variant="primary">Desafiar a alguien</Button>
+              <Button variant="primary">{t("challengeSomeone")}</Button>
             </Link>
           ) : (
-            <Button onClick={connect}>Conectar Wallet para empezar</Button>
+            <Button onClick={connect}>{t("connectWalletToStart")}</Button>
           )}
           <Link href="/explore" className="block">
-            <Button variant="ghost">Explorar VS abiertos</Button>
+            <Button variant="ghost">{t("exploreOpenVS")}</Button>
           </Link>
         </div>
       </AnimatedItem>
@@ -113,13 +151,13 @@ export default function HomePage() {
             <div className="h-px w-10 bg-pv-surface2" />
           </div>
           <p className="text-[15px] text-pv-muted max-w-[380px] mx-auto leading-relaxed">
-            <span className="text-pv-text font-semibold">Sin árbitros.</span>{" "}
-            <span className="text-pv-text font-semibold">Sin discusiones.</span>{" "}
-            <span className="text-pv-text font-semibold">Sin esperar.</span>
+            <span className="text-pv-text font-semibold">{t("noReferees")}</span>{" "}
+            <span className="text-pv-text font-semibold">{t("noArguments")}</span>{" "}
+            <span className="text-pv-text font-semibold">{t("noWaiting")}</span>
             <br />
-            La IA busca las pruebas.{" "}
-            <span className="text-pv-emerald font-semibold">PROVEN</span> decide.
-            El ganador cobra al instante.
+            {t("aiFindsProof")}{" "}
+            <span className="text-pv-emerald font-semibold">{t("provenDecides")}</span>{" "}
+            {t("winnerPaidInstantly")}
           </p>
         </div>
       </AnimatedItem>
@@ -128,43 +166,10 @@ export default function HomePage() {
       <AnimatedItem>
         <div className="mb-12">
           <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-muted text-center mb-5">
-            ¿Cómo funciona?
+            {t("howItWorks")}
           </div>
           <div className="grid grid-cols-4 gap-2.5">
-            {[
-              {
-                icon: Zap,
-                label: "Desafiá",
-                sub: "tu apuesta",
-                color: "text-pv-cyan",
-                bg: "bg-pv-cyan/10",
-                border: "border-pv-cyan/20",
-              },
-              {
-                icon: Send,
-                label: "Mandá",
-                sub: "el link",
-                color: "text-pv-fuch",
-                bg: "bg-pv-fuch/10",
-                border: "border-pv-fuch/20",
-              },
-              {
-                icon: UserCheck,
-                label: "Acepta",
-                sub: "tu rival",
-                color: "text-pv-gold",
-                bg: "bg-pv-gold/10",
-                border: "border-pv-gold/20",
-              },
-              {
-                icon: Shield,
-                label: "PROVEN",
-                sub: "decide",
-                color: "text-pv-emerald",
-                bg: "bg-pv-emerald/10",
-                border: "border-pv-emerald/20",
-              },
-            ].map(({ icon: Icon, label, sub, color, bg, border }) => (
+            {steps.map(({ icon: Icon, label, sub, color, bg, border }) => (
               <motion.div
                 key={label}
                 whileHover={{ y: -3 }}
@@ -194,7 +199,7 @@ export default function HomePage() {
                 {allVS.length}
               </div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-pv-muted mt-1">
-                VS totales
+                {t("totalVS")}
               </div>
             </div>
             <div className="card p-4 text-center">
@@ -202,7 +207,7 @@ export default function HomePage() {
                 {resolvedVS.length}
               </div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-pv-muted mt-1">
-                Resueltos
+                {t("resolved")}
               </div>
             </div>
             <div className="card p-4 text-center">
@@ -216,7 +221,7 @@ export default function HomePage() {
                 )}
               </div>
               <div className="text-[10px] font-bold uppercase tracking-wider text-pv-muted mt-1">
-                Pozo total
+                {t("totalPool")}
               </div>
             </div>
           </div>
@@ -231,11 +236,11 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(34,211,238,0.6)]" />
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-cyan">
-                  VS Abiertos
+                  {t("openVS")}
                 </span>
               </div>
               <span className="text-[11px] text-pv-muted">
-                {openVS.length} esperando rival
+                {t("waitingRival", { count: openVS.length })}
               </span>
             </div>
 
@@ -250,7 +255,7 @@ export default function HomePage() {
                 href="/explore"
                 className="block w-full py-3.5 rounded-xl border border-pv-cyan/15 bg-pv-cyan/[0.04] text-center font-display text-sm font-bold text-pv-cyan mt-2.5 hover:bg-pv-cyan/[0.08] transition-colors"
               >
-                Ver todos los VS abiertos ({openVS.length})
+                {t("viewAllOpen", { count: openVS.length })}
               </Link>
             )}
           </div>
@@ -262,7 +267,7 @@ export default function HomePage() {
         <AnimatedItem>
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald text-center mb-4">
-              Recientemente proven
+              {t("recentlyProven")}
             </div>
             <div className="flex flex-col gap-2">
               {resolvedVS.slice(0, 3).map((vs) => (
@@ -279,7 +284,7 @@ export default function HomePage() {
                         <span className="font-semibold">
                           {shortenAddress(vs.winner)}
                         </span>
-                        <span className="text-pv-muted"> ganó</span>
+                        <span className="text-pv-muted"> {t("won")}</span>
                       </span>
                     </div>
                     <span className="font-mono text-[13px] font-bold text-pv-gold">

@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { shortenAddress } from "@/lib/constants";
 
 interface VSStripProps {
@@ -17,11 +20,13 @@ export default function VSStrip({
   isOpen,
   compact = false,
 }: VSStripProps) {
+  const t = useTranslations("strip");
+
   return (
     <div className="flex rounded-xl overflow-hidden border border-pv-surface2">
       <div className={`flex-1 bg-pv-cyan/[0.03] ${compact ? "px-3 py-2" : "p-4"}`}>
         <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-cyan/50">
-          Creador
+          {t("creator")}
         </div>
         {!compact && (
           <div className="text-sm font-semibold mt-1">
@@ -41,7 +46,7 @@ export default function VSStrip({
 
       <div className={`flex-1 bg-pv-fuch/[0.03] ${compact ? "px-3 py-2" : "p-4"}`}>
         <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-fuch/50">
-          Rival
+          {t("rival")}
         </div>
         {isOpen ? (
           <div
@@ -49,7 +54,7 @@ export default function VSStrip({
               compact ? "text-xs mt-0.5" : "text-xs mt-1"
             }`}
           >
-            Esperando...
+            {t("waiting")}
           </div>
         ) : (
           <>

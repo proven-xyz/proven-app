@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "title": "PROVEN — The truth is proven.",
+    "description": "1v1 prediction challenges settled by AI. No referees. No arguments. PROVEN decides."
+  },
+  "common": {
+    "back": "Back",
+    "connect": "Connect",
+    "connectWallet": "Connect Wallet",
+    "loading": "Loading...",
+    "copy": "Copy",
+    "copied": "Done",
+    "cancel": "Cancel",
+    "skipToContent": "Skip to content",
+    "vs": "VS"
+  },
+  "header": {
+    "challenge": "+ Challenge",
+    "explore": "Explore",
+    "myVS": "My VS",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
+  },
+  "footer": {
+    "tagline": "The truth is proven.",
+    "explore": "Explore",
+    "createVS": "Create VS",
+    "poweredBy": "Powered by GenLayer AI Consensus"
+  },
+  "home": {
+    "vsOfDay": "VS of the day",
+    "tagline": "The truth is proven. Create the first VS.",
+    "challengeSomeone": "Challenge someone",
+    "connectWalletToStart": "Connect Wallet to start",
+    "exploreOpenVS": "Explore open VS",
+    "noReferees": "No referees.",
+    "noArguments": "No arguments.",
+    "noWaiting": "No waiting.",
+    "aiFindsProof": "AI finds the proof.",
+    "provenDecides": "PROVEN",
+    "winnerPaidInstantly": "decides. Winner gets paid instantly.",
+    "howItWorks": "How does it work?",
+    "stepChallenge": "Challenge",
+    "stepChallengeSub": "your bet",
+    "stepSend": "Send",
+    "stepSendSub": "the link",
+    "stepAccept": "Accept",
+    "stepAcceptSub": "your rival",
+    "stepProven": "PROVEN",
+    "stepProvenSub": "decides",
+    "totalVS": "Total VS",
+    "resolved": "Resolved",
+    "totalPool": "Total pool",
+    "openVS": "Open VS",
+    "waitingRival": "{count} waiting for rival",
+    "viewAllOpen": "View all open VS ({count})",
+    "recentlyProven": "Recently proven",
+    "won": "won"
+  },
+  "create": {
+    "whatWillHappen": "What will happen?",
+    "ibet": "I bet",
+    "rivalBets": "Rival bets",
+    "raiseStake": "Raise the stake",
+    "verificationSource": "Verification source",
+    "deadline": "Deadline",
+    "orChooseExactDate": "Or choose exact date...",
+    "createAndFund": "Create & Fund ${amount}",
+    "funding": "Funding...",
+    "connectWallet": "Connect Wallet",
+    "fillAllFields": "Fill in all fields",
+    "connectWalletFirst": "Connect your wallet first",
+    "vsCreatedAndFunded": "VS created and funded",
+    "sendThisLink": "Send this link to your rival.",
+    "viewVS": "View VS",
+    "createAnother": "Create another",
+    "errorCreating": "Error creating VS",
+    "linkCopied": "Link copied",
+    "presets": {
+      "1h": "1h",
+      "24h": "24h",
+      "3days": "3 days",
+      "1week": "1 week"
+    }
+  },
+  "explore": {
+    "title": "Open VS",
+    "available": "{count} available",
+    "subtitle": "Accept someone's VS. Pick your fight.",
+    "searchPlaceholder": "Search VS...",
+    "category": "Category",
+    "all": "All",
+    "minStake": "Min stake",
+    "any": "Any",
+    "sortBy": "Sort by",
+    "newest": "Newest",
+    "highestStake": "Highest stake",
+    "expiring": "Expiring soon",
+    "results": "{count} result",
+    "resultsPlural": "{count} results",
+    "noResults": "No VS match these filters",
+    "noResultsDesc": "Try changing the filters or create your own VS.",
+    "challengeSomeone": "Challenge someone"
+  },
+  "dashboard": {
+    "title": "My VS",
+    "total": "{count} total",
+    "new": "+ New",
+    "record": "Record",
+    "winRate": "Win rate",
+    "totalWon": "Won",
+    "tabAll": "All",
+    "tabActive": "Active",
+    "tabDone": "Resolved",
+    "noVSHere": "No VS here",
+    "noVSDesc": "Challenge someone and start competing.",
+    "challengeSomeone": "Challenge someone",
+    "connectTitle": "PROVEN.",
+    "connectDesc": "Connect your wallet to see your VS.",
+    "connect": "Connect"
+  },
+  "vsDetail": {
+    "challenges": "challenges",
+    "challengesYou": "@{address} challenges you",
+    "creator": "Creator",
+    "rival": "Rival",
+    "you": "(you)",
+    "waitingRival": "Waiting for rival...",
+    "pool": "Pool",
+    "deadline": "Deadline",
+    "provenVerifies": "PROVEN verifies automatically",
+    "source": "Source",
+    "acceptAndStake": "Accept & Stake ${amount}",
+    "accepting": "Accepting...",
+    "acceptedToast": "Accepted — ${amount} at stake",
+    "errorAccepting": "Error accepting",
+    "connectToAccept": "Connect Wallet to accept",
+    "resolveVS": "Resolve VS",
+    "proven": "PROVEN.",
+    "errorResolving": "Error resolving",
+    "waitingDeadline": "Waiting for deadline to resolve...",
+    "sendLink": "Send this link to your rival",
+    "cancelVS": "Cancel VS",
+    "cancelling": "Cancelling...",
+    "cancelledToast": "VS cancelled",
+    "errorCancelling": "Error cancelling",
+    "notFound": "VS not found",
+    "progressCreated": "Created",
+    "progressAccepted": "Accepted",
+    "progressVerifying": "Verifying",
+    "progressProven": "PROVEN"
+  },
+  "stamp": {
+    "provenDecided": "PROVEN has decided",
+    "won": "Winner @{address}",
+    "draw": "Draw"
+  },
+  "terminal": {
+    "searchingEvidence": "AI searching for evidence...",
+    "analyzing": "Analyzing {url}...",
+    "comparingSources": "Comparing sources...",
+    "issuingVerdict": "Issuing verdict"
+  },
+  "badges": {
+    "open": "Open",
+    "accepted": "Accepted",
+    "resolved": "PROVEN",
+    "won": "You won",
+    "lost": "You lost",
+    "draw": "Draw",
+    "cancelled": "Cancelled"
+  },
+  "wallet": {
+    "noWallet": "No wallet found. Install MetaMask.",
+    "rejected": "Connection rejected",
+    "error": "Connection error"
+  },
+  "categories": {
+    "deportes": "Sports",
+    "clima": "Weather",
+    "crypto": "Crypto",
+    "cultura": "Culture",
+    "custom": "Custom"
+  },
+  "strip": {
+    "creator": "Creator",
+    "rival": "Rival",
+    "waiting": "Waiting..."
+  },
+  "poolBadge": {
+    "atStake": "at stake"
+  }
+}

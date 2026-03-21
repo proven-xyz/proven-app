@@ -1,16 +1,20 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 interface BadgeProps {
   status: string;
   large?: boolean;
 }
 
-const STATUS_MAP: Record<string, { color: string; label: string }> = {
-  open: { color: "pv-cyan", label: "Abierto" },
-  accepted: { color: "pv-fuch", label: "Aceptado" },
-  resolved: { color: "pv-emerald", label: "PROVEN" },
-  won: { color: "pv-emerald", label: "Ganaste" },
-  lost: { color: "pv-danger", label: "Perdiste" },
-  draw: { color: "pv-muted", label: "Empate" },
-  cancelled: { color: "zinc-500", label: "Cancelado" },
+const STATUS_COLORS: Record<string, string> = {
+  open: "pv-cyan",
+  accepted: "pv-fuch",
+  resolved: "pv-emerald",
+  won: "pv-emerald",
+  lost: "pv-danger",
+  draw: "pv-muted",
+  cancelled: "zinc-500",
 };
 
 const colorMap: Record<string, string> = {
@@ -24,8 +28,10 @@ const colorMap: Record<string, string> = {
 };
 
 export default function Badge({ status, large = false }: BadgeProps) {
-  const { color, label } = STATUS_MAP[status] ?? STATUS_MAP.open;
+  const t = useTranslations("badges");
+  const color = STATUS_COLORS[status] ?? "pv-muted";
   const classes = colorMap[color] ?? colorMap["pv-muted"];
+  const label = t(status as any);
 
   return (
     <span

@@ -1,0 +1,193 @@
+{
+  "metadata": {
+    "title": "PROVEN — La verdad se demuestra.",
+    "description": "Desafíos de predicción 1v1 resueltos por IA. Sin árbitros. Sin discusiones. PROVEN decide."
+  },
+  "common": {
+    "back": "Volver",
+    "connect": "Conectar",
+    "connectWallet": "Conectar Wallet",
+    "loading": "Cargando...",
+    "copy": "Copiar",
+    "copied": "Listo",
+    "cancel": "Cancelar",
+    "skipToContent": "Saltar al contenido",
+    "vs": "VS"
+  },
+  "header": {
+    "challenge": "+ Desafiar",
+    "explore": "Explorar",
+    "myVS": "Mis VS",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú"
+  },
+  "footer": {
+    "tagline": "La verdad se demuestra.",
+    "explore": "Explorar",
+    "createVS": "Crear VS",
+    "poweredBy": "Powered by GenLayer AI Consensus"
+  },
+  "home": {
+    "vsOfDay": "VS del día",
+    "tagline": "La verdad se demuestra. Creá el primer VS.",
+    "challengeSomeone": "Desafiar a alguien",
+    "connectWalletToStart": "Conectar Wallet para empezar",
+    "exploreOpenVS": "Explorar VS abiertos",
+    "noReferees": "Sin árbitros.",
+    "noArguments": "Sin discusiones.",
+    "noWaiting": "Sin esperar.",
+    "aiFindsProof": "La IA busca las pruebas.",
+    "provenDecides": "PROVEN",
+    "winnerPaidInstantly": "decide. El ganador cobra al instante.",
+    "howItWorks": "¿Cómo funciona?",
+    "stepChallenge": "Desafiá",
+    "stepChallengeSub": "tu apuesta",
+    "stepSend": "Mandá",
+    "stepSendSub": "el link",
+    "stepAccept": "Acepta",
+    "stepAcceptSub": "tu rival",
+    "stepProven": "PROVEN",
+    "stepProvenSub": "decide",
+    "totalVS": "VS totales",
+    "resolved": "Resueltos",
+    "totalPool": "Pozo total",
+    "openVS": "VS Abiertos",
+    "waitingRival": "{count} esperando rival",
+    "viewAllOpen": "Ver todos los VS abiertos ({count})",
+    "recentlyProven": "Recientemente proven",
+    "won": "ganó"
+  },
+  "create": {
+    "whatWillHappen": "¿Qué va a pasar?",
+    "ibet": "Yo apuesto",
+    "rivalBets": "Rival apuesta",
+    "raiseStake": "Subí la apuesta",
+    "verificationSource": "Fuente de verificación",
+    "deadline": "Deadline",
+    "orChooseExactDate": "O elegí fecha exacta...",
+    "createAndFund": "Crear y Fondear ${amount}",
+    "funding": "Fondeando...",
+    "connectWallet": "Conectar Wallet",
+    "fillAllFields": "Completá todos los campos",
+    "connectWalletFirst": "Conectá tu wallet primero",
+    "vsCreatedAndFunded": "VS creado y fondeado",
+    "sendThisLink": "Mandá este link a tu rival.",
+    "viewVS": "Ver VS",
+    "createAnother": "Crear otro",
+    "errorCreating": "Error al crear el VS",
+    "linkCopied": "Link copiado",
+    "presets": {
+      "1h": "1h",
+      "24h": "24h",
+      "3days": "3 días",
+      "1week": "1 sem"
+    }
+  },
+  "explore": {
+    "title": "VS Abiertos",
+    "available": "{count} disponibles",
+    "subtitle": "Aceptá el VS de alguien más. Elegí tu pelea.",
+    "searchPlaceholder": "Buscar VS...",
+    "category": "Categoría",
+    "all": "Todos",
+    "minStake": "Apuesta mínima",
+    "any": "Cualquiera",
+    "sortBy": "Ordenar",
+    "newest": "Más nuevos",
+    "highestStake": "Mayor apuesta",
+    "expiring": "Por vencer",
+    "results": "{count} resultado",
+    "resultsPlural": "{count} resultados",
+    "noResults": "No hay VS con estos filtros",
+    "noResultsDesc": "Probá cambiando los filtros o creá tu propio VS.",
+    "challengeSomeone": "Desafiar a alguien"
+  },
+  "dashboard": {
+    "title": "Mis VS",
+    "total": "{count} total",
+    "new": "+ Nuevo",
+    "record": "Récord",
+    "winRate": "Win rate",
+    "totalWon": "Ganado",
+    "tabAll": "Todos",
+    "tabActive": "Activos",
+    "tabDone": "Resueltos",
+    "noVSHere": "No hay VS acá",
+    "noVSDesc": "Desafiá a alguien y empezá a competir.",
+    "challengeSomeone": "Desafiar a alguien",
+    "connectTitle": "PROVEN.",
+    "connectDesc": "Conectá tu wallet para ver tus VS.",
+    "connect": "Conectar"
+  },
+  "vsDetail": {
+    "challenges": "desafía",
+    "challengesYou": "@{address} te desafía",
+    "creator": "Creador",
+    "rival": "Rival",
+    "you": "(vos)",
+    "waitingRival": "Esperando rival...",
+    "pool": "Pozo",
+    "deadline": "Deadline",
+    "provenVerifies": "PROVEN verifica automáticamente",
+    "source": "Fuente",
+    "acceptAndStake": "Aceptar y Poner ${amount}",
+    "accepting": "Aceptando...",
+    "acceptedToast": "Aceptaste — hay ${amount} en juego",
+    "errorAccepting": "Error al aceptar",
+    "connectToAccept": "Conectar Wallet para aceptar",
+    "resolveVS": "Resolver VS",
+    "proven": "PROVEN.",
+    "errorResolving": "Error al resolver",
+    "waitingDeadline": "Esperando deadline para resolver...",
+    "sendLink": "Mandá este link a tu rival",
+    "cancelVS": "Cancelar VS",
+    "cancelling": "Cancelando...",
+    "cancelledToast": "VS cancelado",
+    "errorCancelling": "Error al cancelar",
+    "notFound": "VS no encontrado",
+    "progressCreated": "Creado",
+    "progressAccepted": "Aceptado",
+    "progressVerifying": "Verificando",
+    "progressProven": "PROVEN"
+  },
+  "stamp": {
+    "provenDecided": "PROVEN ya decidió",
+    "won": "Ganó @{address}",
+    "draw": "Empate"
+  },
+  "terminal": {
+    "searchingEvidence": "IA buscando pruebas...",
+    "analyzing": "Analizando {url}...",
+    "comparingSources": "Comparando fuentes...",
+    "issuingVerdict": "Emitiendo veredicto"
+  },
+  "badges": {
+    "open": "Abierto",
+    "accepted": "Aceptado",
+    "resolved": "PROVEN",
+    "won": "Ganaste",
+    "lost": "Perdiste",
+    "draw": "Empate",
+    "cancelled": "Cancelado"
+  },
+  "wallet": {
+    "noWallet": "No se encontró wallet. Instalá MetaMask.",
+    "rejected": "Conexión rechazada",
+    "error": "Error al conectar"
+  },
+  "categories": {
+    "deportes": "Deportes",
+    "clima": "Clima",
+    "crypto": "Crypto",
+    "cultura": "Cultura",
+    "custom": "Custom"
+  },
+  "strip": {
+    "creator": "Creador",
+    "rival": "Rival",
+    "waiting": "Esperando..."
+  },
+  "poolBadge": {
+    "atStake": "en juego"
+  }
+}

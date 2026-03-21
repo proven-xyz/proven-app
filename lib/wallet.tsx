@@ -29,10 +29,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
         if (accounts?.length > 0) setAddress(accounts[0]);
       } else {
-        setError("No se encontró wallet. Instalá MetaMask.");
+        setError("no_wallet");
       }
     } catch (err: any) {
-      setError(err.code === 4001 ? "Conexión rechazada" : "Error al conectar");
+      setError(err.code === 4001 ? "rejected" : "error");
     } finally {
       setIsConnecting(false);
     }

@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import type { VSData } from "@/lib/contract";
 import { shortenAddress, getCategoryInfo, ZERO_ADDRESS } from "@/lib/constants";
 import VSStrip from "./ui/VSStrip";
@@ -20,6 +21,8 @@ export default function VSCard({
   const catInfo = getCategoryInfo(vs.category);
   const isOpen = vs.opponent === ZERO_ADDRESS;
   const pool = vs.stake_amount * (isOpen ? 1 : 2);
+  const t = useTranslations("vsDetail");
+  const tCat = useTranslations("categories");
 
   return (
     <Link href={`/vs/${vs.id}`} className="block group">
@@ -36,7 +39,7 @@ export default function VSCard({
               <span className="text-[13px] font-semibold">
                 {shortenAddress(vs.creator)}
               </span>
-              <span className="text-xs text-pv-muted">desafía</span>
+              <span className="text-xs text-pv-muted">{t("challenges")}</span>
             </div>
             <div className="flex items-center gap-2">
               {showCategory && (
@@ -48,7 +51,7 @@ export default function VSCard({
                     color: catInfo.color,
                   }}
                 >
-                  {catInfo.label}
+                  {tCat(catInfo.id)}
                 </span>
               )}
               <span className="font-mono text-[13px] font-bold text-pv-gold">
@@ -72,7 +75,7 @@ export default function VSCard({
 
           {showAcceptCTA && isOpen && (
             <div className="w-full py-3 mt-3.5 rounded-xl bg-pv-fuch/10 border border-pv-fuch/20 text-center font-display text-sm font-bold text-pv-fuch group-hover:bg-pv-fuch/15 transition-colors">
-              Aceptar y Poner ${vs.stake_amount}
+              {t("acceptAndStake", { amount: vs.stake_amount })}
             </div>
           )}
         </div>

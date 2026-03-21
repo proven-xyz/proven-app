@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import GlassCard from "./ui/GlassCard";
 import { shortenAddress } from "@/lib/constants";
 
@@ -17,6 +18,8 @@ export default function ProvenStamp({
   stakeAmount,
   resolutionSummary,
 }: ProvenStampProps) {
+  const t = useTranslations("stamp");
+
   return (
     <GlassCard glow="both" className="animate-pulse-glow mb-6">
       <div className="p-4 text-center">
@@ -26,7 +29,7 @@ export default function ProvenStamp({
           transition={{ duration: 0.3 }}
           className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald mb-5"
         >
-          PROVEN ya decidió
+          {t("provenDecided")}
         </motion.div>
 
         <motion.div
@@ -47,7 +50,9 @@ export default function ProvenStamp({
           transition={{ delay: 0.3, duration: 0.4 }}
           className="font-display text-2xl font-bold mb-3"
         >
-          {hasWinner ? `Ganó @${shortenAddress(winner)}` : "Empate"}
+          {hasWinner
+            ? t("won", { address: shortenAddress(winner) })
+            : t("draw")}
         </motion.h2>
 
         {hasWinner && (

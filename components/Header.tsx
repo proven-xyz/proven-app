@@ -1,24 +1,27 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslations, useLocale } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { shortenAddress } from "@/lib/constants";
 import { Menu, X } from "lucide-react";
-
-const NAV_ITEMS = [
-  { href: "/vs/create", label: "+ Desafiar", accent: true },
-  { href: "/explore", label: "Explorar" },
-  { href: "/dashboard", label: "Mis VS" },
-];
 
 export default function Header() {
   const { address, isConnected, isConnecting, connect, disconnect } =
     useWallet();
   const pathname = usePathname();
+  const locale = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useTranslations("header");
+  const tc = useTranslations("common");
+
+  const NAV_ITEMS = [
+    { href: "/vs/create" as const, label: t("challenge"), accent: true },
+    { href: "/explore" as const, label: t("explore") },
+    { href: "/dashboard" as const, label: t("myVS") },
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-pv-surface bg-pv-bg/92 backdrop-blur-2xl">
@@ -69,6 +72,33 @@ export default function Header() {
               );
             })}
 
+          {/* Language switcher */}
+          <div className="flex items-center gap-1 text-xs font-mono">
+            <Link
+              href={pathname || "/"}
+              locale="es"
+              className={`px-1 transition-colors ${
+                locale === "es"
+                  ? "text-pv-text font-bold"
+                  : "text-pv-muted hover:text-pv-text"
+              }`}
+            >
+              ES
+            </Link>
+            <span className="text-pv-border">|</span>
+            <Link
+              href={pathname || "/"}
+              locale="en"
+              className={`px-1 transition-colors ${
+                locale === "en"
+                  ? "text-pv-text font-bold"
+                  : "text-pv-muted hover:text-pv-text"
+              }`}
+            >
+              EN
+            </Link>
+          </div>
+
           {isConnected ? (
             <button
               onClick={disconnect}
@@ -82,13 +112,36 @@ export default function Header() {
               disabled={isConnecting}
               className="px-4 py-1.5 rounded-[10px] bg-pv-text text-pv-bg text-[13px] font-bold border-none cursor-pointer focus-ring transition-opacity hover:opacity-90"
             >
-              {isConnecting ? "..." : "Conectar"}
+              {isConnecting ? "..." : tc("connect")}
             </button>
           )}
         </div>
 
         {/* Mobile hamburger */}
         <div className="flex sm:hidden items-center gap-2">
+          {/* Language switcher mobile */}
+          <div className="flex items-center gap-0.5 text-[10px] font-mono">
+            <Link
+              href={pathname || "/"}
+              locale="es"
+              className={`px-0.5 ${
+                locale === "es" ? "text-pv-text font-bold" : "text-pv-muted"
+              }`}
+            >
+              ES
+            </Link>
+            <span className="text-pv-border">|</span>
+            <Link
+              href={pathname || "/"}
+              locale="en"
+              className={`px-0.5 ${
+                locale === "en" ? "text-pv-text font-bold" : "text-pv-muted"
+              }`}
+            >
+              EN
+            </Link>
+          </div>
+
           {isConnected ? (
             <button
               onClick={disconnect}
@@ -102,14 +155,14 @@ export default function Header() {
               disabled={isConnecting}
               className="px-3 py-1.5 rounded-[10px] bg-pv-text text-pv-bg text-[12px] font-bold"
             >
-              {isConnecting ? "..." : "Conectar"}
+              {isConnecting ? "..." : tc("connect")}
             </button>
           )}
           {isConnected && (
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className="p-1.5 rounded-lg text-pv-muted hover:text-pv-text transition-colors"
-              aria-label={mobileOpen ? "Cerrar menú" : "Abrir menú"}
+              aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
             </button>

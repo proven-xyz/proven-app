@@ -40,8 +40,9 @@ export function shortenAddress(a: string, chars = 4): string {
   return `${a.slice(0, chars + 2)}…${a.slice(-chars)}`;
 }
 
-export function formatDeadline(ts: number): string {
-  return new Date(ts * 1000).toLocaleString("es-AR", {
+export function formatDeadline(ts: number, locale = "es"): string {
+  const loc = locale === "en" ? "en-US" : "es-AR";
+  return new Date(ts * 1000).toLocaleString(loc, {
     day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
   });
 }
