@@ -23,6 +23,27 @@ PROVEN te permite desafiar a cualquiera a una apuesta sobre hechos verificables 
 
 ---
 
+## Product Positioning
+
+PROVEN is an AI-settled claim market, not just a 1v1 betting app.
+
+The current product supports:
+
+- head-to-head claims and `1 vs many` open arenas
+- pool odds and creator-backed fixed odds
+- binary, moneyline, spread, total, prop, and custom markets
+- custom handicap lines and settlement rules
+- rivalry-linked rematches through onchain parent/child claims
+
+The core idea is simple: users publicly price conviction around a verifiable outcome, and PROVEN resolves it from explicit market terms, evidence sources, and validator consensus.
+
+Related internal docs:
+
+- `deep-research-report.md`
+- `implementation-checklist.md`
+
+---
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -116,6 +137,28 @@ proven/
 
 ---
 
+## Repo-Local Codex Skills
+
+This repo includes repo-local Codex skills for GenLayer workflows under `.agents/skills/`, with usage guidance in `AGENTS.md`.
+
+Useful entry points:
+
+- `$write-contract` for new contract work and major contract refactors
+- `$genvm-lint` for contract validation before tests or deployment
+- `$genlayer-cli` for network, deploy, call, write, and receipt workflows
+- `$direct-tests` for fast logic checks
+- `$integration-tests` for localnet, Studio, or testnet validation
+- `$genlayernode` for validator and node operations
+
+Recommended flow:
+
+1. Use `$write-contract` for large contract design or refactors
+2. Run `$genvm-lint` after every contract change
+3. Start with `$direct-tests`
+4. Escalate to `$integration-tests` only when environment or consensus behavior matters
+
+---
+
 ## Quick Start (Local Development)
 
 ### Prerequisites
@@ -178,14 +221,36 @@ npm run dev
 ### Option B: CLI Deploy to Bradbury
 
 ```bash
-# Set your private key
-export DEPLOYER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
-
-# Deploy
+# Fast CLI deploy using the active GenLayer account and network
 npm run deploy:contract
 ```
 
-The script will print the contract address. Copy it to `.env.local`.
+Useful variants:
+
+```bash
+# Force Bradbury first, then deploy contracts/proven.py
+npm run deploy:contract:bradbury
+
+# Deploy and sync NEXT_PUBLIC_CONTRACT_ADDRESS into .env.local
+npm run deploy:contract:env
+
+# Pass constructor args through to genlayer deploy
+npm run deploy:contract -- --args "hello" 42
+```
+
+The wrapper uses the active `genlayer` CLI account and network, defaults to `contracts/proven.py`, and can optionally update `.env.local`.
+
+### Option C: SDK Deploy Script
+
+If you prefer the older private-key-based script:
+
+```bash
+# Set your private key
+export DEPLOYER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
+
+# Deploy with genlayer-js
+npm run deploy:contract:sdk
+```
 
 ### Getting Testnet Tokens
 
