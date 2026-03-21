@@ -143,6 +143,8 @@
     "eyebrow": "Tu Arena"
   },
   "vsDetail": {
+    "eyebrow": "Arena en Vivo",
+    "subtitle": "Detalles del desafío, términos de apuesta y resolución autónoma en tiempo real.",
     "challenges": "desafía",
     "challengesYou": "@{address} te desafía",
     "creator": "Creador",
@@ -171,7 +173,9 @@
     "progressCreated": "Creado",
     "progressAccepted": "Aceptado",
     "progressVerifying": "Verificando",
-    "progressProven": "PROVEN"
+    "progressProven": "PROVEN",
+    "sampleMode": "Desafío de vista previa: esta es una card de ejemplo de la arena. Creá un VS real para interactuar onchain.",
+    "sampleModeCTA": "Crear Desafío Real"
   },
   "stamp": {
     "provenDecided": "PROVEN ya decidió",

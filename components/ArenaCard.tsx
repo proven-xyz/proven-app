@@ -23,7 +23,7 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   const isOpen = vs.opponent === ZERO_ADDRESS;
   const pool = vs.stake_amount * (isOpen ? 1 : 2);
   const activeChallengers = challengersCount ?? (isOpen ? 1 : 2);
-
+  
   return (
     <Link href={`/vs/${vs.id}`} className="block h-full group">
       <article className="card h-full p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-cyan/[0.35] hover:shadow-glow flex flex-col">

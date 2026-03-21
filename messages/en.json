@@ -143,6 +143,8 @@
     "eyebrow": "Your Arena"
   },
   "vsDetail": {
+    "eyebrow": "Live Arena",
+    "subtitle": "Challenge details, stake terms, and autonomous resolution in real time.",
     "challenges": "challenges",
     "challengesYou": "@{address} challenges you",
     "creator": "Creator",
@@ -171,7 +173,9 @@
     "progressCreated": "Created",
     "progressAccepted": "Accepted",
     "progressVerifying": "Verifying",
-    "progressProven": "PROVEN"
+    "progressProven": "PROVEN",
+    "sampleMode": "Preview challenge: this is a sample arena card. Create a real VS to interact onchain.",
+    "sampleModeCTA": "Create Real Challenge"
   },
   "stamp": {
     "provenDecided": "PROVEN has decided",

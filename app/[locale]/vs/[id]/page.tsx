@@ -12,6 +12,7 @@ import {
   ZERO_ADDRESS,
   shortenAddress,
   getShareUrl,
+  getCategoryInfo,
 } from "@/lib/constants";
 import { useCountdown } from "@/lib/hooks";
 import { toast } from "sonner";
@@ -33,6 +34,57 @@ import {
   ExternalLink,
   Share2,
 } from "lucide-react";
+
+const SAMPLE_VS: Record<number, VSData> = {
+  [-1]: {
+    id: -1,
+    creator: ZERO_ADDRESS,
+    opponent: ZERO_ADDRESS,
+    question: "BTC Price will break $100k before March 31",
+    creator_position: "BTC breaks $100k",
+    opponent_position: "BTC stays below $100k",
+    resolution_url: "coingecko.com/en/coins/bitcoin",
+    stake_amount: 200,
+    deadline: Math.floor(Date.now() / 1000) + 86400 * 5,
+    state: "open",
+    winner: ZERO_ADDRESS,
+    resolution_summary: "",
+    created_at: Math.floor(Date.now() / 1000),
+    category: "crypto",
+  },
+  [-2]: {
+    id: -2,
+    creator: ZERO_ADDRESS,
+    opponent: ZERO_ADDRESS,
+    question: "GPT-5 Announced by OpenAI before June",
+    creator_position: "OpenAI announces GPT-5 before June",
+    opponent_position: "No official announcement before June",
+    resolution_url: "openai.com",
+    stake_amount: 400,
+    deadline: Math.floor(Date.now() / 1000) + 86400 * 12,
+    state: "open",
+    winner: ZERO_ADDRESS,
+    resolution_summary: "",
+    created_at: Math.floor(Date.now() / 1000),
+    category: "custom",
+  },
+  [-3]: {
+    id: -3,
+    creator: ZERO_ADDRESS,
+    opponent: ZERO_ADDRESS,
+    question: "Lakers win the western conference",
+    creator_position: "Lakers win the West",
+    opponent_position: "Any other team wins the West",
+    resolution_url: "nba.com",
+    stake_amount: 140,
+    deadline: Math.floor(Date.now() / 1000) + 86400 * 18,
+    state: "open",
+    winner: ZERO_ADDRESS,
+    resolution_summary: "",
+    created_at: Math.floor(Date.now() / 1000),
+    category: "deportes",
+  },
+};
 
 function ProgressBar({ state }: { state: string }) {
   const t = useTranslations("vsDetail");
@@ -92,9 +144,11 @@ function ProgressBar({ state }: { state: string }) {
 export default function VSDetailPage() {
   const params = useParams();
   const vsId   = Number(params.id);
+  const isSampleVS = vsId < 0 && !!SAMPLE_VS[vsId];
   const { address, isConnected, connect } = useWallet();
   const t  = useTranslations("vsDetail");
   const tc = useTranslations("common");
+  const tCat = useTranslations("categories");
 
   const [vs, setVS]                       = useState<VSData | null>(null);
   const [loading, setLoading]             = useState(true);
@@ -106,16 +160,22 @@ export default function VSDetailPage() {
   const countdown = useCountdown(vs?.deadline || 0);
 
   const fetchVS = useCallback(async () => {
+    if (isSampleVS) {
+      setVS(SAMPLE_VS[vsId]);
+      setLoading(false);
+      return;
+    }
     const data = await getVS(vsId);
     setVS(data);
     setLoading(false);
-  }, [vsId]);
+  }, [isSampleVS, vsId]);
 
   useEffect(() => {
     fetchVS();
+    if (isSampleVS) return;
     const i = setInterval(fetchVS, 10000);
     return () => clearInterval(i);
-  }, [fetchVS]);
+  }, [fetchVS, isSampleVS]);
 
   if (loading) {
     return (
@@ -141,12 +201,13 @@ export default function VSDetailPage() {
 
   const isCreator  = address?.toLowerCase() === vs.creator.toLowerCase();
   const isOpponent = address?.toLowerCase() === vs.opponent.toLowerCase();
-  const canAccept  = vs.state === "open" && isConnected && !isCreator;
-  const canResolve = vs.state === "accepted" && countdown.expired;
-  const canCancel  = vs.state === "open" && isCreator;
+  const canAccept  = !isSampleVS && vs.state === "open" && isConnected && !isCreator;
+  const canResolve = !isSampleVS && vs.state === "accepted" && countdown.expired;
+  const canCancel  = !isSampleVS && vs.state === "open" && isCreator;
   const hasWinner  = vs.winner !== ZERO_ADDRESS;
   const isOpen     = vs.opponent === ZERO_ADDRESS;
   const pool       = vs.stake_amount * (isOpen ? 1 : 2);
+  const categoryInfo = getCategoryInfo(vs.category);
 
   async function handleAccept() {
     if (!address) return;
@@ -222,6 +283,37 @@ export default function VSDetailPage() {
           </AnimatedItem>
         )}
 
+        {/* Arena header */}
+        <AnimatedItem>
+          <div className="mb-6 lg:max-w-[800px] lg:mx-auto">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-pv-cyan shadow-[0_0_8px_rgba(93,230,255,0.6)]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-cyan">
+                {t("eyebrow")}
+              </span>
+            </div>
+            <p className="mt-4 text-sm sm:text-base text-pv-muted leading-relaxed max-w-[700px]">
+              {t("subtitle")}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span
+                className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border"
+                style={{
+                  backgroundColor: `${categoryInfo.color}14`,
+                  borderColor: `${categoryInfo.color}4A`,
+                  color: categoryInfo.color,
+                }}
+              >
+                {tCat(categoryInfo.id)}
+              </span>
+              <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
+                {t("pool")}: ${pool}
+              </span>
+              <Badge status={vs.state} />
+            </div>
+          </div>
+        </AnimatedItem>
+
         {/* WINNER REVEAL */}
         {vs.state === "resolved" && resolvePhase === -1 && (
           <AnimatedItem>
@@ -263,7 +355,7 @@ export default function VSDetailPage() {
                     </span>
                   </div>
 
-                  <h1 className="font-display text-[clamp(26px,7vw,42px)] font-bold leading-[0.9] tracking-tight mb-7">
+                  <h1 className="font-display text-[clamp(28px,8.5vw,46px)] font-bold leading-[0.92] tracking-tight mb-7">
                     {vs.question}
                   </h1>
 
@@ -380,8 +472,9 @@ export default function VSDetailPage() {
           )}
 
         {/* ACTIONS */}
-        <AnimatedItem>
-          <div className="flex flex-col gap-3">
+        {!isSampleVS ? (
+          <AnimatedItem>
+            <div className="flex flex-col gap-3">
             {canAccept && (
               <Button
                 variant="fuch"
@@ -473,8 +566,22 @@ export default function VSDetailPage() {
                   : t("cancelVS")}
               </Button>
             )}
-          </div>
-        </AnimatedItem>
+            </div>
+          </AnimatedItem>
+        ) : (
+          <AnimatedItem>
+            <GlassCard className="text-center">
+              <p className="text-sm text-pv-muted">{t("sampleMode")}</p>
+              <div className="mt-3 flex justify-center">
+                <Link href="/vs/create" className="block w-full sm:w-auto">
+                  <Button variant="primary" fullWidth={false}>
+                    {t("sampleModeCTA")}
+                  </Button>
+                </Link>
+              </div>
+            </GlassCard>
+          </AnimatedItem>
+        )}
       </PageTransition>
     </>
   );

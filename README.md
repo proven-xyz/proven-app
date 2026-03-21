@@ -151,6 +151,19 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+If you see random chunk errors in dev (for example `Cannot find module './36.js'` from `next/dist/server/require-hook.js`), start with a clean cache:
+
+```bash
+npm run dev:clean
+```
+
+Or manually:
+
+```bash
+npm run clean
+npm run dev
+```
+
 ---
 
 ## Deploy the Smart Contract
