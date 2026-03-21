@@ -612,7 +612,7 @@ export default function CreatePage() {
             </div>
             <input
               type="datetime-local"
-              className="input text-sm focus-ring"
+              className="input text-sm"
               value={customDeadline}
               onChange={(event) => setCustomDeadline(event.target.value)}
               placeholder={t("orChooseExactDate")}
@@ -823,7 +823,7 @@ export default function CreatePage() {
 
         <AnimatedItem>
           {isConnected ? (
-            <Button variant="cyan" onClick={handleSubmit} loading={loading}>
+            <Button variant="primary" onClick={handleSubmit} loading={loading}>
               {loading
                 ? t("funding")
                 : rematchId

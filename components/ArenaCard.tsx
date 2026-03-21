@@ -88,7 +88,6 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
             {activeChallengers}/{maxChallengers}
           </span>
         </div>
-
         <div className="w-full mt-auto py-2.5 rounded border border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-center font-display text-sm font-bold text-pv-emerald transition-colors group-hover:bg-pv-emerald/[0.13]">
           {t("arenaJoin")}
         </div>
