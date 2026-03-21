@@ -2,81 +2,175 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
-
 @layer base {
   html {
     @apply antialiased;
     color-scheme: dark;
   }
+
   body {
     @apply bg-pv-bg text-pv-text font-body;
     min-height: 100vh;
+    position: relative;
   }
+
+  /* Grain texture overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
+  }
+
+  /* Vignette effect */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at 50% 50%,
+      transparent 50%,
+      rgba(9, 9, 11, 0.4) 100%
+    );
+  }
+
   ::selection {
-    background: rgba(16, 185, 129, 0.2);
+    background: rgba(16, 185, 129, 0.25);
   }
 }
 
 @layer components {
+  /* ── Buttons ── */
   .btn-primary {
     @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
            bg-pv-text text-pv-bg
-           transition-all duration-150
-           hover:opacity-90 active:scale-[0.98]
+           transition-all duration-200
+           hover:opacity-90 hover:shadow-elevated active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
+
   .btn-ghost {
     @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
            bg-transparent text-pv-muted border border-pv-border
-           transition-all duration-150
-           hover:border-pv-text/20 active:scale-[0.98];
+           transition-all duration-200
+           hover:border-pv-text/20 hover:text-pv-text active:scale-[0.97];
   }
+
   .btn-cyan {
     @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
            bg-pv-cyan text-pv-bg
-           transition-all duration-150
-           hover:opacity-90 active:scale-[0.98]
+           transition-all duration-200
+           hover:shadow-glow active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
+
   .btn-fuch {
     @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
            bg-pv-fuch text-white
-           transition-all duration-150
-           hover:opacity-90 active:scale-[0.98]
+           transition-all duration-200
+           hover:shadow-glow-fuch active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
+
   .btn-emerald {
     @apply w-full py-4 px-6 rounded-2xl font-display font-bold text-base
            bg-pv-emerald text-pv-bg
-           transition-all duration-150
-           hover:opacity-90 active:scale-[0.98]
+           transition-all duration-200
+           hover:shadow-glow-emerald active:scale-[0.97]
            disabled:opacity-40 disabled:cursor-not-allowed;
   }
+
   .btn-danger {
     @apply w-full py-4 px-6 rounded-2xl font-bold text-base
            bg-pv-danger/5 text-pv-danger border border-pv-danger/15
-           transition-all duration-150
-           active:scale-[0.98] disabled:opacity-40;
+           transition-all duration-200
+           active:scale-[0.97] disabled:opacity-40;
   }
+
+  /* ── Card ── */
   .card {
-    @apply bg-pv-surface border border-white/[0.06] rounded-3xl overflow-hidden relative;
+    @apply bg-pv-surface border border-white/[0.06] rounded-3xl overflow-hidden relative
+           transition-all duration-200;
   }
+
+  .card-hover {
+    @apply hover:border-white/[0.12] hover:shadow-elevated;
+  }
+
+  /* ── Form elements ── */
   .input {
     @apply w-full px-4 py-3.5 rounded-xl bg-pv-surface border border-pv-border
            text-pv-text placeholder:text-pv-muted font-body text-[15px]
-           focus:border-pv-cyan/30 focus:ring-1 focus:ring-pv-cyan/10
-           transition-all duration-150 outline-none;
+           focus:border-pv-cyan/40 focus:ring-2 focus:ring-pv-cyan/10
+           transition-all duration-200 outline-none;
   }
+
   .label {
     @apply block text-[11px] font-bold uppercase tracking-[0.16em] text-pv-muted mb-2;
   }
+
   .chip {
     @apply px-3.5 py-1.5 rounded-[10px] border border-pv-border bg-transparent
-           text-sm font-semibold cursor-pointer transition-all duration-150;
+           text-sm font-semibold cursor-pointer transition-all duration-200;
+  }
+
+  /* ── Glow utilities ── */
+  .glow-cyan {
+    background: radial-gradient(
+      ellipse at 0% 50%,
+      rgba(34, 211, 238, 0.06),
+      transparent 65%
+    );
+  }
+
+  .glow-fuch {
+    background: radial-gradient(
+      ellipse at 100% 50%,
+      rgba(232, 121, 249, 0.06),
+      transparent 65%
+    );
+  }
+
+  .glow-emerald {
+    background: radial-gradient(
+      ellipse at 50% 50%,
+      rgba(16, 185, 129, 0.06),
+      transparent 65%
+    );
+  }
+
+  .glow-gold {
+    background: radial-gradient(
+      ellipse at 50% 50%,
+      rgba(251, 191, 36, 0.06),
+      transparent 65%
+    );
+  }
+
+  /* ── Focus ring for accessibility ── */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-cyan/40
+           focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg;
   }
 }
 
+/* ── Staggered animation delays ── */
+.delay-1 { animation-delay: 0.07s; }
+.delay-2 { animation-delay: 0.14s; }
+.delay-3 { animation-delay: 0.21s; }
+.delay-4 { animation-delay: 0.28s; }
+.delay-5 { animation-delay: 0.35s; }
+.delay-6 { animation-delay: 0.42s; }
+
+/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #3F3F46; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #52525B; }

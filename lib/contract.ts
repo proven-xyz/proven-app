@@ -1,8 +1,7 @@
 import { createGenlayerClient } from "./genlayer";
 
-export const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0x0000000000000000000000000000000000000000";
+export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+  "0x0000000000000000000000000000000000000000") as any;
 
 export interface VSData {
   id: number;
@@ -30,7 +29,7 @@ export async function getVS(vsId: number): Promise<VSData | null> {
       address: CONTRACT_ADDRESS,
       functionName: "get_vs",
       args: [vsId],
-    })) as VSData;
+    })) as unknown as VSData;
   } catch {
     return null;
   }
@@ -43,7 +42,7 @@ export async function getVSCount(): Promise<number> {
       address: CONTRACT_ADDRESS,
       functionName: "get_vs_count",
       args: [],
-    })) as number;
+    })) as unknown as number;
   } catch {
     return 0;
   }
@@ -56,7 +55,7 @@ export async function getUserVSList(address: string): Promise<number[]> {
       address: CONTRACT_ADDRESS,
       functionName: "get_user_vs_list",
       args: [address],
-    })) as number[];
+    })) as unknown as number[];
   } catch {
     return [];
   }
@@ -131,6 +130,7 @@ export async function resolveVS(wallet: string, vsId: number) {
     address: CONTRACT_ADDRESS,
     functionName: "resolve_vs",
     args: [vsId],
+    value: BigInt(0),
   });
 
   return await client.waitForTransactionReceipt({
@@ -149,6 +149,7 @@ export async function cancelVS(wallet: string, vsId: number) {
     address: CONTRACT_ADDRESS,
     functionName: "cancel_vs",
     args: [vsId],
+    value: BigInt(0),
   });
 
   return await client.waitForTransactionReceipt({
