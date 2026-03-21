@@ -72,10 +72,10 @@ Thumbs.db
 next-env.d.ts
 
 # ========================
-# Agent skills (local tooling)
+# Agent skills
 # ========================
-.agents/
 skills-lock.json
+codex-genlayer-skills-full/
 
 # ========================
 # Misc
