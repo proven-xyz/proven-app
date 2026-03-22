@@ -290,6 +290,7 @@
     "accepting": "Aceptando...",
     "acceptedToast": "Aceptaste - hay ${amount} en juego",
     "errorAccepting": "Error al aceptar",
+    "challengeUnavailable": "Este desafio ya no acepta apuestas en el contrato actual.",
     "connectToAccept": "Conectar Wallet para aceptar",
     "resolveVS": "Resolver VS",
     "proven": "PROVEN.",

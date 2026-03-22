@@ -384,18 +384,37 @@ export default function VSDetailPage() {
 
     setActionLoading("accept");
     try {
+      const liveVS = await getVS(vsId, {
+        inviteKey,
+        viewerAddress: address,
+      });
+
+      if (!liveVS) {
+        setVS(null);
+        toast.error(t("notFound"));
+        return;
+      }
+
+      setVS(liveVS);
+
+      if (!isVSJoinable(liveVS, address)) {
+        toast.error(t("challengeUnavailable"));
+        return;
+      }
+
       await acceptVS(address, vsId, challengeStakeValue, inviteKey);
       toast.success(
         t("joinedToast", {
           amount: challengeStakeValue,
-          total: pool + challengeStakeValue,
+          total: getVSTotalPot(liveVS) + challengeStakeValue,
         })
       );
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorAccepting"));
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   }
 
   async function handleResolve() {

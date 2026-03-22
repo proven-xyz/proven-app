@@ -290,6 +290,7 @@
     "accepting": "Accepting...",
     "acceptedToast": "Accepted — ${amount} at stake",
     "errorAccepting": "Error accepting",
+    "challengeUnavailable": "This challenge is no longer open for staking on the current contract.",
     "connectToAccept": "Connect Wallet to accept",
     "resolveVS": "Resolve VS",
     "proven": "PROVEN.",
