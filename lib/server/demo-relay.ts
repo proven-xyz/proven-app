@@ -1,8 +1,26 @@
 import { createGenlayerClientWithKey } from "@/lib/genlayer";
+import { parseEventLogs } from "viem";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const ACCEPTED_RETRIES = 10;
 const ACCEPTED_INTERVAL_MS = 5000;
+
+/**
+ * The actual Bradbury consensus contract emits `CreatedTransaction(bytes32,uint256)`
+ * but the genlayer-js SDK expects `NewTransaction(bytes32,address,address)`.
+ * This ABI fragment lets us parse the real on-chain event.
+ */
+const CREATED_TX_EVENT_ABI = [
+  {
+    anonymous: false,
+    inputs: [
+      { indexed: true, internalType: "bytes32", name: "txId", type: "bytes32" },
+      { indexed: false, internalType: "uint256", name: "txSlot", type: "uint256" },
+    ],
+    name: "CreatedTransaction",
+    type: "event",
+  },
+] as const;
 
 export type RelayCreateClaimParams = {
   question: string;
@@ -90,13 +108,98 @@ async function getClaimCount(client: ReturnType<typeof createGenlayerClientWithK
   }
 }
 
+/**
+ * Send a write via the SDK, catching the "not processed by consensus" error
+ * that occurs because the on-chain contract emits `CreatedTransaction` but
+ * the SDK expects `NewTransaction`. We recover the GenLayer txId by fetching
+ * the EVM receipt ourselves and parsing `CreatedTransaction`.
+ */
+async function sendWrite(
+  client: ReturnType<typeof createGenlayerClientWithKey>,
+  opts: { address: string; functionName: string; args: unknown[]; value: bigint }
+): Promise<{ evmHash: string; glTxId: string }> {
+  try {
+    // The SDK returns the GenLayer txId if event parsing succeeds.
+    const glTxId: string = await client.writeContract({
+      address: opts.address as any,
+      functionName: opts.functionName,
+      args: opts.args as any,
+      value: opts.value,
+    });
+    return { evmHash: glTxId, glTxId };
+  } catch (err: any) {
+    // SDK threw because it couldn't find `NewTransaction` in the receipt.
+    // The EVM tx itself succeeded — recover by searching the signer's
+    // most recent EVM receipt for `CreatedTransaction`.
+    if (!err?.message?.includes("not processed by consensus")) {
+      throw err;
+    }
+  }
+
+  // Fallback: find the latest EVM tx from this signer and parse events.
+  const rpcUrl =
+    process.env.NEXT_PUBLIC_GENLAYER_RPC ||
+    process.env.GENLAYER_RPC ||
+    "https://rpc-bradbury.genlayer.com";
+
+  const account = client.account as any;
+  const signerAddress = (account?.address as string).toLowerCase();
+
+  async function rpc<T>(method: string, params: unknown[]): Promise<T> {
+    const res = await fetch(rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method, params }),
+    });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message);
+    return json.result as T;
+  }
+
+  const latestHex = await rpc<string>("eth_blockNumber", []);
+  const latest = parseInt(latestHex, 16);
+
+  for (let i = latest; i > latest - 20 && i >= 0; i--) {
+    const block = await rpc<any>("eth_getBlockByNumber", [
+      "0x" + i.toString(16),
+      true,
+    ]);
+    const tx = (block?.transactions || []).find(
+      (t: any) => t.from?.toLowerCase() === signerAddress
+    );
+    if (!tx) continue;
+
+    const receipt = await rpc<any>("eth_getTransactionReceipt", [tx.hash]);
+    if (receipt?.status === "0x0") {
+      throw new Error("Transaction reverted on-chain");
+    }
+
+    const events = parseEventLogs({
+      abi: CREATED_TX_EVENT_ABI,
+      eventName: "CreatedTransaction",
+      logs: receipt?.logs ?? [],
+    });
+
+    if (events.length > 0 && (events[0] as any).args?.txId) {
+      return {
+        evmHash: tx.hash,
+        glTxId: (events[0] as any).args.txId as string,
+      };
+    }
+
+    return { evmHash: tx.hash, glTxId: tx.hash };
+  }
+
+  throw new Error("Could not locate submitted transaction in recent blocks");
+}
+
 async function waitForAcceptance(
   client: ReturnType<typeof createGenlayerClientWithKey>,
-  txHash: `0x${string}`
+  glTxId: string
 ) {
   try {
     await client.waitForTransactionReceipt({
-      hash: txHash as any,
+      hash: glTxId as any,
       status: "ACCEPTED" as any,
       retries: ACCEPTED_RETRIES,
       interval: ACCEPTED_INTERVAL_MS,
@@ -121,15 +224,15 @@ export async function executeDemoWrite(
     throw new Error("Failed to initialize demo signer account");
   }
 
-  const address = getContractAddress();
-  let txHash: `0x${string}`;
+  const contractAddress = getContractAddress();
+  let writeResult: { evmHash: string; glTxId: string };
   let claimId: number | null = null;
 
   switch (request.action) {
     case "create_claim": {
       const beforeCount = await getClaimCount(client);
-      txHash = await client.writeContract({
-        address: address as any,
+      writeResult = await sendWrite(client, {
+        address: contractAddress,
         functionName: "create_claim",
         args: [
           request.params.question,
@@ -157,8 +260,8 @@ export async function executeDemoWrite(
 
     case "create_rematch": {
       const beforeCount = await getClaimCount(client);
-      txHash = await client.writeContract({
-        address: address as any,
+      writeResult = await sendWrite(client, {
+        address: contractAddress,
         functionName: "create_rematch",
         args: [
           request.parentId,
@@ -185,8 +288,8 @@ export async function executeDemoWrite(
     }
 
     case "challenge_claim":
-      txHash = await client.writeContract({
-        address: address as any,
+      writeResult = await sendWrite(client, {
+        address: contractAddress,
         functionName: "challenge_claim",
         args: [request.claimId, request.stakeAmount, request.inviteKey ?? ""],
         value: BigInt(request.stakeAmount),
@@ -194,8 +297,8 @@ export async function executeDemoWrite(
       break;
 
     case "resolve_claim":
-      txHash = await client.writeContract({
-        address: address as any,
+      writeResult = await sendWrite(client, {
+        address: contractAddress,
         functionName: "resolve_claim",
         args: [request.claimId],
         value: BigInt(0),
@@ -203,8 +306,8 @@ export async function executeDemoWrite(
       break;
 
     case "cancel_claim":
-      txHash = await client.writeContract({
-        address: address as any,
+      writeResult = await sendWrite(client, {
+        address: contractAddress,
         functionName: "cancel_claim",
         args: [request.claimId],
         value: BigInt(0),
@@ -215,12 +318,12 @@ export async function executeDemoWrite(
       throw new Error("Unsupported demo write action");
   }
 
-  const acceptance = await waitForAcceptance(client, txHash);
+  const acceptance = await waitForAcceptance(client, writeResult.glTxId);
 
   return {
-    txHash,
+    txHash: writeResult.evmHash,
     claimId,
     pending: acceptance.pending,
-    actor: account.address || ZERO_ADDRESS,
+    actor: (account as any).address || ZERO_ADDRESS,
   };
 }

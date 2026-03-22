@@ -1,5 +1,5 @@
 import { abi as genlayerAbi } from "genlayer-js";
-import { encodeFunctionData, toHex } from "viem";
+import { encodeFunctionData, toHex, parseEventLogs, createPublicClient, http } from "viem";
 
 import {
   createGenlayerClient,
@@ -305,21 +305,106 @@ export function mapClaimToVS(rawClaim: ClaimData): VSData {
   };
 }
 
-async function writeAndWait(functionName: string, wallet: string, args: unknown[], value: number) {
-  const txHash =
-    typeof window !== "undefined" && (window as any).ethereum
-      ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
-      : await sendRpcWriteTransaction(wallet, functionName, args, value);
+async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
+  const endpoint = getEndpoint();
+  const rpcUrl = endpoint || "https://rpc-bradbury.genlayer.com";
 
-  const receiptClient = createGenlayerClient();
-  const receipt = await receiptClient.waitForTransactionReceipt({
-    hash: txHash,
-    status: "ACCEPTED" as any,
-    retries: 200,
-    interval: 5000,
+  const viemClient = createPublicClient({
+    transport: http(rpcUrl),
   });
 
-  return { txHash, receipt } satisfies ContractWriteResult;
+  const evmReceipt = await viemClient.waitForTransactionReceipt({
+    hash: evmTxHash as `0x${string}`,
+  });
+
+  if (evmReceipt.status === "reverted") {
+    throw new Error("Transaction reverted on-chain");
+  }
+
+  // Bradbury emits CreatedTransaction(bytes32,uint256), not NewTransaction
+  const CREATED_TX_ABI = [
+    {
+      anonymous: false,
+      inputs: [
+        { indexed: true, internalType: "bytes32", name: "txId", type: "bytes32" },
+        { indexed: false, internalType: "uint256", name: "txSlot", type: "uint256" },
+      ],
+      name: "CreatedTransaction",
+      type: "event",
+    },
+  ] as const;
+
+  const events = parseEventLogs({
+    abi: CREATED_TX_ABI,
+    eventName: "CreatedTransaction",
+    logs: evmReceipt.logs,
+  });
+
+  if (events.length > 0 && (events[0] as any).args?.txId) {
+    return (events[0] as any).args.txId as string;
+  }
+
+  return evmTxHash;
+}
+
+async function writeAndWait(
+  functionName: string,
+  wallet: string,
+  args: unknown[],
+  value: number
+): Promise<ContractWriteResult & { pending?: boolean }> {
+  const isBrowser =
+    typeof window !== "undefined" && !!(window as any).ethereum;
+
+  const evmTxHash = isBrowser
+    ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
+    : await sendRpcWriteTransaction(wallet, functionName, args, value);
+
+  // --- browser (MetaMask) path: confirm at EVM level, skip consensus poll ---
+  if (isBrowser) {
+    try {
+      const rpcUrl = getEndpoint() || "https://rpc-bradbury.genlayer.com";
+      const viemClient = createPublicClient({ transport: http(rpcUrl) });
+
+      const evmReceipt = (await Promise.race([
+        viemClient.waitForTransactionReceipt({
+          hash: evmTxHash as `0x${string}`,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("evm-timeout")), 20_000)
+        ),
+      ])) as any;
+
+      if (evmReceipt?.status === "reverted") {
+        throw new Error("Transaction reverted on-chain");
+      }
+    } catch (err: any) {
+      if (err?.message === "Transaction reverted on-chain") throw err;
+      // timeout / RPC hiccup – tx was already submitted via MetaMask
+    }
+
+    return { txHash: evmTxHash, receipt: null, pending: true };
+  }
+
+  // --- SDK / server-key path: try the full consensus wait with a safety cap ---
+  try {
+    const genlayerTxId = await extractGenlayerTxId(evmTxHash);
+    const receiptClient = createGenlayerClient();
+    const receipt = await Promise.race([
+      receiptClient.waitForTransactionReceipt({
+        hash: genlayerTxId as any,
+        status: "ACCEPTED" as any,
+        retries: 200,
+        interval: 5000,
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("consensus-timeout")), 60_000)
+      ),
+    ]);
+    return { txHash: evmTxHash, receipt };
+  } catch {
+    return { txHash: evmTxHash, receipt: null, pending: true };
+  }
 }
 
 function makeCalldataObject(functionName: string, args: unknown[]) {
@@ -407,6 +492,7 @@ async function sendBrowserWriteTransaction(
       BigInt(3),
       BigInt(3),
       encodedTx,
+      BigInt(0),
     ],
   });
 
@@ -629,6 +715,10 @@ export async function getUserVSDirect(address: string): Promise<VSData[]> {
 }
 
 export async function createClaim(wallet: string, params: CreateClaimParams): Promise<ClaimWriteResult> {
+  // Capture current count before submitting so we can predict the new ID
+  // even when consensus hasn't finalised yet (pending writes).
+  const countBefore = await getClaimCount();
+
   const writeResult = await writeAndWait(
     "create_claim",
     wallet,
@@ -652,7 +742,13 @@ export async function createClaim(wallet: string, params: CreateClaimParams): Pr
     ],
     params.stake_amount
   );
-  const claimId = await inferCreatedClaimId(wallet);
+
+  // For pending writes the contract state hasn't updated yet,
+  // so infer the ID optimistically from the pre-submit count.
+  const claimId = (writeResult as any).pending
+    ? countBefore + 1
+    : await inferCreatedClaimId(wallet);
+
   return {
     ...writeResult,
     claimId,
@@ -664,6 +760,8 @@ export async function createRematch(
   parentId: number,
   params: Omit<CreateClaimParams, "parent_id">
 ): Promise<ClaimWriteResult> {
+  const countBefore = await getClaimCount();
+
   const writeResult = await writeAndWait(
     "create_rematch",
     wallet,
@@ -687,7 +785,11 @@ export async function createRematch(
     ],
     params.stake_amount
   );
-  const claimId = await inferCreatedClaimId(wallet);
+
+  const claimId = (writeResult as any).pending
+    ? countBefore + 1
+    : await inferCreatedClaimId(wallet);
+
   return {
     ...writeResult,
     claimId,
