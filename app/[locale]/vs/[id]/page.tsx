@@ -7,10 +7,9 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
+  CONTRACT_ADDRESS,
   acceptVS,
-  challengeClaimDemo,
   cancelVS,
-  cancelClaimDemo,
   didUserChallengeVS,
   getRivalryChain,
   getVS,
@@ -22,7 +21,6 @@ import {
   isVSJoinable,
   isVSPrivate,
   resolveVS,
-  resolveClaimDemo,
   type ClaimChallenger,
   type VSData,
 } from "@/lib/contract";
@@ -337,12 +335,13 @@ export default function VSDetailPage() {
   const missingPrivateInvite = isPrivateVS && !inviteKey && !isCreator && !isOpponent;
   const canAccept =
     !isSampleVS &&
+    !demoMode &&
     !missingPrivateInvite &&
-    isVSJoinable(vs, demoMode ? undefined : address) &&
-    (demoMode || isConnected);
+    isVSJoinable(vs, address) &&
+    isConnected;
   const canResolve =
-    !isSampleVS && vs.state === "accepted" && countdown.expired && (demoMode || isConnected);
-  const canCancel = !isSampleVS && vs.state === "open" && isCreator;
+    !isSampleVS && !demoMode && vs.state === "accepted" && countdown.expired && isConnected;
+  const canCancel = !isSampleVS && !demoMode && vs.state === "open" && isCreator;
   const hasWinner = hasVSWinner(vs);
   const challengerCount = getVSChallengerCount(vs);
   const maxChallengers =
@@ -382,9 +381,15 @@ export default function VSDetailPage() {
     vs.state === "resolved" ||
     vs.state === "cancelled";
   const shareUrl = getShareUrl(vsId, inviteKey);
+  const resolveCommand = `genlayer write ${CONTRACT_ADDRESS} resolve_claim --args ${vs.id}`;
+  const cancelCommand = `genlayer write ${CONTRACT_ADDRESS} cancel_claim --args ${vs.id}`;
+  const readCommand =
+    isPrivateVS
+      ? `genlayer call ${CONTRACT_ADDRESS} get_claim_with_access --args ${vs.id} "${inviteKey || "<invite_key>"}"`
+      : `genlayer call ${CONTRACT_ADDRESS} get_claim --args ${vs.id}`;
 
   async function handleAccept() {
-    if (!demoMode && !address) {
+    if (!address) {
       return;
     }
     if (!hasValidChallengeStake) {
@@ -407,24 +412,18 @@ export default function VSDetailPage() {
 
       setVS(liveVS);
 
-      if (!isVSJoinable(liveVS, demoMode ? undefined : address)) {
+      if (!isVSJoinable(liveVS, address)) {
         toast.error(t("challengeUnavailable"));
         return;
       }
 
-      const result = demoMode
-        ? await challengeClaimDemo(vsId, challengeStakeValue, inviteKey)
-        : await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
-
-      const isPending = "pending" in result && Boolean(result.pending);
+      await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
 
       toast.success(
-        isPending
-          ? t("submittedPending")
-          : t("joinedToast", {
-              amount: challengeStakeValue,
-              total: getVSTotalPot(liveVS) + challengeStakeValue,
-            })
+        t("joinedToast", {
+          amount: challengeStakeValue,
+          total: getVSTotalPot(liveVS) + challengeStakeValue,
+        })
       );
       fetchVS();
     } catch (err: any) {
@@ -435,7 +434,7 @@ export default function VSDetailPage() {
   }
 
   async function handleResolve() {
-    if (!demoMode && !address) {
+    if (!address) {
       return;
     }
     setActionLoading("resolve");
@@ -446,11 +445,8 @@ export default function VSDetailPage() {
     const t3 = setTimeout(() => setResolvePhase(3), 4800);
 
     try {
-      const result = demoMode
-        ? await resolveClaimDemo(vsId)
-        : await resolveVS(address!, vsId);
-      const isPending = "pending" in result && Boolean(result.pending);
-      toast.success(isPending ? t("submittedPending") : t("proven"));
+      await resolveVS(address!, vsId);
+      toast.success(t("proven"));
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
       fetchVS();
@@ -465,16 +461,13 @@ export default function VSDetailPage() {
   }
 
   async function handleCancel() {
-    if (!address && !demoMode) {
+    if (!address) {
       return;
     }
     setActionLoading("cancel");
     try {
-      const result = demoMode
-        ? await cancelClaimDemo(vsId)
-        : await cancelVS(address!, vsId);
-      const isPending = "pending" in result && Boolean(result.pending);
-      toast.success(isPending ? t("submittedPending") : t("cancelledToast"));
+      await cancelVS(address!, vsId);
+      toast.success(t("cancelledToast"));
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorCancelling"));
@@ -900,6 +893,54 @@ export default function VSDetailPage() {
         {!isSampleVS ? (
           <AnimatedItem>
             <div className="flex flex-col gap-3 lg:max-w-[800px] lg:mx-auto">
+              {demoMode && (
+                <GlassCard>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80 mb-2">
+                    {t("operatorModeTitle")}
+                  </div>
+                  <p className="text-sm text-pv-muted mb-4">{t("demoModeHint")}</p>
+                  <div className="space-y-3">
+                    <div className="bg-pv-surface2 p-4">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2">
+                        {t("operatorReadCommand")}
+                      </div>
+                      <code className="block break-all text-xs text-pv-cyan font-mono">
+                        {readCommand}
+                      </code>
+                    </div>
+
+                    {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) && (
+                      <p className="text-sm text-pv-muted">{t("operatorStudioFunding")}</p>
+                    )}
+
+                    {vs.state === "accepted" && countdown.expired && (
+                      <div className="bg-pv-surface2 p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2">
+                          {t("operatorResolveCommand")}
+                        </div>
+                        <code className="block break-all text-xs text-pv-cyan font-mono">
+                          {resolveCommand}
+                        </code>
+                        <p className="text-xs text-pv-muted mt-3">{t("operatorResolveHint")}</p>
+                      </div>
+                    )}
+
+                    {vs.state === "open" && isCreator && (
+                      <div className="bg-pv-surface2 p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2">
+                          {t("operatorCancelCommand")}
+                        </div>
+                        <code className="block break-all text-xs text-pv-cyan font-mono">
+                          {cancelCommand}
+                        </code>
+                        <p className="text-xs text-pv-muted mt-3">{t("operatorCancelHint")}</p>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-sm text-pv-muted mt-4">{t("operatorRefreshHint")}</p>
+                </GlassCard>
+              )}
+
               {missingPrivateInvite && (
                 <GlassCard>
                   <div className="text-sm font-semibold mb-2 text-pv-emerald">

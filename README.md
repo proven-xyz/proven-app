@@ -294,7 +294,7 @@ npm install
 3. Configure environment:
 
 ```bash
-echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0x2aEFb7eA6BA28a0114E13eAd8D67f7d22c5a8adD" > .env.local
+echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9" > .env.local
 ```
 
 4. Start the development server:
@@ -427,6 +427,8 @@ Response headers include `Cache-Control: public, s-maxage=15, stale-while-revali
 | `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed PROVEN contract address | `0x000...000` |
 | `NEXT_PUBLIC_GENLAYER_RPC` | GenLayer RPC endpoint (overrides default) | `https://rpc-bradbury.genlayer.com` |
 | `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
+| `NEXT_PUBLIC_DEMO_MODE` | Set to `1` to disable website writes and show operator-tool guidance | Off |
+| `NEXT_PUBLIC_DEMO_MODE_LABEL` | Optional demo banner label | `Bradbury demo mode` |
 | `GENLAYER_RPC` | Server-side RPC override (not exposed to browser) | Same as public default |
 | `GENLAYER_MAIN_CONTRACT` | Server-side consensus contract override | Same as public default |
 
@@ -568,6 +570,50 @@ Or import the GitHub repo at [vercel.com](https://vercel.com) and add `NEXT_PUBL
 1. Connect repo at [pages.cloudflare.com](https://pages.cloudflare.com)
 2. Framework preset: Next.js
 3. Add env var: `NEXT_PUBLIC_CONTRACT_ADDRESS`
+
+---
+
+## Bradbury Demo Workflow
+
+For the current Bradbury demo contract, use:
+
+```bash
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9
+NEXT_PUBLIC_DEMO_MODE=1
+```
+
+This keeps the website as the demo/read surface and disables flaky browser wallet writes.
+
+### Funded writes
+
+Use **GenLayer Studio** for:
+
+- `create_claim`
+- `create_rematch`
+- `challenge_claim`
+
+The current `genlayer write` CLI in `0.37.1` always sends `value: 0n`, so it is not reliable for payable or funded actions.
+
+### Safe CLI commands
+
+```bash
+genlayer network set testnet-bradbury
+genlayer account use <your-account>
+
+genlayer call 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 get_claim_count
+genlayer call 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 get_open_claim_summaries
+
+genlayer write 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 resolve_claim --args <claim_id>
+genlayer write 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 cancel_claim --args <claim_id>
+genlayer receipt <tx_hash>
+```
+
+Recommended demo flow:
+
+- Pre-seed one open claim and one active claim in Studio
+- Use the website to browse and explain the market
+- Resolve or cancel live from CLI if needed
+- Refresh the website after the transaction reaches `ACCEPTED`
 
 ---
 

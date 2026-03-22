@@ -3,5 +3,5 @@ export function isDemoRelayEnabled() {
 }
 
 export function getDemoModeLabel() {
-  return process.env.NEXT_PUBLIC_DEMO_MODE_LABEL || "Demo relay mode";
+  return process.env.NEXT_PUBLIC_DEMO_MODE_LABEL || "Bradbury demo mode";
 }

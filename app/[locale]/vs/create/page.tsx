@@ -7,10 +7,9 @@ import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
+  CONTRACT_ADDRESS,
   createClaim,
-  createClaimDemo,
   createRematch,
-  createRematchDemo,
   getVS,
   type CreateClaimParams,
   type VSData,
@@ -289,18 +288,12 @@ export default function CreatePage() {
 
     try {
       const result =
-        demoMode
-          ? rematchId
-            ? await createRematchDemo(rematchId, params)
-            : await createClaimDemo(params)
-          : rematchId
+        rematchId
           ? await createRematch(address!, rematchId, params)
           : await createClaim(address!, params);
 
       toast.success(
-        result.pending
-          ? t("submittedPending")
-          : rematchId
+        rematchId
           ? t("rematchCreatedAndFunded")
           : t("vsCreatedAndFunded")
       );
@@ -909,12 +902,25 @@ export default function CreatePage() {
         </AnimatedItem>
 
         <AnimatedItem>
-          {demoMode || isConnected ? (
+          {demoMode ? (
+            <GlassCard>
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80 mb-2">
+                {t("operatorModeTitle")}
+              </div>
+              <p className="text-sm text-pv-muted mb-3">{t("operatorModeBody")}</p>
+              <div className="bg-pv-surface2 p-4 space-y-2 text-xs">
+                <p className="font-semibold text-pv-text">{t("operatorContract")}</p>
+                <p className="font-mono break-all text-pv-cyan">{CONTRACT_ADDRESS}</p>
+              </div>
+              <div className="mt-4 space-y-2 text-sm text-pv-muted">
+                <p>{t("operatorStudio")}</p>
+                <p>{t("operatorRefresh")}</p>
+              </div>
+            </GlassCard>
+          ) : isConnected ? (
             <Button variant="primary" onClick={handleSubmit} loading={loading}>
               {loading
                 ? t("funding")
-                : demoMode
-                ? t("createDemoAndFund", { amount: stake })
                 : rematchId
                 ? t("createRematchAndFund", { amount: stake })
                 : t("createAndFund", { amount: stake })}
