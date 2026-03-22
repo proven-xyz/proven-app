@@ -101,9 +101,13 @@ Create private challenges accessible only via a secret invite link. The claim ex
 
 Once a challenge is accepted, creator and challenger can message each other directly via XMTP — encrypted, peer-to-peer, onchain-gated. A Messages hub shows all active conversations across your duels.
 
-### Demo Mode with Role Switcher
+### MetaMask Wallet Login
 
-A built-in demo relay routes writes through server-side signers so the full create → challenge → resolve flow works without MetaMask. A role switcher lets you act as Creator, Challenger, or Resolver from the same browser session.
+Connect your MetaMask wallet to authenticate and sign all transactions directly on GenLayer Bradbury (Chain ID: 4221). The app auto-detects the network and prompts to add it if needed. Your address, claims, and stats are tied to your connected wallet.
+
+### Demo Mode (Fallback)
+
+When no wallet is connected and demo mode is enabled, a built-in relay routes writes through server-side signers so visitors can test the full create → challenge → resolve flow. A role switcher lets you act as Creator, Challenger, or Resolver from the same browser session. The demo banner hides when a wallet is connected.
 
 ### Optimistic UI
 
@@ -240,6 +244,8 @@ sequenceDiagram
 
 ### Wallet Authentication
 
+MetaMask is the primary authentication method. Users connect their wallet to sign all write transactions (create, challenge, resolve, cancel) directly on GenLayer Bradbury.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -267,6 +273,10 @@ sequenceDiagram
     MM->>App: accountsChanged event
     App->>App: Update WalletContext
 ```
+
+When a wallet is connected, all write operations are signed by the user's private key via EIP-1193. The Dashboard shows claims where the connected address is creator or challenger, and win/loss stats are calculated from the user's onchain history.
+
+**Demo relay fallback**: When `NEXT_PUBLIC_DEMO_MODE=1` is enabled and no wallet is connected, write operations fall back to server-side demo signers via `/api/demo/write`. This allows visitors to test the full create → challenge → resolve flow without configuring MetaMask on Bradbury. The demo mode banner hides automatically when a wallet is connected.
 
 ---
 
