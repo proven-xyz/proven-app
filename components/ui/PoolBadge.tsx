@@ -16,8 +16,8 @@ export default function PoolBadge({ amount, large = false }: PoolBadgeProps) {
         large ? "px-6 py-3 text-lg" : "px-4 py-2 text-sm"
       }`}
     >
-      <span className="text-pv-gold/60">$</span>
       {amount}
+      <span className="text-pv-gold/60 text-[0.75em]">GEN</span>
       <span className="text-pv-gold/40 text-[0.7em] font-body font-semibold uppercase tracking-wider">
         {t("atStake")}
       </span>

@@ -101,7 +101,9 @@ export default function VSCard({
               ) : (
                 <span className={vsCardPillClass}>{tCat(catInfo.id)}</span>
               ))}
-            <span className={`inline-block shrink-0 ${vsCardPillClass}`}>${pool}</span>
+            <span className="font-mono text-[13px] font-bold text-pv-gold">
+              {pool} GEN
+            </span>
           </div>
         </div>
 

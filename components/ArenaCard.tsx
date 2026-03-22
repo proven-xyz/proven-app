@@ -46,8 +46,8 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
           <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
             {tCat(vs.category)}
           </span>
-          <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
-            POOL: ${pool}
+          <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
+            POOL: {pool} GEN
           </span>
         </div>
 
