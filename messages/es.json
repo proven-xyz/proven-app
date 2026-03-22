@@ -16,16 +16,20 @@
   },
   "header": {
     "challenge": "+ Desafiar",
+    "challengeMobile": "Desafiar",
     "explore": "Explorar",
     "myVS": "Mis VS",
-    "openMenu": "Abrir menu",
-    "closeMenu": "Cerrar menu"
+    "messages": "Mensajes",
+    "messagesMobile": "Mensajes",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "walletMenu": "Wallet",
+    "disconnect": "Desconectar",
+    "mobileNavAria": "Navegación principal"
   },
   "footer": {
-    "tagline": "La verdad se demuestra.",
-    "explore": "Explorar",
-    "createVS": "Crear VS",
-    "poweredBy": "Powered by GenLayer AI Consensus"
+    "poweredBy": "Powered by GenLayer AI Consensus",
+    "rightsReserved": "© 2024 PROVEN. Todos los derechos reservados."
   },
   "home": {
     "vsOfDay": "VS del dia",
@@ -203,8 +207,8 @@
     "available": "{count} disponibles",
     "subtitle": "Acepta el VS de alguien mas. Elige tu pelea.",
     "searchPlaceholder": "Buscar VS...",
-    "clearSearch": "Borrar busqueda",
-    "category": "Categoria",
+    "clearSearch": "Borrar búsqueda",
+    "category": "Categoría",
     "all": "Todos",
     "minStake": "Apuesta minima",
     "any": "Cualquiera",
@@ -217,9 +221,14 @@
     "noResults": "No hay VS con estos filtros",
     "noResultsDesc": "Prueba cambiando los filtros o crea tu propio VS.",
     "challengeSomeone": "Desafiar a alguien",
-    "eyebrow": "Arena abierta",
+    "eyebrow": "Arena Abierta",
+    "sampleIntroEmpty": "Todavía no hay VS abiertos en cadena. Las cards de demostración respetan tus filtros y búsqueda.",
+    "sampleIntroFiltered": "Ningún VS en vivo coincide. Las demos de abajo usan los mismos filtros y búsqueda.",
+    "sampleNoMatchIntro": "Nada coincide con estos filtros, ni siquiera las demos. Probá restablecer o ampliar la búsqueda.",
+    "sampleNoMatchHint": "Ninguna demo coincide con los filtros actuales. Restablecé o ajustá la búsqueda para ver ejemplos.",
+    "sampleCreateHint": "Creá tu propio desafío para publicarlo en el protocolo.",
     "resetFilters": "Restablecer filtros",
-    "filtersAriaLabel": "Filtros: categoria, apuesta minima y orden"
+    "filtersAriaLabel": "Filtros: categoría, apuesta mínima y orden"
   },
   "dashboard": {
     "title": "Mis VS",
@@ -371,6 +380,7 @@
     "deportes": "Deportes",
     "clima": "Clima",
     "crypto": "Crypto",
+    "tech": "Tech",
     "cultura": "Cultura",
     "custom": "Custom"
   },
@@ -381,5 +391,57 @@
   },
   "poolBadge": {
     "atStake": "en juego"
+  },
+  "xmtpVs": {
+    "title": "Chat del VS (XMTP)",
+    "withPeer": "Con {address}",
+    "needsAccepted": "El chat privado entre jugadores se habilita cuando el VS está aceptado (1v1).",
+    "needsWallet": "Conectá tu wallet para abrir un DM cifrado con tu rival por XMTP.",
+    "connectToChat": "Conectar wallet",
+    "participantOnly": "Solo el creador y el rival pueden usar este chat.",
+    "initializingXmtp": "Iniciando mensajería segura…",
+    "loadingConversation": "Abriendo conversación…",
+    "refreshThread": "Actualizar",
+    "syncingMessages": "Sincronizando…",
+    "peerUnreachable": "Esta dirección aún no es alcanzable en la red XMTP (tu rival puede necesitar conectarse una vez en cualquier app XMTP).",
+    "rateLimited": "XMTP está limitando solicitudes temporalmente. Esperá un momento y tocá Actualizar.",
+    "networkError": "Problema de red al sincronizar mensajes. Revisá tu conexión y probá Actualizar.",
+    "errorGeneric": "No se pudo abrir el chat. Probá de nuevo.",
+    "retry": "Reintentar",
+    "emptyThread": "Todavía no hay mensajes. Saludá.",
+    "placeholderInput": "Escribí un mensaje…",
+    "send": "Enviar",
+    "sendingMessage": "Enviando…",
+    "messageQueued": "Entregando…",
+    "disclaimer": "Los mensajes viajan por XMTP (cifrado E2E). No se guardan en los servidores de PROVEN."
+  },
+  "messagesHub": {
+    "eyebrow": "Bandeja XMTP",
+    "title": "Mensajes",
+    "subtitle": "Hilos 1v1 cifrados ligados a tus duelos aceptados. Sin inbox global: solo rivales emparejados.",
+    "connectTitle": "Conectá la wallet",
+    "connectDesc": "Tu lista de VS y los hilos XMTP se cargan con la dirección de la wallet.",
+    "connect": "Conectar wallet",
+    "featureOffTitle": "La mensajería está apagada en este build",
+    "featureOffDesc": "Activá NEXT_PUBLIC_FEATURE_XMTP en .env.local y reiniciá el servidor de desarrollo. Ver docs/xmtp-integration.md.",
+    "loadError": "No se pudo cargar tu lista de VS. Revisá la conexión y probá de nuevo.",
+    "retry": "Reintentar",
+    "noParticipationTitle": "Todavía no tenés duelos",
+    "noParticipationDesc": "Unite o creá un VS para aparecer acá. El chat XMTP privado se habilita cuando el duelo está aceptado 1v1.",
+    "goExplore": "Explorar",
+    "goChallenge": "Nuevo desafío",
+    "hubDisabledTitle": "Todavía no hay chats desbloqueados",
+    "hubDisabledDesc": "Estás en uno o más duelos, pero el chat XMTP solo abre en partidas 1v1 aceptadas. Abrí un VS abajo para ver el estado.",
+    "sectionActive": "Chats activos",
+    "sectionPending": "Otros duelos",
+    "withPeer": "Rival {address}",
+    "badgeLive": "Chat activo",
+    "viewVs": "Ver",
+    "reason": {
+      "sample": "VS de demostración — el chat solo en duelos reales on-chain.",
+      "not_accepted": "El chat se habilita cuando el VS está aceptado.",
+      "waiting_opponent": "Esperando rival fijo antes de abrir el DM.",
+      "multi_challenger": "VS multi-rival — XMTP por ahora es solo 1v1."
+    }
   }
 }

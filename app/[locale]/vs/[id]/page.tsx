@@ -32,6 +32,7 @@ import {
   getShareUrl,
   shortenAddress,
 } from "@/lib/constants";
+import { SAMPLE_VS } from "@/lib/sampleVs";
 import { useCountdown } from "@/lib/hooks";
 import {
   getStoredPrivateInviteKey,
@@ -50,6 +51,8 @@ import {
 import ProvenStamp from "@/components/ProvenStamp";
 import ResolutionTerminal from "@/components/ResolutionTerminal";
 import Confetti from "@/components/Confetti";
+import VsXmtpPanel from "@/components/xmtp/VsXmtpPanel";
+import { VS_XMTP_CHAT_ANCHOR_ID } from "@/lib/xmtp/vs-chat-eligibility";
 import {
   ArrowLeft,
   Check,
@@ -59,57 +62,6 @@ import {
   Share2,
   Users,
 } from "lucide-react";
-
-const SAMPLE_VS: Record<number, VSData> = {
-  [-1]: {
-    id: -1,
-    creator: ZERO_ADDRESS,
-    opponent: ZERO_ADDRESS,
-    question: "BTC Price will break $100k before March 31",
-    creator_position: "BTC breaks $100k",
-    opponent_position: "BTC stays below $100k",
-    resolution_url: "coingecko.com/en/coins/bitcoin",
-    stake_amount: 200,
-    deadline: Math.floor(Date.now() / 1000) + 86400 * 5,
-    state: "open",
-    winner: ZERO_ADDRESS,
-    resolution_summary: "",
-    created_at: Math.floor(Date.now() / 1000),
-    category: "crypto",
-  },
-  [-2]: {
-    id: -2,
-    creator: ZERO_ADDRESS,
-    opponent: ZERO_ADDRESS,
-    question: "GPT-5 Announced by OpenAI before June",
-    creator_position: "OpenAI announces GPT-5 before June",
-    opponent_position: "No official announcement before June",
-    resolution_url: "openai.com",
-    stake_amount: 400,
-    deadline: Math.floor(Date.now() / 1000) + 86400 * 12,
-    state: "open",
-    winner: ZERO_ADDRESS,
-    resolution_summary: "",
-    created_at: Math.floor(Date.now() / 1000),
-    category: "custom",
-  },
-  [-3]: {
-    id: -3,
-    creator: ZERO_ADDRESS,
-    opponent: ZERO_ADDRESS,
-    question: "Lakers win the western conference",
-    creator_position: "Lakers win the West",
-    opponent_position: "Any other team wins the West",
-    resolution_url: "nba.com",
-    stake_amount: 140,
-    deadline: Math.floor(Date.now() / 1000) + 86400 * 18,
-    state: "open",
-    winner: ZERO_ADDRESS,
-    resolution_summary: "",
-    created_at: Math.floor(Date.now() / 1000),
-    category: "deportes",
-  },
-};
 
 function ProgressBar({ state }: { state: string }) {
   const t = useTranslations("vsDetail");
@@ -704,6 +656,17 @@ export default function VSDetailPage() {
                 )}
               </div>
             </GlassCard>
+          </AnimatedItem>
+        )}
+
+        {!isSampleVS && (
+          <AnimatedItem>
+            <div
+              id={VS_XMTP_CHAT_ANCHOR_ID}
+              className="scroll-mt-[calc(3.5rem+12px)]"
+            >
+              <VsXmtpPanel vs={vs} />
+            </div>
           </AnimatedItem>
         )}
 

@@ -2,7 +2,7 @@
 
 import { Link } from "@/i18n/navigation";
 import { getVSChallengerCount, getVSTotalPot, type VSData } from "@/lib/contract";
-import { ZERO_ADDRESS, getCategoryInfo } from "@/lib/constants";
+import { ZERO_ADDRESS } from "@/lib/constants";
 import { useTranslations } from "next-intl";
 import { UserRound } from "lucide-react";
 
@@ -30,7 +30,6 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   const tCat = useTranslations("categories");
   const tDetail = useTranslations("vsDetail");
 
-  const catInfo = getCategoryInfo(vs.category);
   const isOpen = vs.opponent === ZERO_ADDRESS;
   const pool = getVSTotalPot(vs as VSData);
   const activeChallengers = challengersCount ?? getVSChallengerCount(vs as VSData);
@@ -42,19 +41,12 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
   
   return (
     <Link href={`/vs/${vs.id}`} className="block h-full group">
-      <article className="card h-full p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.35] hover:shadow-glow-emerald flex flex-col">
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <span
-            className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border"
-            style={{
-              backgroundColor: `${catInfo.color}14`,
-              borderColor: `${catInfo.color}4A`,
-              color: catInfo.color,
-            }}
-          >
-            {tCat(catInfo.id)}
+      <article className="card h-full !border-pv-emerald/[0.14] p-4 text-left transition-all duration-200 hover:!border-pv-emerald/[0.35] hover:shadow-glow-emerald flex flex-col">
+        <div className="mb-2.5 flex items-center justify-between gap-2">
+          <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
+            {tCat(vs.category)}
           </span>
-          <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
+          <span className="rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90">
             POOL: ${pool}
           </span>
         </div>
@@ -68,7 +60,7 @@ export default function ArenaCard({ vs, challengersCount }: ArenaCardProps) {
             {["bg-pv-surface2", "bg-pv-surface", "bg-pv-emerald"].map((color, i) => (
               <span
                 key={`${vs.id}-avatar-${i}`}
-                className={`w-7 h-7 rounded-full border border-white/[0.22] ${color} ${i > 0 ? "-ml-3" : ""} flex items-center justify-center`}
+                className={`w-7 h-7 rounded-full border border-pv-emerald/25 ${color} ${i > 0 ? "-ml-3" : ""} flex items-center justify-center`}
                 style={{ zIndex: 10 - i }}
               >
                 <UserRound size={13} className="text-pv-text/85" />

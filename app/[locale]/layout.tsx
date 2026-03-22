@@ -56,7 +56,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <Header />
       <main
         id="main-content"
-        className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8"
+        className="mx-auto min-w-0 max-w-[1200px] overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8"
       >
         {children}
       </main>

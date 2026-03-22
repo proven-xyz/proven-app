@@ -16,16 +16,20 @@
   },
   "header": {
     "challenge": "+ Challenge",
+    "challengeMobile": "Challenge",
     "explore": "Explore",
     "myVS": "My VS",
+    "messages": "Messages",
+    "messagesMobile": "Messages",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "walletMenu": "Wallet",
+    "disconnect": "Disconnect",
+    "mobileNavAria": "Main navigation"
   },
   "footer": {
-    "tagline": "The truth is proven.",
-    "explore": "Explore",
-    "createVS": "Create VS",
-    "poweredBy": "Powered by GenLayer AI Consensus"
+    "poweredBy": "Powered by GenLayer AI Consensus",
+    "rightsReserved": "© 2024 PROVEN. All rights reserved."
   },
   "home": {
     "vsOfDay": "VS of the day",
@@ -204,6 +208,7 @@
     "subtitle": "Accept someone's VS. Pick your fight.",
     "searchPlaceholder": "Search VS...",
     "clearSearch": "Clear search",
+    "clearSearchMobile": "Clear search",
     "category": "Category",
     "all": "All",
     "minStake": "Min stake",
@@ -218,6 +223,11 @@
     "noResultsDesc": "Try changing the filters or create your own VS.",
     "challengeSomeone": "Challenge someone",
     "eyebrow": "Open Arena",
+    "sampleIntroEmpty": "No open VS on-chain yet. Demo cards below follow your filters and search.",
+    "sampleIntroFiltered": "No live VS match your filters. Demo cards below use the same filters and search.",
+    "sampleNoMatchIntro": "Nothing matches these filters — not even the demos. Try resetting or broadening your search.",
+    "sampleNoMatchHint": "No demo card matches the current filters. Reset filters or adjust search to see examples again.",
+    "sampleCreateHint": "Create your own challenge to go live on the protocol.",
     "resetFilters": "Reset filters",
     "filtersAriaLabel": "Filters: category, minimum stake, and sort order"
   },
@@ -371,6 +381,7 @@
     "deportes": "Sports",
     "clima": "Weather",
     "crypto": "Crypto",
+    "tech": "Tech",
     "cultura": "Culture",
     "custom": "Custom"
   },
@@ -381,5 +392,57 @@
   },
   "poolBadge": {
     "atStake": "at stake"
+  },
+  "xmtpVs": {
+    "title": "VS chat (XMTP)",
+    "withPeer": "With {address}",
+    "needsAccepted": "Private chat between players unlocks once the VS is accepted (1v1).",
+    "needsWallet": "Connect your wallet to open an encrypted DM with your rival on XMTP.",
+    "connectToChat": "Connect wallet",
+    "participantOnly": "Only the creator and the rival can use this chat.",
+    "initializingXmtp": "Starting secure messaging…",
+    "loadingConversation": "Opening conversation…",
+    "refreshThread": "Refresh",
+    "syncingMessages": "Syncing…",
+    "peerUnreachable": "This address is not reachable on the XMTP network yet (your rival may need to connect once in any XMTP app).",
+    "rateLimited": "XMTP is temporarily limiting requests. Wait a moment and tap Refresh.",
+    "networkError": "Network issue while syncing messages. Check your connection and try Refresh.",
+    "errorGeneric": "Could not open chat. Try again.",
+    "retry": "Retry",
+    "emptyThread": "No messages yet. Say hello.",
+    "placeholderInput": "Write a message…",
+    "send": "Send",
+    "sendingMessage": "Sending…",
+    "messageQueued": "Delivering…",
+    "disclaimer": "Messages are delivered over XMTP (E2E encrypted). They are not stored on PROVEN servers."
+  },
+  "messagesHub": {
+    "eyebrow": "XMTP inbox",
+    "title": "Messages",
+    "subtitle": "Encrypted 1v1 threads tied to your accepted duels. No global inbox — only rivals you’re matched with.",
+    "connectTitle": "Connect to see messages",
+    "connectDesc": "Your duel list and XMTP threads load from your wallet address.",
+    "connect": "Connect wallet",
+    "featureOffTitle": "Messaging is off in this build",
+    "featureOffDesc": "Enable NEXT_PUBLIC_FEATURE_XMTP in .env.local and restart the dev server. See docs/xmtp-integration.md.",
+    "loadError": "Could not load your VS list. Check your connection and try again.",
+    "retry": "Retry",
+    "noParticipationTitle": "No active duels yet",
+    "noParticipationDesc": "Join or create a VS to appear here. Private XMTP chat unlocks once a duel is accepted 1v1.",
+    "goExplore": "Explore",
+    "goChallenge": "New challenge",
+    "hubDisabledTitle": "No unlocked chats yet",
+    "hubDisabledDesc": "You’re in one or more duels, but XMTP chat only opens for accepted 1v1 matches. Open a VS below for status.",
+    "sectionActive": "Open chats",
+    "sectionPending": "Other duels",
+    "withPeer": "Rival {address}",
+    "badgeLive": "Chat live",
+    "viewVs": "View",
+    "reason": {
+      "sample": "Demo VS — chat only on real on-chain duels.",
+      "not_accepted": "Chat unlocks when the VS is accepted.",
+      "waiting_opponent": "Waiting for a fixed rival before DM opens.",
+      "multi_challenger": "Multi-challenger VS — XMTP is 1v1 only for now."
+    }
   }
 }

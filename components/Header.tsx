@@ -1,12 +1,70 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { shortenAddress } from "@/lib/constants";
 import { Menu, X } from "lucide-react";
+import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
+
+function WalletAccountMenu({
+  address,
+  open,
+  onOpenChange,
+  onDisconnect,
+  containerRef,
+  buttonClassName,
+}: {
+  address: string;
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  onDisconnect: () => void;
+  containerRef: React.MutableRefObject<HTMLDivElement | null>;
+  buttonClassName: string;
+}) {
+  const t = useTranslations("header");
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => onOpenChange(!open)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={t("walletMenu")}
+        className={buttonClassName}
+      >
+        {shortenAddress(address)}
+      </button>
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-[calc(100%+6px)] z-[60] min-w-[160px] overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface/95 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onDisconnect();
+                onOpenChange(false);
+              }}
+              className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text"
+            >
+              {t("disconnect")}
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export default function Header() {
   const { address, isConnected, isConnecting, connect, disconnect } =
@@ -14,23 +72,70 @@ export default function Header() {
   const pathname = usePathname();
   const locale = useLocale();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const t  = useTranslations("header");
+  const [walletMenuOpen, setWalletMenuOpen] = useState(false);
+  const walletMenuDesktopRef = useRef<HTMLDivElement>(null);
+  const walletMenuMobileRef = useRef<HTMLDivElement>(null);
+
+  const t = useTranslations("header");
   const tc = useTranslations("common");
 
-  const NAV_ITEMS = [
-    { href: "/vs/create" as const, label: t("challenge"), accent: true },
-    { href: "/explore"   as const, label: t("explore") },
-    { href: "/dashboard" as const, label: t("myVS") },
-  ];
+  const xmtpNavEnabled = useMemo(() => isXmtpFeatureEnabled(), []);
+
+  const NAV_ITEMS = useMemo(() => {
+    const items: Array<{
+      href: "/vs/create" | "/explore" | "/dashboard" | "/messages";
+      label: string;
+      accent: boolean;
+      mobileLabel?: string;
+    }> = [
+      { href: "/vs/create", label: t("challenge"), accent: true },
+      { href: "/explore", label: t("explore"), accent: false },
+      { href: "/dashboard", label: t("myVS"), accent: false },
+    ];
+    if (xmtpNavEnabled) {
+      items.push({
+        href: "/messages",
+        label: t("messages"),
+        accent: false,
+        mobileLabel: t("messagesMobile"),
+      });
+    }
+    return items;
+  }, [t, xmtpNavEnabled]);
+
+  useEffect(() => {
+    if (!walletMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      const el = e.target as Node;
+      if (
+        walletMenuDesktopRef.current?.contains(el) ||
+        walletMenuMobileRef.current?.contains(el)
+      ) {
+        return;
+      }
+      setWalletMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [walletMenuOpen]);
+
+  useEffect(() => {
+    if (!walletMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setWalletMenuOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [walletMenuOpen]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 backdrop-blur-[20px]">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <span className="font-display font-bold text-[17px] tracking-tight">
+      <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="group flex items-center gap-2.5">
+          <span className="font-display text-[17px] font-bold tracking-tight">
             PROVEN
             <motion.span
-              className="text-pv-emerald inline-block text-[1.38em] leading-none ml-[1px]"
+              className="ml-[1px] inline-block text-[1.38em] leading-none text-pv-emerald"
               whileHover={{ scale: 1.3, rotate: -8 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
@@ -40,7 +145,7 @@ export default function Header() {
         </Link>
 
         {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-2 lg:gap-3">
+        <div className="hidden items-center gap-2 md:flex lg:gap-3">
           {isConnected &&
             NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href;
@@ -48,12 +153,12 @@ export default function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`chip text-[13px] transition-all relative ${
+                  className={`chip relative text-[13px] transition-all ${
                     item.accent
-                      ? "text-pv-emerald border-pv-emerald/[0.28] bg-pv-emerald/[0.08]"
+                      ? "border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-pv-emerald"
                       : isActive
-                      ? "text-pv-text border-white/[0.32] bg-white/[0.06]"
-                      : "text-pv-muted hover:text-pv-text hover:border-white/[0.22]"
+                      ? "border-white/[0.32] bg-white/[0.06] text-pv-text"
+                      : "text-pv-muted hover:border-white/[0.22] hover:text-pv-text"
                   }`}
                 >
                   {item.label}
@@ -62,13 +167,13 @@ export default function Header() {
             })}
 
           {/* Language switcher */}
-          <div className="flex items-center gap-1 text-xs font-mono">
+          <div className="flex items-center gap-1 font-mono text-xs">
             <Link
               href={pathname || "/"}
               locale="es"
               className={`px-1 transition-colors ${
                 locale === "es"
-                  ? "text-pv-text font-bold"
+                  ? "font-bold text-pv-text"
                   : "text-pv-muted hover:text-pv-text"
               }`}
             >
@@ -80,7 +185,7 @@ export default function Header() {
               locale="en"
               className={`px-1 transition-colors ${
                 locale === "en"
-                  ? "text-pv-text font-bold"
+                  ? "font-bold text-pv-text"
                   : "text-pv-muted hover:text-pv-text"
               }`}
             >
@@ -88,18 +193,21 @@ export default function Header() {
             </Link>
           </div>
 
-          {isConnected ? (
-            <button
-              onClick={disconnect}
-              className="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
-            >
-              {shortenAddress(address!)}
-            </button>
+          {isConnected && address ? (
+            <WalletAccountMenu
+              address={address}
+              open={walletMenuOpen}
+              onOpenChange={setWalletMenuOpen}
+              onDisconnect={disconnect}
+              containerRef={walletMenuDesktopRef}
+              buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
+            />
           ) : (
             <button
+              type="button"
               onClick={connect}
               disabled={isConnecting}
-              className="px-4 py-1.5 rounded bg-pv-emerald text-pv-bg text-[13px] font-bold cursor-pointer focus-ring transition-all hover:brightness-110 disabled:opacity-50"
+              className="cursor-pointer rounded px-4 py-1.5 text-[13px] font-bold text-pv-bg transition-all hover:brightness-110 focus-ring disabled:opacity-50 bg-pv-emerald"
             >
               {isConnecting ? "..." : tc("connect")}
             </button>
@@ -107,12 +215,12 @@ export default function Header() {
         </div>
 
         {/* Mobile */}
-        <div className="flex md:hidden items-center gap-2">
-          <div className="flex items-center gap-0.5 text-[10px] font-mono">
+        <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-0.5 font-mono text-[10px]">
             <Link
               href={pathname || "/"}
               locale="es"
-              className={`px-0.5 ${locale === "es" ? "text-pv-text font-bold" : "text-pv-muted"}`}
+              className={`px-0.5 ${locale === "es" ? "font-bold text-pv-text" : "text-pv-muted"}`}
             >
               ES
             </Link>
@@ -120,32 +228,36 @@ export default function Header() {
             <Link
               href={pathname || "/"}
               locale="en"
-              className={`px-0.5 ${locale === "en" ? "text-pv-text font-bold" : "text-pv-muted"}`}
+              className={`px-0.5 ${locale === "en" ? "font-bold text-pv-text" : "text-pv-muted"}`}
             >
               EN
             </Link>
           </div>
 
-          {isConnected ? (
-            <button
-              onClick={disconnect}
-              className="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
-            >
-              {shortenAddress(address!)}
-            </button>
+          {isConnected && address ? (
+            <WalletAccountMenu
+              address={address}
+              open={walletMenuOpen}
+              onOpenChange={setWalletMenuOpen}
+              onDisconnect={disconnect}
+              containerRef={walletMenuMobileRef}
+              buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
+            />
           ) : (
             <button
+              type="button"
               onClick={connect}
               disabled={isConnecting}
-              className="px-3 py-1.5 rounded bg-pv-emerald text-pv-bg text-[12px] font-bold"
+              className="rounded px-3 py-1.5 text-[12px] font-bold text-pv-bg bg-pv-emerald"
             >
               {isConnecting ? "..." : tc("connect")}
             </button>
           )}
           {isConnected && (
             <button
+              type="button"
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="p-1.5 rounded text-pv-muted hover:text-pv-text transition-colors"
+              className="rounded p-1.5 text-pv-muted transition-colors hover:text-pv-text"
               aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
             >
               {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -162,29 +274,48 @@ export default function Header() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden border-t border-white/[0.08] overflow-hidden"
+            className="overflow-hidden border-t border-white/[0.08] md:hidden"
           >
-            <nav className="px-5 py-3 flex flex-col gap-1">
-              {NAV_ITEMS.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`px-4 py-3 rounded text-sm font-semibold transition-colors ${
-                      item.accent
-                        ? "text-pv-emerald bg-pv-emerald/[0.08]"
-                        : isActive
-                        ? "text-pv-text bg-pv-text/[0.04]"
-                        : "text-pv-muted hover:text-pv-text"
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
+            <LayoutGroup id="mobile-header-nav">
+              <nav
+                className="flex flex-col gap-0.5 px-5 py-3"
+                aria-label={t("mobileNavAria")}
+              >
+                {NAV_ITEMS.map((item) => {
+                  const isActive = pathname === item.href;
+                  const label = item.accent
+                    ? t("challengeMobile")
+                    : item.mobileLabel ?? item.label;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileOpen(false)}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`relative block overflow-hidden rounded-lg px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg ${
+                        isActive
+                          ? "text-pv-text"
+                          : "text-pv-muted hover:text-pv-text"
+                      }`}
+                    >
+                      {isActive ? (
+                        <motion.span
+                          layoutId="mobile-nav-active-highlight"
+                          className="absolute inset-0 rounded-lg border border-pv-emerald/[0.28] bg-pv-emerald/[0.1]"
+                          transition={{
+                            type: "spring",
+                            stiffness: 420,
+                            damping: 34,
+                          }}
+                          initial={false}
+                        />
+                      ) : null}
+                      <span className="relative z-10">{label}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </LayoutGroup>
           </motion.div>
         )}
       </AnimatePresence>
