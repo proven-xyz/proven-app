@@ -1,77 +1,13 @@
 import { createClient, createAccount } from "genlayer-js";
-import { localnet } from "genlayer-js/chains";
-import { defineChain } from "viem";
+import { localnet, testnetBradbury } from "genlayer-js/chains";
 
 const DEFAULT_SERVER_ENDPOINT = "https://rpc-bradbury.genlayer.com";
 const DEFAULT_EXPLORER_URL = "https://explorer-bradbury.genlayer.com";
 const DEFAULT_CONSENSUS_MAIN_CONTRACT = "0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D";
-const DEFAULT_INITIAL_VALIDATORS = 3;
-const DEFAULT_MAX_ROTATIONS = 3;
 
-export const GENLAYER_CONSENSUS_MAIN_ABI = [
-  {
-    type: "function",
-    name: "addTransaction",
-    stateMutability: "payable",
-    inputs: [
-      {
-        internalType: "address",
-        name: "sender",
-        type: "address",
-      },
-      {
-        internalType: "address",
-        name: "recipient",
-        type: "address",
-      },
-      {
-        internalType: "uint256",
-        name: "numOfInitialValidators",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256",
-        name: "maxRotations",
-        type: "uint256",
-      },
-      {
-        internalType: "bytes",
-        name: "encodedData",
-        type: "bytes",
-      },
-    ],
-    outputs: [],
-  },
-] as const;
+export const GENLAYER_CONSENSUS_MAIN_ABI = (testnetBradbury as any).consensusMainContract.abi;
 
-const BRADBURY_CHAIN = defineChain({
-  id: 4221,
-  name: "GenLayer Bradbury Testnet",
-  rpcUrls: {
-    default: {
-      http: [DEFAULT_SERVER_ENDPOINT],
-    },
-  },
-  nativeCurrency: {
-    name: "GEN Token",
-    symbol: "GEN",
-    decimals: 18,
-  },
-  blockExplorers: {
-    default: {
-      name: "GenLayer Explorer",
-      url: DEFAULT_EXPLORER_URL,
-    },
-  },
-  testnet: true,
-  consensusMainContract: {
-    address: DEFAULT_CONSENSUS_MAIN_CONTRACT,
-    abi: GENLAYER_CONSENSUS_MAIN_ABI,
-    bytecode: "0x",
-  },
-  defaultNumberOfInitialValidators: DEFAULT_INITIAL_VALIDATORS,
-  defaultConsensusMaxRotations: DEFAULT_MAX_ROTATIONS,
-});
+const BRADBURY_CHAIN = testnetBradbury;
 
 export function getEndpoint() {
   if (process.env.NEXT_PUBLIC_GENLAYER_RPC) {
@@ -118,6 +54,7 @@ function getChain(endpoint?: string) {
     };
   }
 
+  const mainContractAddress = getConsensusMainContractAddress();
   return {
     ...BRADBURY_CHAIN,
     rpcUrls: {
@@ -125,11 +62,14 @@ function getChain(endpoint?: string) {
         http: [endpoint || DEFAULT_SERVER_ENDPOINT],
       },
     },
-    consensusMainContract: {
-      address: getConsensusMainContractAddress(),
-      abi: GENLAYER_CONSENSUS_MAIN_ABI,
-      bytecode: "0x",
-    },
+    ...(mainContractAddress !== DEFAULT_CONSENSUS_MAIN_CONTRACT
+      ? {
+          consensusMainContract: {
+            ...(BRADBURY_CHAIN as any).consensusMainContract,
+            address: mainContractAddress,
+          },
+        }
+      : {}),
   };
 }
 
@@ -227,6 +167,10 @@ export function createGenlayerClientWithKey(privateKey: string) {
       account,
     } as any)
   );
+}
+
+export function getExplorerTxUrl(txHash: string) {
+  return `${DEFAULT_EXPLORER_URL}/transactions/${txHash}`;
 }
 
 export { createAccount };

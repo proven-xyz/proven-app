@@ -20,14 +20,15 @@
   "dependencies": {
     "@xmtp/browser-sdk": "^7.0.0",
     "framer-motion": "^12.38.0",
-    "genlayer-js": "^0.7.0",
+    "genlayer-js": "^0.23.0",
     "lucide-react": "^0.383.0",
     "next": "14.2.18",
     "next-intl": "^3.26.5",
     "nextjs-toploader": "^3.9.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "sonner": "^1.7.0"
+    "sonner": "^1.7.0",
+    "viem": "^2.47.6"
   },
   "devDependencies": {
     "@types/node": "^20",
