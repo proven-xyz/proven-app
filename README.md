@@ -46,7 +46,7 @@
 
 ## Developer documentation
 
-- **[XMTP integration](docs/xmtp-integration.md)** — Pasos 1–7: provider + **`VsXmtpPanel`** en `/vs/[id]` + hub **`/messages`** (lista de duelos con chat 1v1 vs pendientes). Navbar: chip *Mensajes* junto a *Mis VS* si `NEXT_PUBLIC_FEATURE_XMTP=1`. Variables: [`.env.example`](.env.example) → **`.env.local`** (doc *Variables de entorno*).
+- **[XMTP integration](docs/xmtp-integration.md)** — Steps 1–7: XmtpProvider + `VsXmtpPanel` chat panel in `/vs/[id]` + Messages hub at `/messages` (list of active 1v1 conversations). Navbar shows a "Messages" chip next to "My VS" when `NEXT_PUBLIC_FEATURE_XMTP=1`. See [`.env.example`](.env.example) for configuration.
 
 ---
 
@@ -97,6 +97,18 @@ Resolved claims can spawn linked rematches, building an onchain rivalry chain be
 
 Create private challenges accessible only via a secret invite link. The claim exists onchain but is invisible to public browsing.
 
+### XMTP 1v1 Chat
+
+Once a challenge is accepted, creator and challenger can message each other directly via XMTP — encrypted, peer-to-peer, onchain-gated. A Messages hub shows all active conversations across your duels.
+
+### Demo Mode with Role Switcher
+
+A built-in demo relay routes writes through server-side signers so the full create → challenge → resolve flow works without MetaMask. A role switcher lets you act as Creator, Challenger, or Resolver from the same browser session.
+
+### Optimistic UI
+
+Newly created claims appear instantly in Dashboard and Explore via localStorage, with a pulsing "Pending" badge, while GenLayer consensus finalizes in the background.
+
 ### Real-Time Dashboard
 
 Track all your active, pending, and resolved claims in one place with win/loss stats, countdowns, and instant resolution notifications.
@@ -110,11 +122,13 @@ flowchart TB
     subgraph Browser["Browser"]
         UI["Next.js 14 App\nReact + Tailwind"]
         Wallet["MetaMask\nWallet"]
+        XMTP["XMTP SDK\nEncrypted Chat"]
     end
 
     subgraph API["Next.js API Layer"]
         Cache["In-Memory Cache\n15s revalidation"]
         Routes["/api/vs/*\nREST endpoints"]
+        DemoRelay["/api/demo/write\nServer-side signers"]
     end
 
     subgraph GenLayer["GenLayer Bradbury Testnet"]
@@ -126,19 +140,27 @@ flowchart TB
         Sources["ESPN · BBC Sport\nCoinGecko · weather.com\nGoogle · News Sites"]
     end
 
+    subgraph Messaging["XMTP Network"]
+        XMTPNet["Peer-to-peer\nEncrypted Messages"]
+    end
+
     UI -- "genlayer-js SDK" --> Contract
     Wallet -- "EIP-1193 / JSON-RPC" --> Contract
     UI -- "fetch" --> Routes
+    UI -- "demo writes" --> DemoRelay
+    DemoRelay -- "server-side writeContract" --> Contract
     Routes -- "contract read" --> Contract
     Routes -- "read/write" --> Cache
     Contract -- "gl.nondet.web.get()" --> Sources
     Contract -- "gl.nondet.exec_prompt()" --> Validators
     Validators -- "consensus" --> Contract
+    XMTP -- "send/receive" --> XMTPNet
 
     style Browser fill:#0f172a,color:#f8fafc
     style API fill:#1e293b,color:#f8fafc
     style GenLayer fill:#1e293b,color:#f8fafc
     style External fill:#0f172a,color:#f8fafc
+    style Messaging fill:#1e293b,color:#f8fafc
 ```
 
 ### Trust Boundaries
@@ -343,7 +365,12 @@ proven-app/
 │   │       │   └── page.tsx              # Create VS form — market config, odds, stake
 │   │       └── [id]/
 │   │           └── page.tsx              # VS detail — accept, resolve, result, rematch
+│   │   └── messages/
+│   │       └── page.tsx                  # XMTP messages hub — all active 1v1 conversations
 │   └── api/
+│       ├── demo/
+│       │   └── write/
+│       │       └── route.ts              # POST /api/demo/write — server-side demo relay
 │       └── vs/
 │           ├── route.ts                  # GET /api/vs — list all public VS
 │           ├── [id]/
@@ -360,8 +387,12 @@ proven-app/
 │   ├── ProvenStamp.tsx                   # PROVEN. stamp victory animation
 │   ├── ResolutionTerminal.tsx            # Terminal-style resolution reveal
 │   ├── PageTransition.tsx                # Framer Motion page transitions
+│   ├── DemoRoleSwitcher.tsx               # Demo mode role toggle (creator/challenger/resolver)
 │   ├── EmptyState.tsx                    # Empty results fallback
 │   ├── HtmlLang.tsx                      # HTML lang attribute provider
+│   ├── xmtp/
+│   │   ├── VsXmtpPanel.tsx              # In-page chat panel for accepted VS
+│   │   └── MessagesHub.tsx              # Messages hub — all conversations list
 │   └── ui/
 │       ├── Avatar.tsx                    # User avatar with address-based colors
 │       ├── Badge.tsx                     # Status badge (open, active, resolved)
@@ -379,7 +410,8 @@ proven-app/
 ├── deploy/
 │   └── deploy.ts                         # SDK-based deploy script (private key)
 ├── hooks/
-│   └── useExploreFilterState.ts          # URL-synced filter state for explore page
+│   ├── useExploreFilterState.ts          # URL-synced filter state for explore page
+│   └── useDemoRole.ts                    # Demo role state (creator/challenger/resolver)
 ├── i18n/
 │   ├── routing.ts                        # Locale config (es, en) + prefix strategy
 │   ├── request.ts                        # Server-side locale message loader
@@ -392,9 +424,21 @@ proven-app/
 │   ├── hooks.ts                          # useCountdown hook
 │   ├── fonts.ts                          # Custom font loading
 │   ├── exploreFilters.ts                 # Filter type definitions
+│   ├── pending-vs.ts                     # Optimistic pending VS store (localStorage)
+│   ├── demo-mode.ts                      # Demo mode helpers
 │   ├── private-links.ts                  # Private invite key generation + storage
+│   ├── xmtp/                             # XMTP messaging integration
+│   │   ├── XmtpProvider.tsx              # XMTP client context provider
+│   │   ├── config.ts                     # XMTP env + feature flag helpers
+│   │   ├── signer.ts                     # Wallet-to-XMTP signer bridge
+│   │   ├── chat-thread.ts               # Chat thread creation + message handling
+│   │   ├── optimistic-send.ts           # Optimistic message display
+│   │   ├── vs-chat-eligibility.ts       # Chat eligibility rules (accepted claims only)
+│   │   ├── types.ts                      # XMTP type definitions
+│   │   └── index.ts                      # Barrel exports
 │   └── server/
-│       └── vs-cache.ts                   # Server-side in-memory cache layer
+│       ├── vs-cache.ts                   # Server-side in-memory cache layer
+│       └── demo-relay.ts                 # Demo relay — server-side write execution
 ├── messages/
 │   ├── en.json                           # English translations (310 keys)
 │   └── es.json                           # Spanish translations (310 keys)
@@ -415,13 +459,14 @@ proven-app/
 
 ## API Endpoints
 
-All endpoints are read-only (GET). No authentication is required — claim data is public onchain. Private claims require an `invite` query parameter.
+Claim data is public onchain. Private claims require an `invite` query parameter. The demo write endpoint is gated behind `NEXT_PUBLIC_DEMO_MODE=1`.
 
 | Method | Path | Description | Auth |
 | --- | --- | --- | --- |
 | GET | `/api/vs` | List all public VS claims. Pass `?refresh=1` to force cache rebuild. | None |
 | GET | `/api/vs/[id]` | Get a single VS by ID. Pass `?invite=KEY` for private claims. | Invite key (private only) |
 | GET | `/api/vs/user/[address]` | Get all VS where the address is creator or challenger. | None |
+| POST | `/api/demo/write` | Execute a demo relay write (create, challenge, resolve, cancel). | Demo mode enabled |
 
 Response headers include `Cache-Control: public, s-maxage=15, stale-while-revalidate=60` for public endpoints. Private claim responses use `Cache-Control: private, no-store`.
 
@@ -467,6 +512,7 @@ See [`.env.example`](.env.example) for a commented template and [`docs/xmtp-inte
 | Notifications | Sonner |
 | Internationalization | next-intl 3.26 (ES + EN) |
 | Loading Bar | nextjs-toploader |
+| Messaging | XMTP Browser SDK v7 (encrypted peer-to-peer chat) |
 
 ### Blockchain
 
@@ -477,7 +523,7 @@ See [`.env.example`](.env.example) for a commented template and [`docs/xmtp-inte
 | Consensus | Optimistic Democracy + Equivalence Principle |
 | Web Verification | `gl.nondet.web.get()` — real-time web fetch |
 | AI Evaluation | `gl.nondet.exec_prompt()` — LLM verdict |
-| Client SDK | genlayer-js 0.7 |
+| Client SDK | genlayer-js 0.23 |
 | Wallet | MetaMask (EIP-1193) |
 
 ### Infrastructure
