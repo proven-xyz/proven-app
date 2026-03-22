@@ -24,6 +24,9 @@ MARKET_CUSTOM = "custom"
 ODDS_POOL = "pool"
 ODDS_FIXED = "fixed"
 
+VISIBILITY_PUBLIC = "public"
+VISIBILITY_PRIVATE = "private"
+
 MAX_CHALLENGERS = 100
 DEFAULT_FIXED_PAYOUT_BPS = 20000
 MIN_STAKE = 2
@@ -55,6 +58,8 @@ class Claim:
     handicap_line: str
     settlement_rule: str
     max_challengers: u256
+    visibility: str
+    invite_key: str
 
 
 class ProvenContract(gl.Contract):
@@ -121,6 +126,15 @@ class ProvenContract(gl.Contract):
         if normalized < u256(10000):
             raise gl.vm.UserError("Fixed odds payout must be at least 10000 bps")
         return normalized
+
+    def _normalize_visibility(self, visibility: str) -> str:
+        normalized = self._normalize_text(visibility, VISIBILITY_PUBLIC).lower()
+        if normalized not in (VISIBILITY_PUBLIC, VISIBILITY_PRIVATE):
+            raise gl.vm.UserError("Unsupported visibility mode")
+        return normalized
+
+    def _normalize_invite_key(self, invite_key: str) -> str:
+        return self._normalize_text(invite_key)
 
     def _default_settlement_rule(self, category: str, market_type: str) -> str:
         if category == "deportes":
@@ -254,6 +268,8 @@ class ProvenContract(gl.Contract):
             "settlement_rule": claim.settlement_rule,
             "max_challengers": int(claim.max_challengers),
             "created_at": int(claim.created_at),
+            "visibility": claim.visibility,
+            "is_private": claim.visibility == VISIBILITY_PRIVATE,
             "first_challenger": first_challenger,
             "challenger_addresses": challenger_addresses,
             "total_pot": int(claim.creator_stake + claim.total_challenger_stake),
@@ -280,6 +296,8 @@ class ProvenContract(gl.Contract):
         handicap_line: str,
         settlement_rule: str,
         max_challengers: u256,
+        visibility: str,
+        invite_key: str,
     ) -> int:
         question = self._normalize_text(question)
         creator_position = self._normalize_text(creator_position)
@@ -292,6 +310,8 @@ class ProvenContract(gl.Contract):
         odds_mode = self._normalize_odds_mode(odds_mode)
         max_challengers = self._normalize_max_challengers(max_challengers)
         challenger_payout_bps = self._normalize_fixed_payout_bps(odds_mode, challenger_payout_bps)
+        visibility = self._normalize_visibility(visibility)
+        invite_key = self._normalize_invite_key(invite_key)
 
         if not question:
             raise gl.vm.UserError("Question cannot be empty")
@@ -301,6 +321,8 @@ class ProvenContract(gl.Contract):
             raise gl.vm.UserError("Counter position cannot be empty")
         if not resolution_url:
             raise gl.vm.UserError("Verification source is required")
+        if visibility == VISIBILITY_PRIVATE and not invite_key:
+            raise gl.vm.UserError("Private claims require an invite key")
         self._require_stake_value(stake_amount)
 
         if parent_id > u256(0) and parent_id not in self.claims:
@@ -333,6 +355,8 @@ class ProvenContract(gl.Contract):
             handicap_line=handicap_line,
             settlement_rule=settlement_rule,
             max_challengers=max_challengers,
+            visibility=visibility,
+            invite_key=invite_key,
         )
 
         self.claims[cid] = claim
@@ -355,6 +379,8 @@ class ProvenContract(gl.Contract):
         handicap_line: str = "",
         settlement_rule: str = "",
         max_challengers: u256 = u256(0),
+        visibility: str = VISIBILITY_PUBLIC,
+        invite_key: str = "",
     ) -> int:
         return self._create_claim_internal(
             question=question,
@@ -371,6 +397,8 @@ class ProvenContract(gl.Contract):
             handicap_line=handicap_line,
             settlement_rule=settlement_rule,
             max_challengers=max_challengers,
+            visibility=visibility,
+            invite_key=invite_key,
         )
 
     @gl.public.write.payable
@@ -390,6 +418,8 @@ class ProvenContract(gl.Contract):
         handicap_line: str = "",
         settlement_rule: str = "",
         max_challengers: u256 = u256(0),
+        visibility: str = "",
+        invite_key: str = "",
     ) -> int:
         if parent_id not in self.claims:
             raise gl.vm.UserError("Parent claim not found")
@@ -405,6 +435,8 @@ class ProvenContract(gl.Contract):
         rematch_odds_mode = self._normalize_text(odds_mode, parent.odds_mode)
         rematch_handicap_line = self._normalize_text(handicap_line, parent.handicap_line)
         rematch_settlement_rule = self._normalize_text(settlement_rule, parent.settlement_rule)
+        rematch_visibility = self._normalize_text(visibility, parent.visibility)
+        rematch_invite_key = self._normalize_text(invite_key, parent.invite_key)
         rematch_challenger_payout_bps = challenger_payout_bps
         if rematch_challenger_payout_bps <= u256(0):
             rematch_challenger_payout_bps = parent.challenger_payout_bps
@@ -427,10 +459,12 @@ class ProvenContract(gl.Contract):
             handicap_line=rematch_handicap_line,
             settlement_rule=rematch_settlement_rule,
             max_challengers=rematch_max_challengers,
+            visibility=rematch_visibility,
+            invite_key=rematch_invite_key,
         )
 
     @gl.public.write.payable
-    def challenge_claim(self, claim_id: u256, stake_amount: u256):
+    def challenge_claim(self, claim_id: u256, stake_amount: u256, invite_key: str = ""):
         if claim_id not in self.claims:
             raise gl.vm.UserError("Claim not found")
 
@@ -440,6 +474,10 @@ class ProvenContract(gl.Contract):
             raise gl.vm.UserError("Claim is not accepting challengers")
         if gl.message.sender_address == claim.creator:
             raise gl.vm.UserError("Cannot challenge your own claim")
+        if claim.visibility == VISIBILITY_PRIVATE:
+            normalized_invite_key = self._normalize_invite_key(invite_key)
+            if not normalized_invite_key or normalized_invite_key != claim.invite_key:
+                raise gl.vm.UserError("Valid private invite link required")
         self._require_stake_value(stake_amount)
 
         count = int(claim.challenger_count)
@@ -646,10 +684,44 @@ Confidence: integer 0-100."""
 
     @gl.public.view
     def get_claim(self, claim_id: u256) -> dict:
+        claim = self.claims[claim_id] if claim_id in self.claims else None
+        if claim is None:
+            raise gl.vm.UserError("Claim not found")
+        if claim.visibility == VISIBILITY_PRIVATE:
+            raise gl.vm.UserError("Private claim requires access link")
         return self._claim_to_dict(claim_id, True)
 
     @gl.public.view
     def get_claim_summary(self, claim_id: u256) -> dict:
+        claim = self.claims[claim_id] if claim_id in self.claims else None
+        if claim is None:
+            raise gl.vm.UserError("Claim not found")
+        if claim.visibility == VISIBILITY_PRIVATE:
+            raise gl.vm.UserError("Private claim requires access link")
+        return self._claim_to_dict(claim_id, False)
+
+    @gl.public.view
+    def get_claim_with_access(self, claim_id: u256, invite_key: str = "") -> dict:
+        if claim_id not in self.claims:
+            raise gl.vm.UserError("Claim not found")
+
+        claim = self.claims[claim_id]
+        normalized_invite_key = self._normalize_invite_key(invite_key)
+        if claim.visibility == VISIBILITY_PRIVATE:
+            if not normalized_invite_key or normalized_invite_key != claim.invite_key:
+                raise gl.vm.UserError("Private claim requires a valid invite link")
+        return self._claim_to_dict(claim_id, True)
+
+    @gl.public.view
+    def get_claim_summary_with_access(self, claim_id: u256, invite_key: str = "") -> dict:
+        if claim_id not in self.claims:
+            raise gl.vm.UserError("Claim not found")
+
+        claim = self.claims[claim_id]
+        normalized_invite_key = self._normalize_invite_key(invite_key)
+        if claim.visibility == VISIBILITY_PRIVATE:
+            if not normalized_invite_key or normalized_invite_key != claim.invite_key:
+                raise gl.vm.UserError("Private claim requires a valid invite link")
         return self._claim_to_dict(claim_id, False)
 
     @gl.public.view
@@ -675,6 +747,9 @@ Confidence: integer 0-100."""
         for cid_int in range(start, end):
             cid = u256(cid_int)
             if cid in self.claims:
+                claim = self.claims[cid]
+                if claim.visibility == VISIBILITY_PRIVATE:
+                    continue
                 result.append(self._claim_to_dict(cid, False))
 
         return result
@@ -722,6 +797,8 @@ Confidence: integer 0-100."""
             if cid not in self.claims:
                 continue
             claim = self.claims[cid]
+            if claim.visibility == VISIBILITY_PRIVATE:
+                continue
             if claim.state == ST_OPEN or claim.state == ST_ACTIVE:
                 result.append(int(cid))
         return result
