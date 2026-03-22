@@ -1,4 +1,12 @@
-import { createGenlayerClient } from "./genlayer";
+import { abi as genlayerAbi } from "genlayer-js";
+import { encodeFunctionData, toHex } from "viem";
+
+import {
+  createGenlayerClient,
+  ensureGenlayerWalletChain,
+  GENLAYER_CONSENSUS_MAIN_ABI,
+  getConsensusMainContractAddress,
+} from "./genlayer";
 
 export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x0000000000000000000000000000000000000000") as any;
@@ -295,15 +303,13 @@ export function mapClaimToVS(rawClaim: ClaimData): VSData {
 }
 
 async function writeAndWait(functionName: string, wallet: string, args: unknown[], value: number) {
-  const client = createGenlayerClient(wallet);
-  const txHash = await client.writeContract({
-    address: CONTRACT_ADDRESS,
-    functionName,
-    args: args as any,
-    value: BigInt(value),
-  });
+  const txHash =
+    typeof window !== "undefined" && (window as any).ethereum
+      ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
+      : await sendRpcWriteTransaction(wallet, functionName, args, value);
 
-  const receipt = await client.waitForTransactionReceipt({
+  const receiptClient = createGenlayerClient();
+  const receipt = await receiptClient.waitForTransactionReceipt({
     hash: txHash,
     status: "ACCEPTED" as any,
     retries: 200,
@@ -311,6 +317,75 @@ async function writeAndWait(functionName: string, wallet: string, args: unknown[
   });
 
   return { txHash, receipt } satisfies ContractWriteResult;
+}
+
+function makeCalldataObject(functionName: string, args: unknown[]) {
+  const payload: Record<string, unknown> = { method: functionName };
+  if (args.length > 0) {
+    payload.args = args;
+  }
+  return payload;
+}
+
+function encodeGenlayerWrite(functionName: string, args: unknown[]) {
+  const encodedCall = genlayerAbi.calldata.encode(
+    makeCalldataObject(functionName, args) as any
+  );
+  return genlayerAbi.transactions.serialize([encodedCall, false]);
+}
+
+async function sendRpcWriteTransaction(
+  wallet: string,
+  functionName: string,
+  args: unknown[],
+  value: number
+) {
+  const client = createGenlayerClient(wallet);
+  return client.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName,
+    args: args as any,
+    value: BigInt(value),
+  });
+}
+
+async function sendBrowserWriteTransaction(
+  wallet: string,
+  functionName: string,
+  args: unknown[],
+  value: number
+) {
+  const ethereum = (window as any).ethereum;
+  if (!ethereum) {
+    throw new Error("Browser wallet not available");
+  }
+
+  await ensureGenlayerWalletChain(ethereum);
+
+  const encodedTx = encodeGenlayerWrite(functionName, args);
+  const data = encodeFunctionData({
+    abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+    functionName: "addTransaction",
+    args: [
+      wallet,
+      CONTRACT_ADDRESS,
+      BigInt(3),
+      BigInt(3),
+      encodedTx,
+    ],
+  });
+
+  return (await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [
+      {
+        from: wallet,
+        to: getConsensusMainContractAddress(),
+        data,
+        value: toHex(BigInt(value)),
+      },
+    ],
+  })) as string;
 }
 
 async function inferCreatedClaimId(wallet: string) {

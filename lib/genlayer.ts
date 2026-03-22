@@ -5,8 +5,10 @@ import { defineChain } from "viem";
 const DEFAULT_SERVER_ENDPOINT = "https://rpc-bradbury.genlayer.com";
 const DEFAULT_EXPLORER_URL = "https://explorer-bradbury.genlayer.com";
 const DEFAULT_CONSENSUS_MAIN_CONTRACT = "0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D";
+const DEFAULT_INITIAL_VALIDATORS = 3;
+const DEFAULT_MAX_ROTATIONS = 3;
 
-const CONSENSUS_MAIN_ABI = [
+export const GENLAYER_CONSENSUS_MAIN_ABI = [
   {
     type: "function",
     name: "addTransaction",
@@ -64,14 +66,14 @@ const BRADBURY_CHAIN = defineChain({
   testnet: true,
   consensusMainContract: {
     address: DEFAULT_CONSENSUS_MAIN_CONTRACT,
-    abi: CONSENSUS_MAIN_ABI,
+    abi: GENLAYER_CONSENSUS_MAIN_ABI,
     bytecode: "0x",
   },
-  defaultNumberOfInitialValidators: 5,
-  defaultConsensusMaxRotations: 3,
+  defaultNumberOfInitialValidators: DEFAULT_INITIAL_VALIDATORS,
+  defaultConsensusMaxRotations: DEFAULT_MAX_ROTATIONS,
 });
 
-function getEndpoint() {
+export function getEndpoint() {
   if (process.env.NEXT_PUBLIC_GENLAYER_RPC) {
     return process.env.NEXT_PUBLIC_GENLAYER_RPC;
   }
@@ -96,7 +98,7 @@ function isLocalEndpoint(endpoint?: string) {
   }
 }
 
-function getConsensusMainContractAddress() {
+export function getConsensusMainContractAddress() {
   return (
     process.env.NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT ||
     process.env.GENLAYER_MAIN_CONTRACT ||
@@ -125,10 +127,50 @@ function getChain(endpoint?: string) {
     },
     consensusMainContract: {
       address: getConsensusMainContractAddress(),
-      abi: CONSENSUS_MAIN_ABI,
+      abi: GENLAYER_CONSENSUS_MAIN_ABI,
       bytecode: "0x",
     },
   };
+}
+
+export function getWalletChainParams() {
+  const endpoint = getEndpoint() || DEFAULT_SERVER_ENDPOINT;
+  return {
+    chainId: `0x${BRADBURY_CHAIN.id.toString(16)}`,
+    chainName: BRADBURY_CHAIN.name,
+    rpcUrls: [endpoint],
+    nativeCurrency: BRADBURY_CHAIN.nativeCurrency,
+    blockExplorerUrls: [DEFAULT_EXPLORER_URL],
+  };
+}
+
+export async function ensureGenlayerWalletChain(ethereum: {
+  request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
+}) {
+  const params = getWalletChainParams();
+  const currentChainId = (await ethereum.request({
+    method: "eth_chainId",
+  })) as string;
+
+  if (currentChainId === params.chainId) {
+    return;
+  }
+
+  try {
+    await ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: params.chainId }],
+    });
+  } catch (error: any) {
+    if (error?.code !== 4902) {
+      throw error;
+    }
+
+    await ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [params],
+    });
+  }
 }
 
 export function createGenlayerClient(accountAddress?: string) {

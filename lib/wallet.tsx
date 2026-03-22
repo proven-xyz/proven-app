@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { ensureGenlayerWalletChain } from "./genlayer";
 
 interface WalletCtx {
   address: string | null;
@@ -26,7 +27,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       if (typeof window !== "undefined" && (window as any).ethereum) {
-        const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
+        const ethereum = (window as any).ethereum;
+        await ensureGenlayerWalletChain(ethereum);
+        const accounts = await ethereum.request({ method: "eth_requestAccounts" });
         if (accounts?.length > 0) setAddress(accounts[0]);
       } else {
         setError("no_wallet");
