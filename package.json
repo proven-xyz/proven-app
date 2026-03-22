@@ -7,6 +7,8 @@
     "dev:clean": "rm -rf .next && next dev",
     "clean": "rm -rf .next",
     "build": "next build",
+    "test:direct": "node scripts/run-direct-tests.mjs",
+    "test:smoke": "node --import tsx --test tests/node/api-validation.test.ts tests/node/contract-smoke.test.ts",
     "start": "next start",
     "warm:vs-index": "tsx scripts/warm-vs-index.ts",
     "deploy:contract": "node scripts/genlayer-deploy.mjs",
