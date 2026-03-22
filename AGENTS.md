@@ -57,4 +57,5 @@ When contract method names, arguments, or return shapes change, keep `lib/contra
 - When designing nondeterministic contract logic, explicitly explain why the chosen equivalence principle is appropriate.
 - When updating PROVEN contract logic, treat `contracts/proven.py` as the source of truth and keep legacy or experimental variants out of the main workflow unless explicitly requested.
 - When adding research artifacts such as `deep-research-report.md`, reconcile them against `contracts/proven.py`, `lib/contract.ts`, and the live UI flows before treating the document as current.
+- Treat external legal or regulatory claims in research artifacts as provisional unless they are independently verified close to ship time.
 - Prefer clean ASCII markdown for repo-internal research notes and remove copied citation artifacts or browsing markup before committing them.

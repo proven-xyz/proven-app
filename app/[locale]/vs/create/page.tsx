@@ -21,6 +21,10 @@ import {
   getShareUrl,
   normalizeResolutionSource,
 } from "@/lib/constants";
+import {
+  generatePrivateInviteKey,
+  rememberPrivateInviteKey,
+} from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, Button, Input } from "@/components/ui";
@@ -77,10 +81,13 @@ export default function CreatePage() {
   const [handicapLine, setHandicapLine] = useState("");
   const [settlementRule, setSettlementRule] = useState("");
   const [maxChallengers, setMaxChallengers] = useState(1);
+  const [visibility, setVisibility] =
+    useState<CreateClaimParams["visibility"]>("public");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingParent, setLoadingParent] = useState(false);
   const [created, setCreated] = useState<number | null>(null);
+  const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [rematchSource, setRematchSource] = useState<VSData | null>(null);
@@ -93,6 +100,7 @@ export default function CreatePage() {
   const guidanceKey =
     category in CATEGORY_DEMO_GUIDANCE ? category : "custom";
   const isOneToMany = maxChallengers > 1;
+  const isPrivate = visibility === "private";
   const isAdvancedClaim =
     marketType !== "binary" ||
     oddsMode !== "pool" ||
@@ -173,6 +181,7 @@ export default function CreatePage() {
       );
       setHandicapLine(source.handicap_line ?? "");
       setSettlementRule(source.settlement_rule ?? "");
+      setVisibility(source.is_private ? "private" : "public");
       setMaxChallengers(
         source.max_challengers && source.max_challengers > 0
           ? source.max_challengers
@@ -251,6 +260,7 @@ export default function CreatePage() {
     }
 
     const normalizedMaxChallengers = Math.max(1, Math.min(100, Math.floor(maxChallengers)));
+    const inviteKey = isPrivate ? generatePrivateInviteKey() : "";
     const params: CreateClaimParams = {
       question,
       creator_position: creatorPos,
@@ -266,6 +276,8 @@ export default function CreatePage() {
       handicap_line: handicapLine.trim(),
       settlement_rule: settlementRule.trim(),
       max_challengers: normalizedMaxChallengers,
+      visibility,
+      invite_key: inviteKey,
     };
 
     setLoading(true);
@@ -280,6 +292,10 @@ export default function CreatePage() {
       );
       if (result.claimId) {
         setCreated(result.claimId);
+        setCreatedInviteKey(inviteKey);
+        if (inviteKey) {
+          rememberPrivateInviteKey(result.claimId, inviteKey);
+        }
       } else {
         router.push("/dashboard");
       }
@@ -296,7 +312,7 @@ export default function CreatePage() {
     if (!created) {
       return;
     }
-    await navigator.clipboard.writeText(getShareUrl(created));
+    await navigator.clipboard.writeText(getShareUrl(created, createdInviteKey));
     setCopied(true);
     toast.success(t("linkCopied"));
     setTimeout(() => setCopied(false), 2000);
@@ -320,13 +336,15 @@ export default function CreatePage() {
               <h2 className="font-display text-2xl font-bold mb-2 tracking-tight">
                 {rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded")}
               </h2>
-              <p className="text-pv-muted mb-7">{t("sendThisLink")}</p>
+              <p className="text-pv-muted mb-7">
+                {createdInviteKey ? t("sendThisPrivateLink") : t("sendThisLink")}
+              </p>
 
               <GlassCard className="mb-5">
                 <div className="flex gap-2.5">
                   <input
                     readOnly
-                    value={getShareUrl(created)}
+                    value={getShareUrl(created, createdInviteKey)}
                     className="input flex-1 font-mono text-xs"
                   />
                   <button
@@ -341,7 +359,7 @@ export default function CreatePage() {
 
               <div className="flex gap-3 justify-center mb-7">
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Challenge me on PROVEN: ${getShareUrl(created)}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`Challenge me on PROVEN: ${getShareUrl(created, createdInviteKey)}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="chip text-pv-muted hover:text-pv-emerald hover:border-pv-emerald/[0.3] transition-colors"
@@ -349,7 +367,7 @@ export default function CreatePage() {
                   WhatsApp
                 </a>
                 <a
-                  href={`https://t.me/share/url?url=${encodeURIComponent(getShareUrl(created))}`}
+                  href={`https://t.me/share/url?url=${encodeURIComponent(getShareUrl(created, createdInviteKey))}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="chip text-pv-muted hover:text-pv-emerald hover:border-pv-emerald/[0.3] transition-colors"
@@ -377,6 +395,8 @@ export default function CreatePage() {
                     setUrl("");
                     setHandicapLine("");
                     setSettlementRule("");
+                    setVisibility("public");
+                    setCreatedInviteKey("");
                   }}
                 >
                   {t("createAnother")}
@@ -505,6 +525,40 @@ export default function CreatePage() {
             </motion.button>
           ))}
         </div>
+      </AnimatedItem>
+
+      <AnimatedItem>
+        <GlassCard className="lg:max-w-[720px] lg:mx-auto mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="label mb-1">{t("visibility")}</div>
+              <p className="text-sm text-pv-muted">
+                {isPrivate ? t("visibilityPrivateHint") : t("visibilityPublicHint")}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {(
+                [
+                  { key: "public" as const, label: t("visibilityPublic") },
+                  { key: "private" as const, label: t("visibilityPrivate") },
+                ] as const
+              ).map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setVisibility(key)}
+                  className={`chip transition-colors ${
+                    visibility === key
+                      ? "border-pv-emerald/[0.35] bg-pv-emerald/[0.1] text-pv-emerald"
+                      : "text-pv-muted hover:text-pv-text hover:border-white/[0.22]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </GlassCard>
       </AnimatedItem>
 
       <div className="flex flex-col gap-5 lg:max-w-[720px] lg:mx-auto">
@@ -778,7 +832,7 @@ export default function CreatePage() {
 
         <AnimatedItem>
           <GlassCard className="py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1">
                   {t("marketType")}
@@ -799,6 +853,14 @@ export default function CreatePage() {
                   {isOneToMany
                     ? t("oneToManySummary", { count: maxChallengers })
                     : t("headToHeadSummary")}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1">
+                  {t("visibility")}
+                </div>
+                <div className="font-semibold">
+                  {isPrivate ? t("visibilityPrivate") : t("visibilityPublic")}
                 </div>
               </div>
             </div>

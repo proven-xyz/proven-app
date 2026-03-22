@@ -1,4 +1,5 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
+import { tmpdir } from "os";
 import path from "path";
 
 import {
@@ -13,7 +14,6 @@ import {
 const ACTIVE_STATES = new Set<VSData["state"]>(["open", "accepted"]);
 const VS_PAGE_SIZE = 50;
 const VS_FULL_REBUILD_MS = 5 * 60 * 1000;
-const VS_INDEX_DIR = path.join(process.cwd(), ".cache");
 
 export const VS_REVALIDATE_SECONDS = 15;
 export const VS_CACHE_HEADERS = {
@@ -44,8 +44,12 @@ function getCacheState(): VSCacheState {
 }
 
 function getSnapshotPath() {
+  const baseDir =
+    process.env.PROVEN_CACHE_DIR ||
+    (process.env.VERCEL ? path.join(tmpdir(), "proven-cache") : path.join(process.cwd(), ".cache"));
+
   return path.join(
-    VS_INDEX_DIR,
+    baseDir,
     `vs-index-${String(CONTRACT_ADDRESS).toLowerCase()}.json`
   );
 }
@@ -119,8 +123,15 @@ async function readSnapshotFromDisk(): Promise<VSSnapshot | null> {
 }
 
 async function writeSnapshotToDisk(snapshot: VSSnapshot) {
-  await mkdir(VS_INDEX_DIR, { recursive: true });
-  await writeFile(getSnapshotPath(), JSON.stringify(snapshot), "utf8");
+  const snapshotPath = getSnapshotPath();
+
+  try {
+    await mkdir(path.dirname(snapshotPath), { recursive: true });
+    await writeFile(snapshotPath, JSON.stringify(snapshot), "utf8");
+  } catch (error) {
+    // Vercel's project filesystem is read-only; keep serving from memory if disk persistence fails.
+    console.warn("Unable to persist VS snapshot to disk.", error);
+  }
 }
 
 async function fetchAllVSSummaries(count: number) {

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { ensureGenlayerWalletChain } from "./genlayer";
 
 interface WalletCtx {
   address: string | null;
@@ -26,7 +27,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     try {
       if (typeof window !== "undefined" && (window as any).ethereum) {
-        const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
+        const ethereum = (window as any).ethereum;
+        await ensureGenlayerWalletChain(ethereum);
+        const accounts = await ethereum.request({ method: "eth_requestAccounts" });
         if (accounts?.length > 0) setAddress(accounts[0]);
       } else {
         setError("no_wallet");
@@ -47,7 +50,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       eth.on("accountsChanged", handler);
       eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
         if (accs.length > 0) setAddress(accs[0]);
-      }).catch(() => {});
+      }).catch((err: unknown) => {
+        console.warn("Failed to restore wallet session", err);
+        setError((current) => current ?? "error");
+      });
       return () => eth.removeListener("accountsChanged", handler);
     }
   }, []);

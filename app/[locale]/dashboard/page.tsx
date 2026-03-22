@@ -8,9 +8,10 @@ import { useWallet } from "@/lib/wallet";
 import {
   didUserLoseVS,
   didUserWinVS,
-  getUserVSFast,
+  getUserVSDirect,
   getVSUserWinAmount,
   getVSTotalPot,
+  isVSPrivate,
   type VSData,
 } from "@/lib/contract";
 import { ZERO_ADDRESS } from "@/lib/constants";
@@ -40,7 +41,7 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const results = await getUserVSFast(address);
+        const results = await getUserVSDirect(address);
         results.sort((a, b) => b.id - a.id);
         setDuels(results);
       } catch (e) {
@@ -223,7 +224,14 @@ export default function DashboardPage() {
                 <Link href={`/vs/${vs.id}`} className="block group">
                   <div className="card card-hover p-5 cursor-pointer">
                     <div className="flex justify-between items-center mb-3">
-                      <Badge status={st} />
+                      <div className="flex items-center gap-2">
+                        <Badge status={st} />
+                        {isVSPrivate(vs) && (
+                          <span className="chip text-[10px] text-pv-gold border-pv-gold/[0.25] bg-pv-gold/[0.08]">
+                            {t("privateBadge")}
+                          </span>
+                        )}
+                      </div>
                       <span className="font-mono text-[13px] font-bold text-pv-gold">
                         ${getVSTotalPot(vs)}
                       </span>

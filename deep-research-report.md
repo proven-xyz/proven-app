@@ -15,7 +15,7 @@ Source of truth for implementation:
 
 PROVEN is no longer just a "one creator vs many challengers pool bet."
 
-In the current codebase, PROVEN is a claim-based market engine with three important degrees of freedom:
+In the current codebase, PROVEN is a claim-based market engine with four important degrees of freedom:
 
 1. Participation format
    - `max_challengers = 1` gives classic head-to-head.
@@ -28,6 +28,10 @@ In the current codebase, PROVEN is a claim-based market engine with three import
 3. Settlement model
    - `market_type` can be `binary`, `moneyline`, `spread`, `total`, `prop`, or `custom`.
    - `handicap_line` and `settlement_rule` let the claim define custom grading logic.
+
+4. Visibility model
+   - public claims appear in arena feeds
+   - private claims require an invite link and are hidden from public listings
 
 There is also a built-in rivalry layer:
 
@@ -114,6 +118,24 @@ Rivalry is not a frontend-only concept. It is encoded onchain through `parent_id
 
 If the AI verdict is `draw` or `unresolvable`, the contract returns funds rather than forcing an arbitrary winner. For a product using web+AI settlement, that is the correct bias.
 
+### 6. The demo now has a real minimum stake floor
+
+The contract currently enforces `MIN_STAKE = 2`, and the create/join flows surface that to the user.
+
+That is a good hackathon-grade floor because it filters out the worst dust spam without overcomplicating the UX.
+
+### 7. Private-link claims are now first-class
+
+The product is no longer only "public arena" betting.
+
+Private claims:
+
+- are hidden from public feed methods
+- require an invite key to view or join
+- still reuse the same settlement and rivalry model
+
+That is useful because it gives PROVEN both an open-market mode and a direct social challenge mode.
+
 ## Main gaps between theory and current implementation
 
 These are the most important remaining issues after comparing the report with the actual code.
@@ -136,20 +158,20 @@ Recommended next step:
 - require `deadline <= event_time - buffer`
 - stop new challenges during the final lock window
 
-### 2. No meaningful minimum stake or anti-dust controls
+### 2. Minimum stake exists, but deeper stake guardrails do not
 
-The contract only requires stake to be greater than zero.
+The new minimum stake solved the worst dust problem, but the external research was still directionally right about pool abuse at small scale.
 
-That is mathematically valid but poor marketplace hygiene. It invites:
+What is still missing:
 
-- spammy tiny challenges
-- dust challenger joins
-- noisy demo data
+- relative challenger minimums for larger creator stakes
+- per-user caps inside a single challenger pool
+- creator-to-challenger ratio caps for extreme pool optics
 
 Recommended next step:
 
-- set a minimum stake
-- optionally enforce simple step sizes
+- keep the flat minimum stake
+- add ratio and concentration guardrails only where they improve demo trust
 
 ### 3. Oracle ambiguity is still the hardest real risk
 
@@ -169,7 +191,21 @@ Recommended next step:
 - whitelist a few demo-safe source patterns
 - require more structured market metadata for sports and price markets
 
-### 4. Pool extremes are still possible
+### 4. AI confidence should stay a validity and dispute signal, not payout math
+
+The external research was helpful here.
+
+Confidence is valuable, but it should not directly scale payouts. That would turn the claim into a compound bet on both the real-world outcome and the oracle's uncertainty model.
+
+Better pattern:
+
+- high confidence: settle normally
+- medium confidence: settle, but mark the market as contested or dispute-eligible
+- low confidence: refund as unresolvable
+
+That keeps the payout model legible while still using confidence to protect market quality.
+
+### 5. Pool extremes and public information design still need work
 
 In pool mode, the payout math is coherent, but thin or lopsided pools can still produce wild optics.
 
@@ -179,8 +215,10 @@ Recommended next step:
 
 - optionally cap challenger capacity by ratio, not only by count
 - optionally require minimum opposing participation before resolution
+- show challenger count or qualitative "heat" more prominently than exact raw pot totals in broad discovery surfaces
+- keep exact payout math available on the detail page where users are making a real decision
 
-### 5. No fee or spam-bond strategy yet
+### 6. No fee or spam-bond strategy yet
 
 The current contract has no rake, no creator bond, and no spam tax.
 
@@ -194,7 +232,7 @@ Recommended next step:
   - creator posting bond, or
   - both
 
-### 6. `created_at` is not populated meaningfully
+### 7. `created_at` is not populated meaningfully
 
 In the current contract, `created_at` is still written as `0`.
 
@@ -209,6 +247,23 @@ Recommended next step:
 
 - set a real timestamp if GenLayer gives you a safe source
 - otherwise set it in your off-chain index layer for UI ordering
+
+### 8. Exploit prevention is still mostly an off-chain operations problem
+
+The contract blocks the easiest same-wallet abuse, but the outside research is right that the harder attacks will not be solved by a single revert path.
+
+Main risks:
+
+- creator/challenger collusion across multiple wallets
+- sybil challengers farming incentives or shaping private pools
+- late-join sniping in weakly timed markets
+- source manipulation around web evidence and ambiguous settlement links
+
+Recommended next step:
+
+- add simple review signals in the off-chain index layer
+- flag repeated wallet pairings and abnormal win patterns
+- treat private-link claims as hidden, not secret, because on-chain state still exists
 
 ## Product implications by feature
 
@@ -226,6 +281,7 @@ Good next move:
 
 - add "best of 3" or "series record" at the UI/indexer layer
 - do not add automatic double-or-nothing mechanics
+- prefer rivalry scorekeeping over escalation-heavy rematch prompts
 
 ### Odd bets and custom handicaps
 
@@ -267,6 +323,7 @@ That flexibility is a strength, but the app should keep surfacing the mode clear
 After the current UI changes, the app is much closer to the contract:
 
 - create page now exposes advanced terms
+- create and detail flows now support private-link claims
 - rematch creation is wired from the detail page
 - detail page shows challenger roster, rivalry chain, market type, odds mode, settlement rule, and challenger capacity
 - join flow now accepts variable challenger stake instead of forcing a strict mirror of creator stake
@@ -277,6 +334,7 @@ Remaining gap:
 
 - some list/card surfaces are still simplified for scanning
 - a persistent indexer/database would still help for richer filtering and rivalry/history queries
+- public discovery surfaces still need careful information design so they do not imply false certainty from thin pools
 
 ## Recommended short roadmap
 
@@ -285,10 +343,20 @@ If the goal is a stronger demo with minimum surface area, this is the order I wo
 1. Keep current unified contract model.
 2. Redeploy `contracts/proven.py` and update `NEXT_PUBLIC_CONTRACT_ADDRESS`.
 3. Add a lock-window / event-time rule.
-4. Add minimum stake.
-5. Add source templates for sports / crypto / weather claims.
+4. Add ratio and concentration guardrails for small pools.
+5. Add confidence/dispute tiers for low-quality resolutions.
 6. Add lightweight series stats for rivalry.
 7. Add fee or spam-bond only after the core UX feels trustworthy.
+
+## What not to carry over directly from external research
+
+Some of the outside memo was useful, but these parts should not be copied into product truth without more verification:
+
+- country-by-country legal or enforcement claims
+- pure pari-mutuel framing that ignores fixed-odds mode
+- any design where AI confidence directly changes payout size
+
+Those are useful prompts for future work, but not current repo facts.
 
 ## Recommended one-paragraph product framing
 

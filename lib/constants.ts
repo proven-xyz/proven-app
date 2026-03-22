@@ -140,9 +140,10 @@ export function getTimeRemaining(deadline: number) {
   };
 }
 
-export function getShareUrl(vsId: number): string {
-  if (typeof window !== "undefined") return `${window.location.origin}/vs/${vsId}`;
-  return `/vs/${vsId}`;
+export function getShareUrl(vsId: number, inviteKey = ""): string {
+  const path = inviteKey ? `/vs/${vsId}?invite=${encodeURIComponent(inviteKey)}` : `/vs/${vsId}`;
+  if (typeof window !== "undefined") return `${window.location.origin}${path}`;
+  return path;
 }
 
 export function normalizeResolutionSource(value: string): string {

@@ -40,6 +40,8 @@ deploy/keystore/
 coverage/
 .nyc_output/
 *.lcov
+__pycache__/
+*.pyc
 
 # ========================
 # Logs

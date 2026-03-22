@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getUserVSFast, VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
+import {
+  createApiError,
+  parseAddressParam,
+} from "@/lib/server/api-validation";
 
 export const dynamic = "force-dynamic";
 
@@ -11,25 +15,34 @@ type Props = {
 };
 
 export async function GET(_: Request, { params }: Props) {
-  const address = params.address?.trim();
-  if (!address) {
+  try {
+    const address = parseAddressParam(params.address);
+    if (!address) {
+      return NextResponse.json(
+        createApiError("invalid_parameter", "Invalid address"),
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const items = await getUserVSFast(address);
+
     return NextResponse.json(
-      { error: "Address is required" },
       {
-        status: 400,
+        items,
+        count: items.length,
+      },
+      {
+        headers: VS_CACHE_HEADERS,
+      }
+    );
+  } catch {
+    return NextResponse.json(
+      createApiError("internal_error", "Unable to load user VS"),
+      {
+        status: 500,
       }
     );
   }
-
-  const items = await getUserVSFast(address);
-
-  return NextResponse.json(
-    {
-      items,
-      count: items.length,
-    },
-    {
-      headers: VS_CACHE_HEADERS,
-    }
-  );
 }

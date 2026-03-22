@@ -1,4 +1,13 @@
-import { createGenlayerClient } from "./genlayer";
+import { abi as genlayerAbi } from "genlayer-js";
+import { encodeFunctionData, toHex } from "viem";
+
+import {
+  createGenlayerClient,
+  ensureGenlayerWalletChain,
+  GENLAYER_CONSENSUS_MAIN_ABI,
+  getEndpoint,
+  getConsensusMainContractAddress,
+} from "./genlayer";
 
 export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x0000000000000000000000000000000000000000") as any;
@@ -37,6 +46,8 @@ export interface ClaimData {
   settlement_rule: string;
   max_challengers: number;
   created_at: number;
+  visibility?: "public" | "private";
+  is_private?: boolean;
   challengers?: ClaimChallenger[];
   first_challenger?: string;
   challenger_addresses?: string[];
@@ -74,6 +85,8 @@ export interface VSData {
   handicap_line?: string;
   settlement_rule?: string;
   max_challengers?: number;
+  visibility?: ClaimData["visibility"];
+  is_private?: boolean;
   total_pot?: number;
   challenger_addresses?: string[];
 }
@@ -93,6 +106,8 @@ export interface CreateClaimParams {
   handicap_line?: string;
   settlement_rule?: string;
   max_challengers?: number;
+  visibility?: "public" | "private";
+  invite_key?: string;
 }
 
 export interface ContractWriteResult {
@@ -124,6 +139,10 @@ function getConfiguredMaxChallengers(vs: VSData) {
     return vs.max_challengers;
   }
   return 1;
+}
+
+export function isVSPrivate(vs: Pick<VSData, "is_private" | "visibility">) {
+  return Boolean(vs.is_private || vs.visibility === "private");
 }
 
 export function getVSChallengerCount(vs: VSData) {
@@ -256,7 +275,7 @@ export function getVSUserWinAmount(vs: VSData, address?: string | null) {
   return getVSTotalPot(vs);
 }
 
-function mapClaimToVS(rawClaim: ClaimData): VSData {
+export function mapClaimToVS(rawClaim: ClaimData): VSData {
   const claim = normalizeClaimData(rawClaim);
   const firstChallenger = claim.first_challenger ?? ZERO_ADDRESS;
   const compatState =
@@ -285,15 +304,13 @@ function mapClaimToVS(rawClaim: ClaimData): VSData {
 }
 
 async function writeAndWait(functionName: string, wallet: string, args: unknown[], value: number) {
-  const client = createGenlayerClient(wallet);
-  const txHash = await client.writeContract({
-    address: CONTRACT_ADDRESS,
-    functionName,
-    args: args as any,
-    value: BigInt(value),
-  });
+  const txHash =
+    typeof window !== "undefined" && (window as any).ethereum
+      ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
+      : await sendRpcWriteTransaction(wallet, functionName, args, value);
 
-  const receipt = await client.waitForTransactionReceipt({
+  const receiptClient = createGenlayerClient();
+  const receipt = await receiptClient.waitForTransactionReceipt({
     hash: txHash,
     status: "ACCEPTED" as any,
     retries: 200,
@@ -301,6 +318,110 @@ async function writeAndWait(functionName: string, wallet: string, args: unknown[
   });
 
   return { txHash, receipt } satisfies ContractWriteResult;
+}
+
+function makeCalldataObject(functionName: string, args: unknown[]) {
+  const payload: Record<string, unknown> = { method: functionName };
+  if (args.length > 0) {
+    payload.args = args;
+  }
+  return payload;
+}
+
+function encodeGenlayerWrite(functionName: string, args: unknown[]) {
+  const encodedCall = genlayerAbi.calldata.encode(
+    makeCalldataObject(functionName, args) as any
+  );
+  return genlayerAbi.transactions.serialize([encodedCall, false]);
+}
+
+async function requestGenlayerRpc<T>(method: string, params: unknown[]) {
+  const endpoint = getEndpoint();
+  if (!endpoint) {
+    throw new Error("GenLayer RPC endpoint is not configured");
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method,
+      params,
+    }),
+  });
+
+  const payload = await response.json();
+  if (payload?.error) {
+    throw new Error(payload.error.message || `GenLayer RPC ${method} failed`);
+  }
+
+  return payload.result as T;
+}
+
+async function sendRpcWriteTransaction(
+  wallet: string,
+  functionName: string,
+  args: unknown[],
+  value: number
+) {
+  const client = createGenlayerClient(wallet);
+  return client.writeContract({
+    address: CONTRACT_ADDRESS,
+    functionName,
+    args: args as any,
+    value: BigInt(value),
+  });
+}
+
+async function sendBrowserWriteTransaction(
+  wallet: string,
+  functionName: string,
+  args: unknown[],
+  value: number
+) {
+  const ethereum = (window as any).ethereum;
+  if (!ethereum) {
+    throw new Error("Browser wallet not available");
+  }
+
+  await ensureGenlayerWalletChain(ethereum);
+
+  const encodedTx = encodeGenlayerWrite(functionName, args);
+  const [nonce, gasPrice] = await Promise.all([
+    requestGenlayerRpc<string>("eth_getTransactionCount", [wallet, "pending"]),
+    requestGenlayerRpc<string>("eth_gasPrice", []),
+  ]);
+
+  const data = encodeFunctionData({
+    abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+    functionName: "addTransaction",
+    args: [
+      wallet,
+      CONTRACT_ADDRESS,
+      BigInt(3),
+      BigInt(3),
+      encodedTx,
+    ],
+  });
+
+  return (await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [
+      {
+        from: wallet,
+        to: getConsensusMainContractAddress(),
+        data,
+        type: "0x0",
+        nonce,
+        gasPrice,
+        value: toHex(BigInt(value)),
+      },
+    ],
+  })) as string;
 }
 
 async function inferCreatedClaimId(wallet: string) {
@@ -343,12 +464,42 @@ export async function getClaim(claimId: number): Promise<ClaimData | null> {
   }
 }
 
+export async function getClaimWithAccess(
+  claimId: number,
+  inviteKey: string
+): Promise<ClaimData | null> {
+  try {
+    const claim = await readContractValue<ClaimData>("get_claim_with_access", [
+      claimId,
+      inviteKey,
+    ]);
+    return normalizeClaimData(claim);
+  } catch {
+    return null;
+  }
+}
+
 export async function getClaimSummary(claimId: number): Promise<ClaimData | null> {
   try {
     const claim = await readContractValue<ClaimData>("get_claim_summary", [claimId]);
     return normalizeClaimData(claim);
   } catch {
     return getClaim(claimId);
+  }
+}
+
+export async function getClaimSummaryWithAccess(
+  claimId: number,
+  inviteKey: string
+): Promise<ClaimData | null> {
+  try {
+    const claim = await readContractValue<ClaimData>(
+      "get_claim_summary_with_access",
+      [claimId, inviteKey]
+    );
+    return normalizeClaimData(claim);
+  } catch {
+    return getClaimWithAccess(claimId, inviteKey);
   }
 }
 
@@ -453,6 +604,11 @@ export async function getUserVSSummaries(address: string): Promise<VSData[]> {
   return claims.map(mapClaimToVS);
 }
 
+export async function getUserVSDirect(address: string): Promise<VSData[]> {
+  const results = await getUserVSSummaries(address);
+  return results.sort((a, b) => b.id - a.id);
+}
+
 export async function createClaim(wallet: string, params: CreateClaimParams): Promise<ClaimWriteResult> {
   const writeResult = await writeAndWait(
     "create_claim",
@@ -472,6 +628,8 @@ export async function createClaim(wallet: string, params: CreateClaimParams): Pr
       params.handicap_line ?? "",
       params.settlement_rule ?? "",
       params.max_challengers ?? 0,
+      params.visibility ?? "public",
+      params.invite_key ?? "",
     ],
     params.stake_amount
   );
@@ -505,6 +663,8 @@ export async function createRematch(
       params.handicap_line ?? "",
       params.settlement_rule ?? "",
       params.max_challengers ?? 0,
+      params.visibility ?? "public",
+      params.invite_key ?? "",
     ],
     params.stake_amount
   );
@@ -515,11 +675,16 @@ export async function createRematch(
   };
 }
 
-export async function challengeClaim(wallet: string, claimId: number, stakeAmount: number) {
+export async function challengeClaim(
+  wallet: string,
+  claimId: number,
+  stakeAmount: number,
+  inviteKey = ""
+) {
   return writeAndWait(
     "challenge_claim",
     wallet,
-    [claimId, stakeAmount],
+    [claimId, stakeAmount, inviteKey],
     stakeAmount
   );
 }
@@ -532,13 +697,53 @@ export async function cancelClaim(wallet: string, claimId: number) {
   return writeAndWait("cancel_claim", wallet, [claimId], 0);
 }
 
-export async function getVS(vsId: number): Promise<VSData | null> {
+export async function getVS(
+  vsId: number,
+  options: {
+    inviteKey?: string | null;
+    viewerAddress?: string | null;
+  } = {}
+): Promise<VSData | null> {
+  const inviteKey = options.inviteKey?.trim() ?? "";
+
   if (typeof window !== "undefined") {
-    const response = await readApiJson<{ item: VSData }>(`/api/vs/${vsId}`);
-    return response?.item ?? null;
+    const path = inviteKey
+      ? `/api/vs/${vsId}?invite=${encodeURIComponent(inviteKey)}`
+      : `/api/vs/${vsId}`;
+    const response = await readApiJson<{ item: VSData }>(path);
+    if (response?.item) {
+      return response.item;
+    }
+
+    if (inviteKey) {
+      const inviteClaim = await getClaimWithAccess(vsId, inviteKey);
+      if (inviteClaim) {
+        return mapClaimToVS(inviteClaim);
+      }
+    }
+
+    if (options.viewerAddress) {
+      const userItems = await getUserVSDirect(options.viewerAddress);
+      const found = userItems.find((item) => item.id === vsId);
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  if (inviteKey) {
+    const inviteClaim = await getClaimWithAccess(vsId, inviteKey);
+    return inviteClaim ? mapClaimToVS(inviteClaim) : null;
   }
 
   const claim = await getClaim(vsId);
+  return claim ? mapClaimToVS(claim) : null;
+}
+
+export async function getVSWithAccess(vsId: number, inviteKey: string) {
+  const claim = await getClaimWithAccess(vsId, inviteKey);
   return claim ? mapClaimToVS(claim) : null;
 }
 
@@ -607,11 +812,17 @@ export async function createVS(
     market_type: "binary",
     odds_mode: "pool",
     max_challengers: 1,
+    visibility: "public",
   });
 }
 
-export async function acceptVS(wallet: string, vsId: number, stakeAmount: number) {
-  return challengeClaim(wallet, vsId, stakeAmount);
+export async function acceptVS(
+  wallet: string,
+  vsId: number,
+  stakeAmount: number,
+  inviteKey = ""
+) {
+  return challengeClaim(wallet, vsId, stakeAmount, inviteKey);
 }
 
 export async function resolveVS(wallet: string, vsId: number) {

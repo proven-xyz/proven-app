@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -15,8 +15,10 @@ import {
   getVSChallengerCount,
   getVSSingleWinnerPayout,
   getVSTotalPot,
+  getUserVSDirect,
   hasVSWinner,
   isVSJoinable,
+  isVSPrivate,
   resolveVS,
   type ClaimChallenger,
   type VSData,
@@ -30,6 +32,10 @@ import {
 } from "@/lib/constants";
 import { SAMPLE_VS } from "@/lib/sampleVs";
 import { useCountdown } from "@/lib/hooks";
+import {
+  getStoredPrivateInviteKey,
+  rememberPrivateInviteKey,
+} from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import {
@@ -127,8 +133,10 @@ function formatChallengers(vs: VSData): ClaimChallenger[] {
 
 export default function VSDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const vsId = Number(params.id);
   const isSampleVS = vsId < 0 && !!SAMPLE_VS[vsId];
+  const inviteFromUrl = searchParams.get("invite")?.trim() ?? "";
   const { address, isConnected, connect } = useWallet();
   const t = useTranslations("vsDetail");
   const tc = useTranslations("common");
@@ -144,8 +152,25 @@ export default function VSDetailPage() {
   const [challengeStake, setChallengeStake] = useState("");
   const [rivalryChain, setRivalryChain] = useState<VSData[]>([]);
   const [rivalryLoading, setRivalryLoading] = useState(false);
+  const [storedInviteKey, setStoredInviteKey] = useState("");
 
   const countdown = useCountdown(vs?.deadline || 0);
+
+  const inviteKey = inviteFromUrl || storedInviteKey;
+
+  useEffect(() => {
+    if (isSampleVS) {
+      return;
+    }
+
+    if (inviteFromUrl) {
+      rememberPrivateInviteKey(vsId, inviteFromUrl);
+      setStoredInviteKey(inviteFromUrl);
+      return;
+    }
+
+    setStoredInviteKey(getStoredPrivateInviteKey(vsId));
+  }, [inviteFromUrl, isSampleVS, vsId]);
 
   const fetchVS = useCallback(async () => {
     if (isSampleVS) {
@@ -154,10 +179,13 @@ export default function VSDetailPage() {
       return;
     }
 
-    const data = await getVS(vsId);
+    const data = await getVS(vsId, {
+      inviteKey,
+      viewerAddress: address ?? undefined,
+    });
     setVS(data);
     setLoading(false);
-  }, [isSampleVS, vsId]);
+  }, [address, inviteKey, isSampleVS, vsId]);
 
   useEffect(() => {
     fetchVS();
@@ -249,7 +277,10 @@ export default function VSDetailPage() {
 
   const isCreator = address?.toLowerCase() === vs.creator.toLowerCase();
   const isOpponent = didUserChallengeVS(vs, address);
-  const canAccept = !isSampleVS && isConnected && isVSJoinable(vs, address);
+  const isPrivateVS = isVSPrivate(vs);
+  const missingPrivateInvite = isPrivateVS && !inviteKey && !isCreator && !isOpponent;
+  const canAccept =
+    !isSampleVS && isConnected && !missingPrivateInvite && isVSJoinable(vs, address);
   const canResolve = !isSampleVS && vs.state === "accepted" && countdown.expired;
   const canCancel = !isSampleVS && vs.state === "open" && isCreator;
   const hasWinner = hasVSWinner(vs);
@@ -290,6 +321,7 @@ export default function VSDetailPage() {
     !!vs.parent_id ||
     vs.state === "resolved" ||
     vs.state === "cancelled";
+  const shareUrl = getShareUrl(vsId, inviteKey);
 
   async function handleAccept() {
     if (!address) {
@@ -302,18 +334,37 @@ export default function VSDetailPage() {
 
     setActionLoading("accept");
     try {
-      await acceptVS(address, vsId, challengeStakeValue);
+      const liveVS = await getVS(vsId, {
+        inviteKey,
+        viewerAddress: address,
+      });
+
+      if (!liveVS) {
+        setVS(null);
+        toast.error(t("notFound"));
+        return;
+      }
+
+      setVS(liveVS);
+
+      if (!isVSJoinable(liveVS, address)) {
+        toast.error(t("challengeUnavailable"));
+        return;
+      }
+
+      await acceptVS(address, vsId, challengeStakeValue, inviteKey);
       toast.success(
         t("joinedToast", {
           amount: challengeStakeValue,
-          total: pool + challengeStakeValue,
+          total: getVSTotalPot(liveVS) + challengeStakeValue,
         })
       );
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorAccepting"));
+    } finally {
+      setActionLoading(null);
     }
-    setActionLoading(null);
   }
 
   async function handleResolve() {
@@ -409,6 +460,11 @@ export default function VSDetailPage() {
                   ? t("oneToManySummary", { count: maxChallengers })
                   : t("headToHeadSummary")}
               </span>
+              {isPrivateVS && (
+                <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-emerald/[0.25] bg-pv-emerald/[0.08] text-pv-emerald">
+                  {t("privateLink")}
+                </span>
+              )}
               <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
                 {t("pool")}: ${pool}
               </span>
@@ -613,6 +669,14 @@ export default function VSDetailPage() {
                   {t("slotsFilled", { count: challengerCount, total: maxChallengers })}
                 </div>
               </div>
+              <div className="bg-pv-surface2 p-4">
+                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
+                  {t("visibility")}
+                </div>
+                <div className="font-semibold">
+                  {isPrivateVS ? t("visibilityPrivate") : t("visibilityPublic")}
+                </div>
+              </div>
               {oddsMode === "fixed" && typeof vs.challenger_payout_bps === "number" && (
                 <div className="bg-pv-surface2 p-4 sm:col-span-2">
                   <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
@@ -754,6 +818,15 @@ export default function VSDetailPage() {
         {!isSampleVS ? (
           <AnimatedItem>
             <div className="flex flex-col gap-3 lg:max-w-[800px] lg:mx-auto">
+              {missingPrivateInvite && (
+                <GlassCard>
+                  <div className="text-sm font-semibold mb-2 text-pv-emerald">
+                    {t("privateInviteRequired")}
+                  </div>
+                  <p className="text-sm text-pv-muted">{t("privateInviteHint")}</p>
+                </GlassCard>
+              )}
+
               {canAccept && (
                 <GlassCard>
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
@@ -815,27 +888,35 @@ export default function VSDetailPage() {
                 <GlassCard>
                   <div className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Share2 size={14} className="text-pv-cyan" />
-                    {isOneToMany ? t("sendLinkToChallengers") : t("sendLink")}
+                    {isPrivateVS
+                      ? t("sendPrivateLink")
+                      : isOneToMany
+                      ? t("sendLinkToChallengers")
+                      : t("sendLink")}
                   </div>
-                  <div className="flex gap-2.5">
-                    <input
-                      readOnly
-                      value={getShareUrl(vsId)}
-                      className="input flex-1 font-mono text-[11px]"
-                    />
-                    <button
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(getShareUrl(vsId));
-                        setCopied(true);
-                        toast.success(tc("copied"));
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                      className="px-4 py-3 rounded bg-pv-emerald text-pv-bg font-bold text-sm flex items-center gap-1.5 hover:brightness-110 transition-all focus-ring"
-                    >
-                      {copied ? <Check size={14} /> : <Copy size={14} />}
-                      {copied ? tc("copied") : tc("copy")}
-                    </button>
-                  </div>
+                  {isPrivateVS && !inviteKey ? (
+                    <p className="text-sm text-pv-muted">{t("privateLinkUnavailable")}</p>
+                  ) : (
+                    <div className="flex gap-2.5">
+                      <input
+                        readOnly
+                        value={shareUrl}
+                        className="input flex-1 font-mono text-[11px]"
+                      />
+                      <button
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(shareUrl);
+                          setCopied(true);
+                          toast.success(tc("copied"));
+                          setTimeout(() => setCopied(false), 2000);
+                        }}
+                        className="px-4 py-3 rounded bg-pv-emerald text-pv-bg font-bold text-sm flex items-center gap-1.5 hover:brightness-110 transition-all focus-ring"
+                      >
+                        {copied ? <Check size={14} /> : <Copy size={14} />}
+                        {copied ? tc("copied") : tc("copy")}
+                      </button>
+                    </div>
+                  )}
                 </GlassCard>
               )}
 
