@@ -18,6 +18,7 @@
     "deploy:contract:sdk": "npx tsx deploy/deploy.ts"
   },
   "dependencies": {
+    "@xmtp/browser-sdk": "^7.0.0",
     "framer-motion": "^12.38.0",
     "genlayer-js": "^0.7.0",
     "lucide-react": "^0.383.0",

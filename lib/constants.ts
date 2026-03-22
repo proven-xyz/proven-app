@@ -56,6 +56,18 @@ export const CATEGORY_DEMO_GUIDANCE: Record<CategoryId, CategoryDemoGuidance> = 
       "Resolve this using the visible spot price on the linked source at the deadline time. Apply any threshold or line exactly as written.",
     questionHint: "Name the asset, threshold, and deadline explicitly.",
   },
+  tech: {
+    sourceExamples: [
+      "openai.com",
+      "blog.google",
+      "apple.com/newsroom",
+    ],
+    sourceHint:
+      "Use an official product blog, press release, or changelog that will still reflect the announced fact at settlement.",
+    settlementTemplate:
+      "Resolve this only from the linked official source at the deadline. Treat “announced” as a public, attributable statement from the named party.",
+    questionHint: "Name the product, company, and the concrete milestone or date window being judged.",
+  },
   cultura: {
     sourceExamples: [
       "grammy.com",

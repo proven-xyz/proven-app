@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { shortenAddress } from "@/lib/constants";
 import { Menu, X } from "lucide-react";
+import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
 
 function WalletAccountMenu({
   address,
@@ -78,11 +79,29 @@ export default function Header() {
   const t = useTranslations("header");
   const tc = useTranslations("common");
 
-  const NAV_ITEMS = [
-    { href: "/vs/create" as const, label: t("challenge"), accent: true },
-    { href: "/explore" as const, label: t("explore") },
-    { href: "/dashboard" as const, label: t("myVS") },
-  ];
+  const xmtpNavEnabled = useMemo(() => isXmtpFeatureEnabled(), []);
+
+  const NAV_ITEMS = useMemo(() => {
+    const items: Array<{
+      href: "/vs/create" | "/explore" | "/dashboard" | "/messages";
+      label: string;
+      accent: boolean;
+      mobileLabel?: string;
+    }> = [
+      { href: "/vs/create", label: t("challenge"), accent: true },
+      { href: "/explore", label: t("explore"), accent: false },
+      { href: "/dashboard", label: t("myVS"), accent: false },
+    ];
+    if (xmtpNavEnabled) {
+      items.push({
+        href: "/messages",
+        label: t("messages"),
+        accent: false,
+        mobileLabel: t("messagesMobile"),
+      });
+    }
+    return items;
+  }, [t, xmtpNavEnabled]);
 
   useEffect(() => {
     if (!walletMenuOpen) return;
@@ -264,7 +283,9 @@ export default function Header() {
               >
                 {NAV_ITEMS.map((item) => {
                   const isActive = pathname === item.href;
-                  const label = item.accent ? t("challengeMobile") : item.label;
+                  const label = item.accent
+                    ? t("challengeMobile")
+                    : item.mobileLabel ?? item.label;
                   return (
                     <Link
                       key={item.href}

@@ -40,6 +40,13 @@
 - [Deployment](#deployment)
   - [Deploy the Smart Contract](#deploy-the-smart-contract)
   - [Deploy the Frontend](#deploy-the-frontend)
+- [Developer documentation](#developer-documentation)
+
+---
+
+## Developer documentation
+
+- **[XMTP integration](docs/xmtp-integration.md)** — Pasos 1–7: provider + **`VsXmtpPanel`** en `/vs/[id]` + hub **`/messages`** (lista de duelos con chat 1v1 vs pendientes). Navbar: chip *Mensajes* junto a *Mis VS* si `NEXT_PUBLIC_FEATURE_XMTP=1`. Variables: [`.env.example`](.env.example) → **`.env.local`** (doc *Variables de entorno*).
 
 ---
 
@@ -427,10 +434,15 @@ Response headers include `Cache-Control: public, s-maxage=15, stale-while-revali
 | `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed PROVEN contract address | `0x000...000` |
 | `NEXT_PUBLIC_GENLAYER_RPC` | GenLayer RPC endpoint (overrides default) | `https://rpc-bradbury.genlayer.com` |
 | `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
+| `NEXT_PUBLIC_XMTP_ENV` | XMTP network: `local`, `dev`, or `production` | `dev` (in-app default if unset) |
+| `NEXT_PUBLIC_FEATURE_XMTP` | Enable XMTP UI when `1`, `true`, or `yes` | disabled if unset |
+| `NEXT_PUBLIC_XMTP_APP_VERSION` | App id for XMTP telemetry (e.g. `proven-app/1.0.0`) | `proven-app/0.1` |
 | `GENLAYER_RPC` | Server-side RPC override (not exposed to browser) | Same as public default |
 | `GENLAYER_MAIN_CONTRACT` | Server-side consensus contract override | Same as public default |
 
 All `NEXT_PUBLIC_*` variables are exposed to the browser. Server-only variables are used by API routes and build scripts.
+
+See [`.env.example`](.env.example) for a commented template and [`docs/xmtp-integration.md`](docs/xmtp-integration.md) for the XMTP rollout plan.
 
 ---
 

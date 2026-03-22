@@ -49,6 +49,8 @@ import {
 import ProvenStamp from "@/components/ProvenStamp";
 import ResolutionTerminal from "@/components/ResolutionTerminal";
 import Confetti from "@/components/Confetti";
+import VsXmtpPanel from "@/components/xmtp/VsXmtpPanel";
+import { VS_XMTP_CHAT_ANCHOR_ID } from "@/lib/xmtp/vs-chat-eligibility";
 import {
   ArrowLeft,
   Check,
@@ -629,6 +631,17 @@ export default function VSDetailPage() {
                 )}
               </div>
             </GlassCard>
+          </AnimatedItem>
+        )}
+
+        {!isSampleVS && (
+          <AnimatedItem>
+            <div
+              id={VS_XMTP_CHAT_ANCHOR_ID}
+              className="scroll-mt-[calc(3.5rem+12px)]"
+            >
+              <VsXmtpPanel vs={vs} />
+            </div>
           </AnimatedItem>
         )}
 

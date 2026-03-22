@@ -1,6 +1,7 @@
 import "./globals.css";
 import { fontDisplay, fontBody, fontMono } from "@/lib/fonts";
 import { WalletProvider } from "@/lib/wallet";
+import { XmtpProvider } from "@/lib/xmtp/XmtpProvider";
 import { Toaster } from "sonner";
 import NextTopLoader from "nextjs-toploader";
 
@@ -21,7 +22,9 @@ export default function RootLayout({
           shadow={false}
         />
         <WalletProvider>
-          {children}
+          <XmtpProvider>
+            {children}
+          </XmtpProvider>
           <Toaster
             position="bottom-center"
             theme="dark"
