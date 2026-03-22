@@ -5,6 +5,7 @@ import {
   createGenlayerClient,
   ensureGenlayerWalletChain,
   GENLAYER_CONSENSUS_MAIN_ABI,
+  getEndpoint,
   getConsensusMainContractAddress,
 } from "./genlayer";
 
@@ -334,6 +335,33 @@ function encodeGenlayerWrite(functionName: string, args: unknown[]) {
   return genlayerAbi.transactions.serialize([encodedCall, false]);
 }
 
+async function requestGenlayerRpc<T>(method: string, params: unknown[]) {
+  const endpoint = getEndpoint();
+  if (!endpoint) {
+    throw new Error("GenLayer RPC endpoint is not configured");
+  }
+
+  const response = await fetch(endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: Date.now(),
+      method,
+      params,
+    }),
+  });
+
+  const payload = await response.json();
+  if (payload?.error) {
+    throw new Error(payload.error.message || `GenLayer RPC ${method} failed`);
+  }
+
+  return payload.result as T;
+}
+
 async function sendRpcWriteTransaction(
   wallet: string,
   functionName: string,
@@ -363,6 +391,11 @@ async function sendBrowserWriteTransaction(
   await ensureGenlayerWalletChain(ethereum);
 
   const encodedTx = encodeGenlayerWrite(functionName, args);
+  const [nonce, gasPrice] = await Promise.all([
+    requestGenlayerRpc<string>("eth_getTransactionCount", [wallet, "pending"]),
+    requestGenlayerRpc<string>("eth_gasPrice", []),
+  ]);
+
   const data = encodeFunctionData({
     abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
     functionName: "addTransaction",
@@ -382,6 +415,9 @@ async function sendBrowserWriteTransaction(
         from: wallet,
         to: getConsensusMainContractAddress(),
         data,
+        type: "0x0",
+        nonce,
+        gasPrice,
         value: toHex(BigInt(value)),
       },
     ],
