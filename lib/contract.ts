@@ -117,6 +117,8 @@ export interface ContractWriteResult {
 
 export interface ClaimWriteResult extends ContractWriteResult {
   claimId: number | null;
+  pending?: boolean;
+  actor?: string;
 }
 
 function normalizeClaimData(claim: ClaimData): ClaimData {
@@ -464,6 +466,23 @@ export async function getClaim(claimId: number): Promise<ClaimData | null> {
   }
 }
 
+async function postApiJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload?.error?.message || "Request failed");
+  }
+
+  return payload as T;
+}
+
 export async function getClaimWithAccess(
   claimId: number,
   inviteKey: string
@@ -695,6 +714,64 @@ export async function resolveClaim(wallet: string, claimId: number) {
 
 export async function cancelClaim(wallet: string, claimId: number) {
   return writeAndWait("cancel_claim", wallet, [claimId], 0);
+}
+
+export async function createClaimDemo(params: CreateClaimParams): Promise<ClaimWriteResult> {
+  return postApiJson<ClaimWriteResult>("/api/demo/write", {
+    action: "create_claim",
+    params,
+  });
+}
+
+export async function createRematchDemo(
+  parentId: number,
+  params: Omit<CreateClaimParams, "parent_id">
+): Promise<ClaimWriteResult> {
+  return postApiJson<ClaimWriteResult>("/api/demo/write", {
+    action: "create_rematch",
+    parentId,
+    params,
+  });
+}
+
+export async function challengeClaimDemo(
+  claimId: number,
+  stakeAmount: number,
+  inviteKey = ""
+): Promise<ContractWriteResult & { pending?: boolean; actor?: string }> {
+  return postApiJson<ContractWriteResult & { pending?: boolean; actor?: string }>(
+    "/api/demo/write",
+    {
+      action: "challenge_claim",
+      claimId,
+      stakeAmount,
+      inviteKey,
+    }
+  );
+}
+
+export async function resolveClaimDemo(
+  claimId: number
+): Promise<ContractWriteResult & { pending?: boolean; actor?: string }> {
+  return postApiJson<ContractWriteResult & { pending?: boolean; actor?: string }>(
+    "/api/demo/write",
+    {
+      action: "resolve_claim",
+      claimId,
+    }
+  );
+}
+
+export async function cancelClaimDemo(
+  claimId: number
+): Promise<ContractWriteResult & { pending?: boolean; actor?: string }> {
+  return postApiJson<ContractWriteResult & { pending?: boolean; actor?: string }>(
+    "/api/demo/write",
+    {
+      action: "cancel_claim",
+      claimId,
+    }
+  );
 }
 
 export async function getVS(

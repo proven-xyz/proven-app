@@ -8,7 +8,9 @@ import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   acceptVS,
+  challengeClaimDemo,
   cancelVS,
+  cancelClaimDemo,
   didUserChallengeVS,
   getRivalryChain,
   getVS,
@@ -20,9 +22,11 @@ import {
   isVSJoinable,
   isVSPrivate,
   resolveVS,
+  resolveClaimDemo,
   type ClaimChallenger,
   type VSData,
 } from "@/lib/contract";
+import { getDemoModeLabel, isDemoRelayEnabled } from "@/lib/demo-mode";
 import {
   MIN_STAKE,
   ZERO_ADDRESS,
@@ -192,6 +196,8 @@ export default function VSDetailPage() {
   const tc = useTranslations("common");
   const tCat = useTranslations("categories");
   const tStamp = useTranslations("stamp");
+  const demoMode = isDemoRelayEnabled();
+  const demoModeLabel = getDemoModeLabel();
 
   const [vs, setVS] = useState<VSData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -330,8 +336,12 @@ export default function VSDetailPage() {
   const isPrivateVS = isVSPrivate(vs);
   const missingPrivateInvite = isPrivateVS && !inviteKey && !isCreator && !isOpponent;
   const canAccept =
-    !isSampleVS && isConnected && !missingPrivateInvite && isVSJoinable(vs, address);
-  const canResolve = !isSampleVS && vs.state === "accepted" && countdown.expired;
+    !isSampleVS &&
+    !missingPrivateInvite &&
+    isVSJoinable(vs, demoMode ? undefined : address) &&
+    (demoMode || isConnected);
+  const canResolve =
+    !isSampleVS && vs.state === "accepted" && countdown.expired && (demoMode || isConnected);
   const canCancel = !isSampleVS && vs.state === "open" && isCreator;
   const hasWinner = hasVSWinner(vs);
   const challengerCount = getVSChallengerCount(vs);
@@ -374,7 +384,7 @@ export default function VSDetailPage() {
   const shareUrl = getShareUrl(vsId, inviteKey);
 
   async function handleAccept() {
-    if (!address) {
+    if (!demoMode && !address) {
       return;
     }
     if (!hasValidChallengeStake) {
@@ -397,17 +407,24 @@ export default function VSDetailPage() {
 
       setVS(liveVS);
 
-      if (!isVSJoinable(liveVS, address)) {
+      if (!isVSJoinable(liveVS, demoMode ? undefined : address)) {
         toast.error(t("challengeUnavailable"));
         return;
       }
 
-      await acceptVS(address, vsId, challengeStakeValue, inviteKey);
+      const result = demoMode
+        ? await challengeClaimDemo(vsId, challengeStakeValue, inviteKey)
+        : await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
+
+      const isPending = "pending" in result && Boolean(result.pending);
+
       toast.success(
-        t("joinedToast", {
-          amount: challengeStakeValue,
-          total: getVSTotalPot(liveVS) + challengeStakeValue,
-        })
+        isPending
+          ? t("submittedPending")
+          : t("joinedToast", {
+              amount: challengeStakeValue,
+              total: getVSTotalPot(liveVS) + challengeStakeValue,
+            })
       );
       fetchVS();
     } catch (err: any) {
@@ -418,7 +435,7 @@ export default function VSDetailPage() {
   }
 
   async function handleResolve() {
-    if (!address) {
+    if (!demoMode && !address) {
       return;
     }
     setActionLoading("resolve");
@@ -429,8 +446,11 @@ export default function VSDetailPage() {
     const t3 = setTimeout(() => setResolvePhase(3), 4800);
 
     try {
-      await resolveVS(address, vsId);
-      toast.success(t("proven"));
+      const result = demoMode
+        ? await resolveClaimDemo(vsId)
+        : await resolveVS(address!, vsId);
+      const isPending = "pending" in result && Boolean(result.pending);
+      toast.success(isPending ? t("submittedPending") : t("proven"));
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
       fetchVS();
@@ -445,13 +465,16 @@ export default function VSDetailPage() {
   }
 
   async function handleCancel() {
-    if (!address) {
+    if (!address && !demoMode) {
       return;
     }
     setActionLoading("cancel");
     try {
-      await cancelVS(address, vsId);
-      toast.success(t("cancelledToast"));
+      const result = demoMode
+        ? await cancelClaimDemo(vsId)
+        : await cancelVS(address!, vsId);
+      const isPending = "pending" in result && Boolean(result.pending);
+      toast.success(isPending ? t("submittedPending") : t("cancelledToast"));
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorCancelling"));
@@ -465,6 +488,15 @@ export default function VSDetailPage() {
       <div className="fixed inset-0 rivalry-bg pointer-events-none" style={{ zIndex: 0 }} />
       <PageTransition>
         <AnimatedItem>
+          {demoMode && (
+            <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
+                {demoModeLabel}
+              </div>
+              <p className="text-sm text-pv-muted mt-2">{t("demoModeHint")}</p>
+            </GlassCard>
+          )}
+
           <Link
             href={isConnected ? "/dashboard" : "/"}
             className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-5 transition-colors"
@@ -918,7 +950,7 @@ export default function VSDetailPage() {
                 </GlassCard>
               )}
 
-              {vs.state === "open" && !isConnected && (
+              {vs.state === "open" && !isConnected && !demoMode && (
                 <Button onClick={connect}>{t("connectToAccept")}</Button>
               )}
 

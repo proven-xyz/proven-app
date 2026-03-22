@@ -8,11 +8,14 @@ import { useRouter } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   createClaim,
+  createClaimDemo,
   createRematch,
+  createRematchDemo,
   getVS,
   type CreateClaimParams,
   type VSData,
 } from "@/lib/contract";
+import { getDemoModeLabel, isDemoRelayEnabled } from "@/lib/demo-mode";
 import {
   CATEGORY_DEMO_GUIDANCE,
   CATEGORIES,
@@ -58,6 +61,8 @@ export default function CreatePage() {
   const t = useTranslations("create");
   const tc = useTranslations("common");
   const tCat = useTranslations("categories");
+  const demoMode = isDemoRelayEnabled();
+  const demoModeLabel = getDemoModeLabel();
 
   const DEADLINE_PRESETS = [
     { label: t("presets.1h"), seconds: 3600 },
@@ -224,7 +229,7 @@ export default function CreatePage() {
       toast.error(t("fillAllFields"));
       return;
     }
-    if (!isConnected || !address) {
+    if (!demoMode && (!isConnected || !address)) {
       toast.error(t("connectWalletFirst"));
       return;
     }
@@ -283,12 +288,21 @@ export default function CreatePage() {
     setLoading(true);
 
     try {
-      const result = rematchId
-        ? await createRematch(address, rematchId, params)
-        : await createClaim(address, params);
+      const result =
+        demoMode
+          ? rematchId
+            ? await createRematchDemo(rematchId, params)
+            : await createClaimDemo(params)
+          : rematchId
+          ? await createRematch(address!, rematchId, params)
+          : await createClaim(address!, params);
 
       toast.success(
-        rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded")
+        result.pending
+          ? t("submittedPending")
+          : rematchId
+          ? t("rematchCreatedAndFunded")
+          : t("vsCreatedAndFunded")
       );
       if (result.claimId) {
         setCreated(result.claimId);
@@ -420,6 +434,17 @@ export default function CreatePage() {
           {tc("back")}
         </Link>
         <div className="mb-6 lg:max-w-[720px] lg:mx-auto">
+          {demoMode && (
+            <GlassCard className="mb-5">
+              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
+                {demoModeLabel}
+              </div>
+              <p className="text-sm text-pv-muted mt-2">
+                {t("demoModeHint")}
+              </p>
+            </GlassCard>
+          )}
+
           {rematchId && (
             <GlassCard className="mb-5">
               <div className="flex items-start gap-3">
@@ -884,10 +909,12 @@ export default function CreatePage() {
         </AnimatedItem>
 
         <AnimatedItem>
-          {isConnected ? (
+          {demoMode || isConnected ? (
             <Button variant="primary" onClick={handleSubmit} loading={loading}>
               {loading
                 ? t("funding")
+                : demoMode
+                ? t("createDemoAndFund", { amount: stake })
                 : rematchId
                 ? t("createRematchAndFund", { amount: stake })
                 : t("createAndFund", { amount: stake })}
