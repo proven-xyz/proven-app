@@ -1,377 +1,582 @@
-# PROVEN. ⚡
+<div align="center">
 
-**1v1 prediction challenges — AI settles it automatically.**
+# PROVEN.
 
-> Built for [Aleph Hackathon 2026](https://aleph.crecimiento.build) — GenLayer Track + PL\_Genesis
+**AI-settled prediction markets where the blockchain reads the web, judges the outcome, and pays the winner — automatically.**
 
----
+![Next.js](https://img.shields.io/badge/Next.js-14-000000?logo=nextdotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
+![GenLayer](https://img.shields.io/badge/GenLayer-Bradbury-6366F1)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)
+![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss)
+![License](https://img.shields.io/badge/License-MIT-22C55E)
 
-## ¿Qué es PROVEN?
-
-PROVEN te permite desafiar a cualquiera a una apuesta sobre hechos verificables — deportes, clima, crypto, cultura pop. Apostá, compartí un link, y cuando se cumple el deadline, un **Intelligent Contract** lee la web, validadores de IA verifican el resultado, y el ganador cobra automáticamente.
-
-**Sin árbitros. Sin discusiones. Sin esperar.**
-
----
-
-## ¿Cómo funciona?
-
-1. **Desafiá** — Escribí tu apuesta, elegí cuánto apostás
-2. **Mandá el link** — Tu rival lo abre y acepta
-3. **PROVEN decide** — El contrato busca pruebas en la web y la IA emite el veredicto
-4. **Cobrado** — El ganador recibe los fondos al instante
+[Quick Start](#quick-start) · [Architecture](#architecture--highlights) · [API Reference](#api-endpoints) · [Security Model](#security-model)
 
 ---
 
-## Product Positioning
+</div>
 
-PROVEN is an AI-settled claim market, not just a 1v1 betting app.
+## Table of Contents
 
-The current product supports:
-
-- head-to-head claims and `1 vs many` open arenas
-- pool odds and creator-backed fixed odds
-- binary, moneyline, spread, total, prop, and custom markets
-- custom handicap lines and settlement rules
-- rivalry-linked rematches through onchain parent/child claims
-
-The core idea is simple: users publicly price conviction around a verifiable outcome, and PROVEN resolves it from explicit market terms, evidence sources, and validator consensus.
-
-Related internal docs:
-
-- `deep-research-report.md`
-- `implementation-checklist.md`
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Smart Contract | GenLayer Intelligent Contract (Python) — Bradbury testnet |
-| Consensus | Optimistic Democracy + Equivalence Principle |
-| Web Verification | `gl.nondet.web.get()` — real-time web data |
-| AI Evaluation | `gl.nondet.exec_prompt()` — LLM verdict |
-| Frontend | Next.js 14 + React + Tailwind CSS |
-| Wallet | MetaMask via genlayer-js SDK |
+- [Overview](#overview)
+- [Core Features](#core-features)
+- [Architecture / Highlights](#architecture--highlights)
+- [How It Works](#how-it-works)
+  - [Claim Lifecycle](#claim-lifecycle)
+  - [Core Flow](#core-flow)
+  - [Wallet Authentication](#wallet-authentication)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Automated Setup](#automated-setup)
+  - [Start the Application](#start-the-application)
+  - [Manual Setup](#manual-setup)
+  - [Connect Your Wallet](#connect-your-wallet)
+- [Project Structure](#project-structure)
+- [API Endpoints](#api-endpoints)
+- [Environment Variables](#environment-variables)
+- [Technology Stack](#technology-stack)
+- [Security Model](#security-model)
+- [Deployment](#deployment)
+  - [Deploy the Smart Contract](#deploy-the-smart-contract)
+  - [Deploy the Frontend](#deploy-the-frontend)
 
 ---
 
-## Architecture
+## Overview
 
+PROVEN is an AI-settled claim market built on GenLayer. Users create verifiable predictions about real-world outcomes — sports, crypto, weather, culture — stake tokens on their position, and share a link for others to challenge. When the deadline arrives, the intelligent contract fetches evidence from the web, an LLM evaluates it, and multiple validators reach consensus through Optimistic Democracy. The winner is paid automatically. No oracles, no committees, no disputes.
+
+### The Problem
+
+- Traditional betting platforms require centralized arbiters to settle outcomes, introducing trust, fees, and delays
+- Existing prediction markets need external oracle networks that are expensive to maintain and limited in what they can verify
+- Peer-to-peer bets between friends have no enforcement mechanism — losers can simply refuse to pay
+- Building a custom resolution pipeline for every category of verifiable claim is prohibitively complex
+
+### PROVEN solves this
+
+By leveraging GenLayer's intelligent contracts, PROVEN turns the blockchain itself into the judge. The contract reads real-world data, evaluates it with AI, and reaches consensus across validators — making any verifiable claim on the internet automatically settleable.
+
+---
+
+## Core Features
+
+### Instant 1v1 or 1-vs-Many Challenges
+
+Create a prediction, set your stake, and share a link. One opponent or up to 100 challengers can join a single claim.
+
+### AI-Powered Resolution
+
+The intelligent contract fetches live web data from the source URL you provide, then an LLM evaluates the evidence against your claim's exact terms.
+
+### Optimistic Democracy Consensus
+
+Multiple validators independently verify the resolution. The Equivalence Principle ensures consensus even when different AI models phrase conclusions differently.
+
+### Multiple Market Types
+
+Support for binary, moneyline, spread, total, prop, and custom markets — each with configurable handicap lines and settlement rules.
+
+### Pool and Fixed Odds
+
+Choose pool odds (pari-mutuel split based on stake proportions) or creator-backed fixed odds with explicit payout multiples.
+
+### Rivalry Rematches
+
+Resolved claims can spawn linked rematches, building an onchain rivalry chain between opponents with full history tracking.
+
+### Private Invite-Only Claims
+
+Create private challenges accessible only via a secret invite link. The claim exists onchain but is invisible to public browsing.
+
+### Real-Time Dashboard
+
+Track all your active, pending, and resolved claims in one place with win/loss stats, countdowns, and instant resolution notifications.
+
+---
+
+## Architecture / Highlights
+
+```mermaid
+flowchart TB
+    subgraph Browser["Browser"]
+        UI["Next.js 14 App\nReact + Tailwind"]
+        Wallet["MetaMask\nWallet"]
+    end
+
+    subgraph API["Next.js API Layer"]
+        Cache["In-Memory Cache\n15s revalidation"]
+        Routes["/api/vs/*\nREST endpoints"]
+    end
+
+    subgraph GenLayer["GenLayer Bradbury Testnet"]
+        Contract["PROVEN\nIntelligent Contract\n(Python)"]
+        Validators["Validator Network\nOptimistic Democracy"]
+    end
+
+    subgraph External["External Web Sources"]
+        Sources["ESPN · BBC Sport\nCoinGecko · weather.com\nGoogle · News Sites"]
+    end
+
+    UI -- "genlayer-js SDK" --> Contract
+    Wallet -- "EIP-1193 / JSON-RPC" --> Contract
+    UI -- "fetch" --> Routes
+    Routes -- "contract read" --> Contract
+    Routes -- "read/write" --> Cache
+    Contract -- "gl.nondet.web.get()" --> Sources
+    Contract -- "gl.nondet.exec_prompt()" --> Validators
+    Validators -- "consensus" --> Contract
+
+    style Browser fill:#0f172a,color:#f8fafc
+    style API fill:#1e293b,color:#f8fafc
+    style GenLayer fill:#1e293b,color:#f8fafc
+    style External fill:#0f172a,color:#f8fafc
 ```
-┌──────────────────────────────────────┐
-│           FRONTEND (Vercel)          │
-│        Next.js + Tailwind + React    │
-│                                      │
-│  Create VS → Share → Accept → Resolve│
-│              genlayer-js SDK         │
-└─────────────────┬────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────┐
-│      GENLAYER BRADBURY TESTNET       │
-│                                      │
-│  ┌──────────────────────────────┐    │
-│  │    PROVEN Intelligent Contract│    │
-│  │                              │    │
-│  │  create_claim() ← lock stake │    │
-│  │  challenge_claim() ← join   │    │
-│  │  resolve_claim():           │    │
-│  │    ├─ gl.nondet.web.get()   │    │
-│  │    ├─ gl.nondet.exec_prompt()│   │
-│  │    └─ emit_transfer → winner│    │
-│  │  cancel_claim() ← refund    │    │
-│  └──────────────────────────────┘    │
-│                                      │
-│  Optimistic Democracy consensus      │
-└─────────────────┬────────────────────┘
-                  │
-                  ▼
-┌──────────────────────────────────────┐
-│        EXTERNAL WEB SOURCES          │
-│  BBC Sport · ESPN · weather.com      │
-│  CoinGecko · Google · news sites     │
-└──────────────────────────────────────┘
+
+### Trust Boundaries
+
+| Boundary | Trust Level | Verification Mechanism |
+| --- | --- | --- |
+| User to Frontend | Untrusted | MetaMask wallet signature on every write transaction |
+| Frontend to Contract | Authenticated | Transactions signed by user's private key via EIP-1193 |
+| Contract to Web Sources | Semi-trusted | Multiple validators independently fetch and cross-verify |
+| AI Verdict | Consensus-verified | Optimistic Democracy with Equivalence Principle across validators |
+| API Cache to Contract | Internal | Cache is read-only; writes always go direct to contract |
+
+---
+
+## How It Works
+
+### Claim Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Open: create_claim()
+    Open --> Active: challenge_claim()
+    Open --> Cancelled: cancel_claim()
+    Active --> Active: challenge_claim()\n(additional challengers)
+    Active --> Resolved: resolve_claim()
+    Resolved --> [*]
+    Cancelled --> [*]
+
+    state Resolved {
+        [*] --> CreatorWins
+        [*] --> ChallengersWin
+        [*] --> Draw
+        [*] --> Unresolvable
+    }
+```
+
+### Core Flow
+
+```mermaid
+sequenceDiagram
+    participant Creator
+    participant App as PROVEN App
+    participant Contract as Intelligent Contract
+    participant Web as Web Source
+    participant AI as LLM Evaluator
+    participant Validators
+
+    Creator->>App: Create claim + stake
+    App->>Contract: create_claim() [payable]
+    Note over Contract: State: OPEN<br/>Stake locked
+
+    Creator->>App: Share invite link
+    App-->>Challenger: Link received
+
+    Challenger->>App: Accept challenge + stake
+    App->>Contract: challenge_claim() [payable]
+    Note over Contract: State: ACTIVE<br/>Both stakes locked
+
+    App->>Contract: resolve_claim()
+    Contract->>Web: gl.nondet.web.get(url)
+    Web-->>Contract: HTML evidence
+
+    Contract->>AI: gl.nondet.exec_prompt()
+    AI-->>Contract: JSON verdict + confidence
+
+    Contract->>Validators: Submit resolution
+    Validators->>Web: Independent verification
+    Validators->>AI: Independent evaluation
+    Validators-->>Contract: Consensus reached
+
+    Note over Contract: State: RESOLVED<br/>Funds transferred to winner
+
+    Contract-->>App: Resolution + payout
+    App-->>Creator: Result notification
+    App-->>Challenger: Result notification
+```
+
+### Wallet Authentication
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App as PROVEN App
+    participant MM as MetaMask
+    participant Chain as GenLayer RPC
+
+    User->>App: Click "Connect Wallet"
+    App->>MM: eth_requestAccounts
+    alt User approves
+        MM-->>App: [address]
+        App->>App: Store address in WalletContext
+        App->>Chain: Verify chain ID (4221)
+        alt Wrong network
+            App->>MM: wallet_addEthereumChain
+            MM-->>App: Network switched
+        end
+        App-->>User: Connected (address displayed)
+    else User rejects
+        MM-->>App: Error: user_rejected
+        App-->>User: Connection cancelled
+    end
+
+    Note over App,MM: On account change
+    MM->>App: accountsChanged event
+    App->>App: Update WalletContext
 ```
 
 ---
 
-## Contract Address
+## Quick Start
 
+> **Hackathon MVP** — This project was built for the Aleph Hackathon 2026 (GenLayer Track). Production hardening is in progress.
+
+### Prerequisites
+
+- [Node.js 18+](https://nodejs.org/)
+- npm (included with Node.js)
+- [MetaMask](https://metamask.io/) browser extension
+- GenLayer Bradbury testnet tokens ([get from Discord faucet](https://discord.gg/8Jm4v89VAu))
+
+### Automated Setup
+
+```bash
+git clone https://github.com/pxrsival/proven-app.git
+cd proven-app && npm install
 ```
-BRADBURY: [SET AFTER DEPLOYMENT]
+
+### Start the Application
+
+```bash
+npm run dev
 ```
+
+| Service | URL |
+| --- | --- |
+| Frontend | http://localhost:3000 |
+| Default locale | http://localhost:3000/es |
+
+If you encounter chunk errors in dev mode, start with a clean cache:
+
+```bash
+npm run dev:clean
+```
+
+### Manual Setup
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/pxrsival/proven-app.git
+cd proven-app
+```
+
+2. Install dependencies:
+
+```bash
+npm install
+```
+
+3. Configure environment:
+
+```bash
+echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0x2aEFb7eA6BA28a0114E13eAd8D67f7d22c5a8adD" > .env.local
+```
+
+4. Start the development server:
+
+```bash
+npm run dev
+```
+
+5. Open http://localhost:3000 in your browser.
+
+### Connect Your Wallet
+
+1. Install MetaMask if you haven't already
+2. Click "Connect Wallet" in the app header
+3. Approve the connection in MetaMask
+4. If prompted, allow the app to add the GenLayer Bradbury network (Chain ID: 4221)
+5. Get testnet tokens from the [GenLayer Discord faucet](https://discord.gg/8Jm4v89VAu) or use [GenLayer Studio](https://studio.genlayer.com) test accounts
 
 ---
 
 ## Project Structure
 
 ```
-proven/
-├── contracts/
-│   └── proven.py              # GenLayer Intelligent Contract
-├── deploy/
-│   └── deploy.ts              # Deploy to Bradbury testnet
+proven-app/
 ├── app/
-│   ├── layout.tsx             # Root layout + providers
-│   ├── page.tsx               # Landing — hero VS + open previews
-│   ├── vs/
-│   │   ├── create/page.tsx    # Create VS form
-│   │   └── [id]/page.tsx      # VS detail — accept/resolve/result
-│   ├── explore/page.tsx       # Browse open VS with filters
-│   └── dashboard/page.tsx     # My VS — tabs + stats
+│   ├── layout.tsx                        # Root layout, WalletProvider, fonts, Toaster
+│   ├── globals.css                       # Global styles + Tailwind directives
+│   ├── icon.svg                          # App favicon
+│   ├── [locale]/
+│   │   ├── layout.tsx                    # Locale-aware layout with next-intl provider
+│   │   ├── page.tsx                      # Landing page — hero VS + open claim previews
+│   │   ├── dashboard/
+│   │   │   └── page.tsx                  # User dashboard — my claims, stats, tabs
+│   │   ├── explore/
+│   │   │   ├── page.tsx                  # Server component — explore entry point
+│   │   │   └── ExploreClient.tsx         # Client component — filters, search, grid
+│   │   └── vs/
+│   │       ├── create/
+│   │       │   └── page.tsx              # Create VS form — market config, odds, stake
+│   │       └── [id]/
+│   │           └── page.tsx              # VS detail — accept, resolve, result, rematch
+│   └── api/
+│       └── vs/
+│           ├── route.ts                  # GET /api/vs — list all public VS
+│           ├── [id]/
+│           │   └── route.ts              # GET /api/vs/:id — single VS with invite support
+│           └── user/
+│               └── [address]/
+│                   └── route.ts          # GET /api/vs/user/:address — user's VS
 ├── components/
-│   └── Header.tsx             # Nav + wallet
+│   ├── Header.tsx                        # Navigation bar + wallet connection
+│   ├── Footer.tsx                        # Footer links
+│   ├── ArenaCard.tsx                     # Claim preview card (arena/explore view)
+│   ├── VSCard.tsx                        # Claim card (dashboard view)
+│   ├── Confetti.tsx                      # Win celebration animation
+│   ├── ProvenStamp.tsx                   # PROVEN. stamp victory animation
+│   ├── ResolutionTerminal.tsx            # Terminal-style resolution reveal
+│   ├── PageTransition.tsx                # Framer Motion page transitions
+│   ├── EmptyState.tsx                    # Empty results fallback
+│   ├── HtmlLang.tsx                      # HTML lang attribute provider
+│   └── ui/
+│       ├── Avatar.tsx                    # User avatar with address-based colors
+│       ├── Badge.tsx                     # Status badge (open, active, resolved)
+│       ├── Button.tsx                    # Styled button with variants
+│       ├── Chip.tsx                      # Filter/tag chip
+│       ├── CountdownTimer.tsx            # Live countdown to deadline
+│       ├── GlassCard.tsx                 # Glassmorphism card container
+│       ├── Input.tsx                     # Styled input field
+│       ├── PoolBadge.tsx                 # Total pot display badge
+│       ├── Skeleton.tsx                  # Loading skeleton
+│       ├── VSStrip.tsx                   # Compact VS preview strip
+│       └── index.ts                     # Barrel exports
+├── contracts/
+│   └── proven.py                         # GenLayer intelligent contract (882 lines)
+├── deploy/
+│   └── deploy.ts                         # SDK-based deploy script (private key)
+├── hooks/
+│   └── useExploreFilterState.ts          # URL-synced filter state for explore page
+├── i18n/
+│   ├── routing.ts                        # Locale config (es, en) + prefix strategy
+│   ├── request.ts                        # Server-side locale message loader
+│   └── navigation.ts                     # Locale-aware Link and navigation helpers
 ├── lib/
-│   ├── genlayer.ts            # Client config
-│   ├── contract.ts            # Typed contract interface
-│   ├── wallet.tsx             # Wallet context
-│   ├── constants.ts           # Categories, helpers
-│   └── hooks.ts               # useCountdown
+│   ├── contract.ts                       # Typed contract interface + VS mapping
+│   ├── genlayer.ts                       # GenLayer client factory + chain config
+│   ├── wallet.tsx                        # WalletProvider React context
+│   ├── constants.ts                      # Categories, prefills, guidance text
+│   ├── hooks.ts                          # useCountdown hook
+│   ├── fonts.ts                          # Custom font loading
+│   ├── exploreFilters.ts                 # Filter type definitions
+│   ├── private-links.ts                  # Private invite key generation + storage
+│   └── server/
+│       └── vs-cache.ts                   # Server-side in-memory cache layer
+├── messages/
+│   ├── en.json                           # English translations (310 keys)
+│   └── es.json                           # Spanish translations (310 keys)
 ├── public/
-├── tailwind.config.ts
-├── .env.example
-└── README.md
+│   └── icons/                            # SVG icons (handshake, chat, users)
+├── scripts/
+│   ├── genlayer-deploy.mjs               # CLI deploy wrapper
+│   └── warm-vs-index.ts                  # Pre-warm cache script
+├── middleware.ts                          # next-intl locale routing middleware
+├── next.config.js                        # Next.js config with next-intl plugin
+├── tailwind.config.ts                    # Custom theme (colors, animations, fonts)
+├── tsconfig.json                         # TypeScript strict mode config
+├── gltest.config.yaml                    # GenLayer network config (localnet/bradbury)
+└── package.json                          # Dependencies + scripts
 ```
 
 ---
 
-## Repo-Local Codex Skills
+## API Endpoints
 
-This repo includes repo-local Codex skills for GenLayer workflows under `.agents/skills/`, with usage guidance in `AGENTS.md`.
+All endpoints are read-only (GET). No authentication is required — claim data is public onchain. Private claims require an `invite` query parameter.
 
-Useful entry points:
+| Method | Path | Description | Auth |
+| --- | --- | --- | --- |
+| GET | `/api/vs` | List all public VS claims. Pass `?refresh=1` to force cache rebuild. | None |
+| GET | `/api/vs/[id]` | Get a single VS by ID. Pass `?invite=KEY` for private claims. | Invite key (private only) |
+| GET | `/api/vs/user/[address]` | Get all VS where the address is creator or challenger. | None |
 
-- `$write-contract` for new contract work and major contract refactors
-- `$genvm-lint` for contract validation before tests or deployment
-- `$genlayer-cli` for network, deploy, call, write, and receipt workflows
-- `$direct-tests` for fast logic checks
-- `$integration-tests` for localnet, Studio, or testnet validation
-- `$genlayernode` for validator and node operations
-
-Recommended flow:
-
-1. Use `$write-contract` for large contract design or refactors
-2. Run `$genvm-lint` after every contract change
-3. Start with `$direct-tests`
-4. Escalate to `$integration-tests` only when environment or consensus behavior matters
+Response headers include `Cache-Control: public, s-maxage=15, stale-while-revalidate=60` for public endpoints. Private claim responses use `Cache-Control: private, no-store`.
 
 ---
 
-## Quick Start (Local Development)
+## Environment Variables
 
-### Prerequisites
+| Variable | Description | Default |
+| --- | --- | --- |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed PROVEN contract address | `0x000...000` |
+| `NEXT_PUBLIC_GENLAYER_RPC` | GenLayer RPC endpoint (overrides default) | `https://rpc-bradbury.genlayer.com` |
+| `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
+| `GENLAYER_RPC` | Server-side RPC override (not exposed to browser) | Same as public default |
+| `GENLAYER_MAIN_CONTRACT` | Server-side consensus contract override | Same as public default |
 
-- **Node.js 18+**
-- **npm** or **yarn**
-- **MetaMask** browser extension
-
-### 1. Clone & Install
-
-```bash
-git clone https://github.com/YOUR_TEAM/proven.git
-cd proven
-npm install
-```
-
-### 2. Configure Environment
-
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local`:
-```
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x_YOUR_DEPLOYED_ADDRESS
-```
-
-### 3. Run
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-If you see random chunk errors in dev (for example `Cannot find module './36.js'` from `next/dist/server/require-hook.js`), start with a clean cache:
-
-```bash
-npm run dev:clean
-```
-
-Or manually:
-
-```bash
-npm run clean
-npm run dev
-```
+All `NEXT_PUBLIC_*` variables are exposed to the browser. Server-only variables are used by API routes and build scripts.
 
 ---
 
-## Deploy the Smart Contract
+## Technology Stack
 
-### Option A: GenLayer Studio (fastest for testing)
+### Frontend
+
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js 14 (App Router) |
+| UI Library | React 18 |
+| Language | TypeScript 5 (strict mode) |
+| Styling | Tailwind CSS 3.4 |
+| Animations | Framer Motion 12 |
+| Icons | Lucide React |
+| Notifications | Sonner |
+| Internationalization | next-intl 3.26 (ES + EN) |
+| Loading Bar | nextjs-toploader |
+
+### Blockchain
+
+| Layer | Technology |
+| --- | --- |
+| Smart Contract | GenLayer Intelligent Contract (Python) |
+| Network | GenLayer Bradbury Testnet (Chain ID: 4221) |
+| Consensus | Optimistic Democracy + Equivalence Principle |
+| Web Verification | `gl.nondet.web.get()` — real-time web fetch |
+| AI Evaluation | `gl.nondet.exec_prompt()` — LLM verdict |
+| Client SDK | genlayer-js 0.7 |
+| Wallet | MetaMask (EIP-1193) |
+
+### Infrastructure
+
+| Layer | Technology |
+| --- | --- |
+| Hosting | Vercel (recommended) |
+| API Layer | Next.js API Routes (serverless) |
+| Caching | In-memory JSON cache with 15s revalidation |
+| Build Tool | Next.js (Webpack) |
+| Package Manager | npm |
+
+---
+
+## Security Model
+
+For full details, see the [implementation checklist](implementation-checklist.md) and [deep research report](deep-research-report.md).
+
+### Key Security Properties
+
+| Property | Implementation |
+| --- | --- |
+| Stake custody | Funds held by the contract — non-custodial, no intermediary |
+| Write authorization | Every state-changing call requires a wallet-signed transaction |
+| Self-challenge prevention | Contract rejects `challenge_claim()` if sender equals creator |
+| Duplicate challenge prevention | Contract checks all existing challengers before accepting |
+| Minimum stake enforcement | All stakes must be >= 2 tokens (prevents dust spam) |
+| Fixed-odds liability cap | Creator liability is reserved upfront; challengers cannot exceed available liquidity |
+| Private claim access | Invite key required for both viewing and challenging private claims |
+| Resolution integrity | Multiple validators independently fetch web data and evaluate — consensus required |
+| Cancel safety | Only the creator can cancel, and only before any challenger joins |
+
+### Attack Resistance
+
+| Attack Vector | Status | Mechanism |
+| --- | --- | --- |
+| Unauthorized fund withdrawal | ✅ Mitigated | Only contract logic triggers transfers; no external withdraw function |
+| Self-dealing / wash trading | ✅ Mitigated | Creator cannot challenge their own claim |
+| Stake manipulation | ✅ Mitigated | `gl.message.value` must exactly equal declared stake amount |
+| Oracle manipulation | ✅ Mitigated | Multi-validator independent verification via Optimistic Democracy |
+| Private claim enumeration | ✅ Mitigated | Private claims excluded from all public list endpoints |
+| Challenger overflow | ✅ Mitigated | Hard cap of 100 challengers per claim enforced by contract |
+| Resolution before event | ✅ Mitigated | AI returns UNRESOLVABLE if evidence is insufficient |
+
+---
+
+## Deployment
+
+### Deploy the Smart Contract
+
+#### Option A: GenLayer Studio (fastest)
 
 1. Open [studio.genlayer.com](https://studio.genlayer.com)
 2. Paste the contents of `contracts/proven.py`
-3. Deploy — you'll get a contract address
-4. Copy that address into your `.env.local`
-
-### Option B: CLI Deploy to Bradbury
+3. Deploy — copy the resulting contract address
+4. Set the address in `.env.local`:
 
 ```bash
-# Fast CLI deploy using the active GenLayer account and network
-npm run deploy:contract
+echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0xYOUR_ADDRESS" > .env.local
 ```
 
-Useful variants:
+#### Option B: GenLayer CLI
 
 ```bash
-# Force Bradbury first, then deploy contracts/proven.py
+# Deploy to default network (Bradbury)
+npm run deploy:contract
+
+# Force Bradbury network
 npm run deploy:contract:bradbury
 
-# Deploy and sync NEXT_PUBLIC_CONTRACT_ADDRESS into .env.local
+# Deploy and auto-update .env.local
 npm run deploy:contract:env
-
-# Pass constructor args through to genlayer deploy
-npm run deploy:contract -- --args "hello" 42
 ```
 
-The wrapper uses the active `genlayer` CLI account and network, defaults to `contracts/proven.py`, and can optionally update `.env.local`.
-
-### Option C: SDK Deploy Script
-
-If you prefer the older private-key-based script:
+#### Option C: SDK Deploy Script
 
 ```bash
-# Set your private key
-export DEPLOYER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE
-
-# Deploy with genlayer-js
+export DEPLOYER_PRIVATE_KEY=0xYOUR_PRIVATE_KEY
 npm run deploy:contract:sdk
 ```
 
-### Getting Testnet Tokens
+#### Getting Testnet Tokens
 
-- Join [GenLayer Discord](https://discord.gg/8Jm4v89VAu)
-- Use the `#faucet` channel to get Bradbury testnet tokens
-- Or use GenLayer Studio which provides test accounts with tokens
+Join the [GenLayer Discord](https://discord.gg/8Jm4v89VAu) and use the `#faucet` channel, or use GenLayer Studio which provides test accounts with pre-funded tokens.
 
----
+### Deploy the Frontend
 
-## Deploy the Frontend (Free)
-
-### Option 1: Vercel (recommended — free)
-
-1. Push your repo to GitHub
-2. Go to [vercel.com](https://vercel.com)
-3. Import your GitHub repo
-4. Add environment variable:
-   - `NEXT_PUBLIC_CONTRACT_ADDRESS` = your deployed contract address
-5. Deploy — you'll get a `your-app.vercel.app` URL in ~60 seconds
+#### Vercel (recommended)
 
 ```bash
-# Or use Vercel CLI
 npm i -g vercel
 vercel --prod
 ```
 
-### Option 2: Netlify (free)
+Or import the GitHub repo at [vercel.com](https://vercel.com) and add `NEXT_PUBLIC_CONTRACT_ADDRESS` as an environment variable.
 
-1. Push to GitHub
-2. Go to [netlify.com](https://netlify.com)
-3. New site → Import from Git
-4. Build command: `npm run build`
-5. Publish directory: `.next`
-6. Add env var: `NEXT_PUBLIC_CONTRACT_ADDRESS`
+#### Netlify
 
-### Option 3: Cloudflare Pages (free)
+1. Import repo at [netlify.com](https://netlify.com)
+2. Build command: `npm run build`
+3. Publish directory: `.next`
+4. Add env var: `NEXT_PUBLIC_CONTRACT_ADDRESS`
 
-1. Push to GitHub
-2. Go to [pages.cloudflare.com](https://pages.cloudflare.com)
-3. Connect repo
-4. Framework preset: Next.js
-5. Add env var: `NEXT_PUBLIC_CONTRACT_ADDRESS`
+#### Cloudflare Pages
 
-### Option 4: Railway (free tier)
-
-```bash
-npm i -g @railway/cli
-railway login
-railway init
-railway up
-```
-
-Add env var in Railway dashboard.
+1. Connect repo at [pages.cloudflare.com](https://pages.cloudflare.com)
+2. Framework preset: Next.js
+3. Add env var: `NEXT_PUBLIC_CONTRACT_ADDRESS`
 
 ---
 
-## Testing the Contract
+<div align="center">
 
-### In GenLayer Studio
+**The blockchain reads the web. AI judges the outcome. The winner gets paid. That's PROVEN.**
 
-1. Deploy `contracts/proven.py`
-2. Call `create_claim` with value (stake amount)
-3. Switch accounts, call `challenge_claim`
-4. Call `resolve_claim` — watch the AI verdict
+Built for [Aleph Hackathon 2026](https://aleph.crecimiento.build) — GenLayer Track + PL_Genesis
 
-### Local with GLSim
+MIT License
 
-```bash
-pip install genlayer-test[sim]
-glsim --port 4000 --validators 5
-```
-
-Then point your frontend to `http://localhost:4000/api`:
-```
-NEXT_PUBLIC_GENLAYER_RPC=http://localhost:4000/api
-```
-
----
-
-## Demo Flow for Hackathon Video
-
-1. Open the app → Show the landing with open VS
-2. Connect wallet
-3. Create a VS: "¿Argentina le gana a Brasil?" with $5 stake
-4. Copy the link → Show WhatsApp share
-5. Switch to opponent perspective → Accept the VS
-6. Show the countdown + locked funds
-7. Trigger resolution → Terminal animation plays
-8. **PROVEN.** stamp slams in → Winner announced → Funds released
-9. Show the Explore page with open VS from other users
-
-**Use a bet that already happened** (yesterday's match) so the web data is available and resolution works reliably.
-
----
-
-## Why GenLayer?
-
-PROVEN is the **canonical use case** for Intelligent Contracts:
-
-- The contract **reads the web** (`gl.nondet.web.get`) to find real results
-- An LLM **judges the outcome** (`gl.nondet.exec_prompt`)
-- Multiple validators independently verify via **Optimistic Democracy**
-- The **Equivalence Principle** ensures consensus even with different AI phrasing
-- No oracle. No committee. **The blockchain itself decides.**
-
-No other chain can do this natively.
-
----
-
-## Team
-
-- TODO: Your names
-
----
-
-## Built for
-
-Aleph Hackathon 2026 — GenLayer Track + PL\_Genesis
-
----
-
-## License
-
-MIT
+</div>
