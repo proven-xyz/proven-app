@@ -210,7 +210,9 @@ export function createGenlayerClient(accountAddress?: string) {
   return createClientWithoutConsensusNoise(() =>
     createClient({
       chain: getChain(endpoint),
-      ...(accountAddress ? { account: accountAddress as any } : {}),
+      ...(accountAddress 
+        ? { account: accountAddress as any}
+        : { account: null as any}),
     } as any)
   );
 }
