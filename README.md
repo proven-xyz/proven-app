@@ -434,13 +434,17 @@ Response headers include `Cache-Control: public, s-maxage=15, stale-while-revali
 | `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed PROVEN contract address | `0x000...000` |
 | `NEXT_PUBLIC_GENLAYER_RPC` | GenLayer RPC endpoint (overrides default) | `https://rpc-bradbury.genlayer.com` |
 | `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
-| `NEXT_PUBLIC_DEMO_MODE` | Set to `1` to disable website writes and show operator-tool guidance | Off |
+| `NEXT_PUBLIC_DEMO_MODE` | Set to `1` to route website writes through demo signers | Off |
 | `NEXT_PUBLIC_DEMO_MODE_LABEL` | Optional demo banner label | `Bradbury demo mode` |
 | `NEXT_PUBLIC_XMTP_ENV` | XMTP network: `local`, `dev`, or `production` | `dev` (in-app default if unset) |
 | `NEXT_PUBLIC_FEATURE_XMTP` | Enable XMTP UI when `1`, `true`, or `yes` | disabled if unset |
 | `NEXT_PUBLIC_XMTP_APP_VERSION` | App id for XMTP telemetry (e.g. `proven-app/1.0.0`) | `proven-app/0.1` |
 | `GENLAYER_RPC` | Server-side RPC override (not exposed to browser) | Same as public default |
 | `GENLAYER_MAIN_CONTRACT` | Server-side consensus contract override | Same as public default |
+| `DEMO_CREATOR_PRIVATE_KEY` | Server-only Bradbury wallet used for create/rematch writes | Unset |
+| `DEMO_CHALLENGER_PRIVATE_KEY` | Server-only Bradbury wallet used for challenge writes | Unset |
+| `DEMO_RESOLVER_PRIVATE_KEY` | Server-only Bradbury wallet used for resolve writes | Unset |
+| `DEMO_SIGNER_PRIVATE_KEY` | Optional fallback demo signer when the role-specific keys are unset | Unset |
 
 All `NEXT_PUBLIC_*` variables are exposed to the browser. Server-only variables are used by API routes and build scripts.
 
@@ -594,15 +598,28 @@ NEXT_PUBLIC_CONTRACT_ADDRESS=0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9
 NEXT_PUBLIC_DEMO_MODE=1
 ```
 
-This keeps the website as the demo/read surface and disables flaky browser wallet writes.
+This keeps the website interactive while bypassing flaky browser wallet writes on Bradbury.
 
-### Funded writes
+To make the site interactive again, add server-only demo signers:
 
-Use **GenLayer Studio** for:
+```bash
+DEMO_CREATOR_PRIVATE_KEY=0x...
+DEMO_CHALLENGER_PRIVATE_KEY=0x...
+DEMO_RESOLVER_PRIVATE_KEY=0x...
+```
 
-- `create_claim`
-- `create_rematch`
-- `challenge_claim`
+These keys stay on the server and are used by `/api/demo/write`. Use small, dedicated Bradbury wallets for the demo only.
+
+### Website relay flow
+
+With `NEXT_PUBLIC_DEMO_MODE=1` and demo signers configured:
+
+- `create_claim` and `create_rematch` use the creator signer
+- `challenge_claim` uses the challenger signer
+- `resolve_claim` uses the resolver signer
+- the UI shows pending/success states once Bradbury accepts the transaction
+
+### CLI caveat
 
 The current `genlayer write` CLI in `0.37.1` always sends `value: 0n`, so it is not reliable for payable or funded actions.
 
@@ -622,10 +639,9 @@ genlayer receipt <tx_hash>
 
 Recommended demo flow:
 
-- Pre-seed one open claim and one active claim in Studio
-- Use the website to browse and explain the market
-- Resolve or cancel live from CLI if needed
-- Refresh the website after the transaction reaches `ACCEPTED`
+- Use the website for create, rematch, challenge, and resolve through the demo relay
+- Keep CLI handy for inspection and recovery
+- Refresh the website after any pending Bradbury transaction reaches `ACCEPTED`
 
 ---
 
