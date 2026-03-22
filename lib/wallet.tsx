@@ -47,7 +47,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       eth.on("accountsChanged", handler);
       eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
         if (accs.length > 0) setAddress(accs[0]);
-      }).catch(() => {});
+      }).catch((err: unknown) => {
+        console.warn("Failed to restore wallet session", err);
+        setError((current) => current ?? "error");
+      });
       return () => eth.removeListener("accountsChanged", handler);
     }
   }, []);
