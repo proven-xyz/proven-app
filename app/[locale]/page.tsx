@@ -15,6 +15,7 @@ import {
   type VSData,
 } from "@/lib/contract";
 import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
+import { mergePendingVS } from "@/lib/pending-vs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
@@ -32,7 +33,7 @@ export default function HomePage() {
     async function load() {
       try {
         const results = await getAllVSFast();
-        setAllVS(results);
+        setAllVS(mergePendingVS(results));
       } catch (e) {
         console.error("Failed to load VS:", e);
       } finally {
@@ -422,7 +423,7 @@ export default function HomePage() {
                       </span>
                     </div>
                     <span className="font-mono text-[13px] font-bold text-pv-gold flex-shrink-0 ml-2">
-                      {payout === null ? `$${getVSTotalPot(vs)}` : `+$${payout}`}
+                      {payout === null ? `${getVSTotalPot(vs)} GEN` : `+${payout} GEN`}
                     </span>
                   </motion.div>
                 </Link>

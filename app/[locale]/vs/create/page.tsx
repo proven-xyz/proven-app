@@ -7,14 +7,17 @@ import { Link } from "@/i18n/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
-  CONTRACT_ADDRESS,
   createClaim,
+  createClaimDemo,
   createRematch,
+  createRematchDemo,
   getVS,
   type CreateClaimParams,
   type VSData,
 } from "@/lib/contract";
 import { getDemoModeLabel, isDemoRelayEnabled } from "@/lib/demo-mode";
+import { getExplorerTxUrl } from "@/lib/genlayer";
+import { savePendingVS, type PendingVS } from "@/lib/pending-vs";
 import {
   CATEGORY_DEMO_GUIDANCE,
   CATEGORIES,
@@ -29,6 +32,7 @@ import {
 } from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
+import DemoRoleSwitcher from "@/components/DemoRoleSwitcher";
 import { GlassCard, Button, Input } from "@/components/ui";
 import Confetti from "@/components/Confetti";
 import {
@@ -42,6 +46,7 @@ import {
   SlidersHorizontal,
   Users,
 } from "lucide-react";
+import { useDemoRole } from "@/hooks/useDemoRole";
 
 const MARKET_TYPES = [
   "binary",
@@ -62,6 +67,7 @@ export default function CreatePage() {
   const tCat = useTranslations("categories");
   const demoMode = isDemoRelayEnabled();
   const demoModeLabel = getDemoModeLabel();
+  const { demoRole } = useDemoRole();
 
   const DEADLINE_PRESETS = [
     { label: t("presets.1h"), seconds: 3600 },
@@ -91,6 +97,7 @@ export default function CreatePage() {
   const [loading, setLoading] = useState(false);
   const [loadingParent, setLoadingParent] = useState(false);
   const [created, setCreated] = useState<number | null>(null);
+  const [createdTxHash, setCreatedTxHash] = useState("");
   const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -228,7 +235,12 @@ export default function CreatePage() {
       toast.error(t("fillAllFields"));
       return;
     }
-    if (!demoMode && (!isConnected || !address)) {
+    const walletReady = isConnected && !!address;
+    if (demoMode && !walletReady && demoRole !== "creator") {
+      toast.error(t("creatorRoleRequired"));
+      return;
+    }
+    if (!demoMode && !walletReady) {
       toast.error(t("connectWalletFirst"));
       return;
     }
@@ -287,22 +299,52 @@ export default function CreatePage() {
     setLoading(true);
 
     try {
+      const useWalletWrite = isConnected && !!address;
       const result =
-        rematchId
+        demoMode && !useWalletWrite
+          ? rematchId
+            ? await createRematchDemo(rematchId, params)
+            : await createClaimDemo(params)
+          : rematchId
           ? await createRematch(address!, rematchId, params)
           : await createClaim(address!, params);
 
       toast.success(
-        rematchId
+        result.pending
+          ? t("submittedPending")
+          : rematchId
           ? t("rematchCreatedAndFunded")
           : t("vsCreatedAndFunded")
       );
       if (result.claimId) {
         setCreated(result.claimId);
+        setCreatedTxHash(result.txHash || "");
         setCreatedInviteKey(inviteKey);
         if (inviteKey) {
           rememberPrivateInviteKey(result.claimId, inviteKey);
         }
+
+        // Store optimistic VS so it appears in lists before consensus
+        const wallet = useWalletWrite ? address! : "demo";
+        savePendingVS({
+          id: result.claimId,
+          creator: wallet,
+          opponent: "0x0000000000000000000000000000000000000000",
+          question,
+          creator_position: creatorPos,
+          opponent_position: opponentPos,
+          resolution_url: normalizedSourceUrl,
+          stake_amount: stake,
+          deadline: deadlineTimestamp,
+          state: "open",
+          winner: "0x0000000000000000000000000000000000000000",
+          resolution_summary: "",
+          created_at: Math.floor(Date.now() / 1000),
+          category,
+          pending: true,
+          createdAtMs: Date.now(),
+          txHash: result.txHash || "",
+        } satisfies PendingVS);
       } else {
         router.push("/dashboard");
       }
@@ -383,6 +425,20 @@ export default function CreatePage() {
                 </a>
               </div>
 
+              {createdTxHash && (
+                <p className="text-pv-muted text-xs mb-5 font-mono">
+                  Tx:{" "}
+                  <a
+                    href={getExplorerTxUrl(createdTxHash)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-pv-emerald hover:underline"
+                  >
+                    {createdTxHash.slice(0, 10)}...{createdTxHash.slice(-8)}
+                  </a>
+                </p>
+              )}
+
               <div className="flex gap-3 justify-center">
                 <Link href={`/vs/${created}`}>
                   <Button variant="primary" fullWidth={false} className="px-7" size="sm">
@@ -427,7 +483,7 @@ export default function CreatePage() {
           {tc("back")}
         </Link>
         <div className="mb-6 lg:max-w-[720px] lg:mx-auto">
-          {demoMode && (
+          {demoMode && !isConnected && (
             <GlassCard className="mb-5">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
                 {demoModeLabel}
@@ -435,6 +491,7 @@ export default function CreatePage() {
               <p className="text-sm text-pv-muted mt-2">
                 {t("demoModeHint")}
               </p>
+              <DemoRoleSwitcher className="mt-4" />
             </GlassCard>
           )}
 
@@ -614,7 +671,7 @@ export default function CreatePage() {
                       : "border-white/[0.12] bg-pv-surface text-pv-muted hover:border-white/[0.22]"
                   }`}
                 >
-                  ${amount}
+                  {amount} GEN
                 </motion.button>
               ))}
             </div>
@@ -902,25 +959,19 @@ export default function CreatePage() {
         </AnimatedItem>
 
         <AnimatedItem>
-          {demoMode ? (
-            <GlassCard>
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80 mb-2">
-                {t("operatorModeTitle")}
-              </div>
-              <p className="text-sm text-pv-muted mb-3">{t("operatorModeBody")}</p>
-              <div className="bg-pv-surface2 p-4 space-y-2 text-xs">
-                <p className="font-semibold text-pv-text">{t("operatorContract")}</p>
-                <p className="font-mono break-all text-pv-cyan">{CONTRACT_ADDRESS}</p>
-              </div>
-              <div className="mt-4 space-y-2 text-sm text-pv-muted">
-                <p>{t("operatorStudio")}</p>
-                <p>{t("operatorRefresh")}</p>
-              </div>
-            </GlassCard>
-          ) : isConnected ? (
-            <Button variant="primary" onClick={handleSubmit} loading={loading}>
+          {demoMode || isConnected ? (
+            <Button
+              variant="primary"
+              onClick={handleSubmit}
+              loading={loading}
+              disabled={demoMode && !isConnected && demoRole !== "creator"}
+            >
               {loading
                 ? t("funding")
+                : demoMode && !isConnected && demoRole !== "creator"
+                ? t("switchToCreator")
+                : demoMode && !isConnected
+                ? t("createDemoAndFund", { amount: stake })
                 : rematchId
                 ? t("createRematchAndFund", { amount: stake })
                 : t("createAndFund", { amount: stake })}

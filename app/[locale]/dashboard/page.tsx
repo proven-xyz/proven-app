@@ -15,6 +15,7 @@ import {
   type VSData,
 } from "@/lib/contract";
 import { ZERO_ADDRESS } from "@/lib/constants";
+import { mergePendingVS } from "@/lib/pending-vs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import {
   GlassCard,
@@ -43,7 +44,7 @@ export default function DashboardPage() {
       try {
         const results = await getUserVSDirect(address);
         results.sort((a, b) => b.id - a.id);
-        setDuels(results);
+        setDuels(mergePendingVS(results, address));
       } catch (e) {
         console.error(e);
       } finally {
@@ -154,7 +155,7 @@ export default function DashboardPage() {
               <div className="p-4 text-center">
                 <Flame size={16} className="text-pv-gold mx-auto mb-1.5" />
                 <div className="font-mono text-lg font-bold text-pv-gold">
-                  ${totalWon}
+                  {totalWon} GEN
                 </div>
                 <div className="text-[10px] text-pv-muted font-bold uppercase tracking-wider mt-0.5">
                   {t("totalWon")}
@@ -225,7 +226,13 @@ export default function DashboardPage() {
                   <div className="card card-hover p-5 cursor-pointer">
                     <div className="flex justify-between items-center mb-3">
                       <div className="flex items-center gap-2">
-                        <Badge status={st} />
+                        {"pending" in vs && (vs as any).pending ? (
+                          <span className="chip text-[10px] text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.08] animate-pulse">
+                            Pending...
+                          </span>
+                        ) : (
+                          <Badge status={st} />
+                        )}
                         {isVSPrivate(vs) && (
                           <span className="chip text-[10px] text-pv-gold border-pv-gold/[0.25] bg-pv-gold/[0.08]">
                             {t("privateBadge")}
@@ -233,7 +240,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <span className="font-mono text-[13px] font-bold text-pv-gold">
-                        ${getVSTotalPot(vs)}
+                        {getVSTotalPot(vs)} GEN
                       </span>
                     </div>
                     <div className="font-display text-[17px] font-bold leading-snug mb-3 tracking-tight">

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getAllVSFast, isVSJoinable, type VSData } from "@/lib/contract";
+import { mergePendingVS } from "@/lib/pending-vs";
 import { CATEGORIES } from "@/lib/constants";
 import {
   applyExploreFilters,
@@ -35,7 +36,7 @@ export default function ExploreClient() {
     async function load() {
       try {
         const results = await getAllVSFast();
-        setAllVS(results);
+        setAllVS(mergePendingVS(results));
       } catch (error) {
         console.error(error);
       } finally {

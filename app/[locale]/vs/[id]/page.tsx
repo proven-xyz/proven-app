@@ -7,9 +7,10 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
-  CONTRACT_ADDRESS,
   acceptVS,
+  challengeClaimDemo,
   cancelVS,
+  cancelClaimDemo,
   didUserChallengeVS,
   getRivalryChain,
   getVS,
@@ -21,10 +22,13 @@ import {
   isVSJoinable,
   isVSPrivate,
   resolveVS,
+  resolveClaimDemo,
   type ClaimChallenger,
   type VSData,
 } from "@/lib/contract";
 import { getDemoModeLabel, isDemoRelayEnabled } from "@/lib/demo-mode";
+import { getExplorerTxUrl } from "@/lib/genlayer";
+import { getPendingVS } from "@/lib/pending-vs";
 import {
   MIN_STAKE,
   ZERO_ADDRESS,
@@ -40,6 +44,7 @@ import {
 } from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
+import DemoRoleSwitcher from "@/components/DemoRoleSwitcher";
 import {
   Avatar,
   Badge,
@@ -62,6 +67,7 @@ import {
   Share2,
   Users,
 } from "lucide-react";
+import { useDemoRole } from "@/hooks/useDemoRole";
 
 function ProgressBar({ state }: { state: string }) {
   const t = useTranslations("vsDetail");
@@ -148,9 +154,11 @@ export default function VSDetailPage() {
   const tStamp = useTranslations("stamp");
   const demoMode = isDemoRelayEnabled();
   const demoModeLabel = getDemoModeLabel();
+  const { demoRole } = useDemoRole();
 
   const [vs, setVS] = useState<VSData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [resolvePhase, setResolvePhase] = useState(-1);
@@ -189,8 +197,25 @@ export default function VSDetailPage() {
       inviteKey,
       viewerAddress: address ?? undefined,
     });
-    setVS(data);
-    setLoading(false);
+    if (data) {
+      setVS(data);
+      setLoading(false);
+      setFetchAttempts(0);
+    } else {
+      // Show optimistic data from localStorage while consensus is pending
+      const pending = getPendingVS(vsId);
+      if (pending) {
+        setVS(pending);
+        setLoading(false);
+      }
+      // Keep polling — once on-chain data arrives it replaces the pending item.
+      // Give up on the loading spinner after ~2 min.
+      setFetchAttempts((prev) => {
+        const next = prev + 1;
+        if (next >= 12) setLoading(false);
+        return next;
+      });
+    }
   }, [address, inviteKey, isSampleVS, vsId]);
 
   useEffect(() => {
@@ -263,7 +288,9 @@ export default function VSDetailPage() {
     return (
       <div className="text-center py-20">
         <div className="w-10 h-10 border-2 border-transparent border-t-pv-emerald rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-pv-muted text-sm">{tc("loading")}</p>
+        <p className="text-pv-muted text-sm">
+          {fetchAttempts > 1 ? t("submittedPending") : tc("loading")}
+        </p>
       </div>
     );
   }
@@ -287,13 +314,16 @@ export default function VSDetailPage() {
   const missingPrivateInvite = isPrivateVS && !inviteKey && !isCreator && !isOpponent;
   const canAccept =
     !isSampleVS &&
-    !demoMode &&
     !missingPrivateInvite &&
-    isVSJoinable(vs, address) &&
-    isConnected;
+    isVSJoinable(vs, demoMode && !isConnected ? undefined : address) &&
+    (demoMode ? (isConnected || demoRole === "challenger") : isConnected);
   const canResolve =
-    !isSampleVS && !demoMode && vs.state === "accepted" && countdown.expired && isConnected;
-  const canCancel = !isSampleVS && !demoMode && vs.state === "open" && isCreator;
+    !isSampleVS &&
+    vs.state === "accepted" &&
+    countdown.expired &&
+    (demoMode ? (isConnected || demoRole === "resolver") : isConnected);
+  const canCancel =
+    !isSampleVS && vs.state === "open" && (demoMode ? (isConnected ? isCreator : demoRole === "creator") : isCreator);
   const hasWinner = hasVSWinner(vs);
   const challengerCount = getVSChallengerCount(vs);
   const maxChallengers =
@@ -312,7 +342,7 @@ export default function VSDetailPage() {
     ? tStamp("challengersWon")
     : tStamp("won", { address: shortenAddress(vs.winner) });
   const winnerAmountLabel =
-    !hasWinner ? null : resolvedPayout === null ? `$${pool}` : `+$${resolvedPayout}`;
+    !hasWinner ? null : resolvedPayout === null ? `${pool} GEN` : `+${resolvedPayout} GEN`;
   const categoryInfo = getCategoryInfo(vs.category);
   const marketType = vs.market_type ?? "binary";
   const oddsMode = vs.odds_mode ?? "pool";
@@ -333,15 +363,10 @@ export default function VSDetailPage() {
     vs.state === "resolved" ||
     vs.state === "cancelled";
   const shareUrl = getShareUrl(vsId, inviteKey);
-  const resolveCommand = `genlayer write ${CONTRACT_ADDRESS} resolve_claim --args ${vs.id}`;
-  const cancelCommand = `genlayer write ${CONTRACT_ADDRESS} cancel_claim --args ${vs.id}`;
-  const readCommand =
-    isPrivateVS
-      ? `genlayer call ${CONTRACT_ADDRESS} get_claim_with_access --args ${vs.id} "${inviteKey || "<invite_key>"}"`
-      : `genlayer call ${CONTRACT_ADDRESS} get_claim --args ${vs.id}`;
 
   async function handleAccept() {
-    if (!address) {
+    const walletReady = isConnected && !!address;
+    if (!demoMode && !walletReady) {
       return;
     }
     if (!hasValidChallengeStake) {
@@ -364,18 +389,24 @@ export default function VSDetailPage() {
 
       setVS(liveVS);
 
-      if (!isVSJoinable(liveVS, address)) {
+      if (!isVSJoinable(liveVS, demoMode && !walletReady ? undefined : address)) {
         toast.error(t("challengeUnavailable"));
         return;
       }
 
-      await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
+      const result = demoMode && !walletReady
+        ? await challengeClaimDemo(vsId, challengeStakeValue, inviteKey)
+        : await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
+      const isPending = "pending" in result && Boolean(result.pending);
 
       toast.success(
-        t("joinedToast", {
-          amount: challengeStakeValue,
-          total: getVSTotalPot(liveVS) + challengeStakeValue,
-        })
+        isPending
+          ? t("submittedPending")
+          : t("joinedToast", {
+              amount: challengeStakeValue,
+              total: getVSTotalPot(liveVS) + challengeStakeValue,
+            }),
+        result.txHash ? { description: `Tx: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}` } : undefined
       );
       fetchVS();
     } catch (err: any) {
@@ -386,7 +417,8 @@ export default function VSDetailPage() {
   }
 
   async function handleResolve() {
-    if (!address) {
+    const walletReady = isConnected && !!address;
+    if (!demoMode && !walletReady) {
       return;
     }
     setActionLoading("resolve");
@@ -397,8 +429,14 @@ export default function VSDetailPage() {
     const t3 = setTimeout(() => setResolvePhase(3), 4800);
 
     try {
-      await resolveVS(address!, vsId);
-      toast.success(t("proven"));
+      const result = demoMode && !walletReady
+        ? await resolveClaimDemo(vsId)
+        : await resolveVS(address!, vsId);
+      const isPending = "pending" in result && Boolean(result.pending);
+      toast.success(
+        isPending ? t("submittedPending") : t("proven"),
+        result.txHash ? { description: `Tx: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}` } : undefined
+      );
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
       fetchVS();
@@ -413,13 +451,20 @@ export default function VSDetailPage() {
   }
 
   async function handleCancel() {
-    if (!address) {
+    const walletReady = isConnected && !!address;
+    if (!walletReady && !demoMode) {
       return;
     }
     setActionLoading("cancel");
     try {
-      await cancelVS(address!, vsId);
-      toast.success(t("cancelledToast"));
+      const result = demoMode && !walletReady
+        ? await cancelClaimDemo(vsId)
+        : await cancelVS(address!, vsId);
+      const isPending = "pending" in result && Boolean(result.pending);
+      toast.success(
+        isPending ? t("submittedPending") : t("cancelledToast"),
+        result.txHash ? { description: `Tx: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}` } : undefined
+      );
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorCancelling"));
@@ -433,12 +478,13 @@ export default function VSDetailPage() {
       <div className="fixed inset-0 rivalry-bg pointer-events-none" style={{ zIndex: 0 }} />
       <PageTransition>
         <AnimatedItem>
-          {demoMode && (
+          {demoMode && !isConnected && (
             <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
                 {demoModeLabel}
               </div>
               <p className="text-sm text-pv-muted mt-2">{t("demoModeHint")}</p>
+              <DemoRoleSwitcher className="mt-4" />
             </GlassCard>
           )}
 
@@ -493,9 +539,15 @@ export default function VSDetailPage() {
                 </span>
               )}
               <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
-                {t("pool")}: ${pool}
+                {t("pool")}: {pool} GEN
               </span>
-              <Badge status={vs.state} />
+              {"pending" in vs && (vs as any).pending ? (
+                <span className="chip text-[10px] text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.08] animate-pulse">
+                  {t("submittedPending")}
+                </span>
+              ) : (
+                <Badge status={vs.state} />
+              )}
             </div>
           </div>
         </AnimatedItem>
@@ -607,14 +659,14 @@ export default function VSDetailPage() {
                     <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
                       {t("pool")}
                     </div>
-                    <div className="font-mono text-2xl font-bold text-pv-gold">${pool}</div>
+                    <div className="font-mono text-2xl font-bold text-pv-gold">{pool} GEN</div>
                   </div>
                   <div className="bg-pv-surface2 p-4">
                     <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
                       {t("creatorStake")}
                     </div>
                     <div className="font-mono text-2xl font-bold text-pv-cyan">
-                      ${vs.creator_stake ?? vs.stake_amount}
+                      {vs.creator_stake ?? vs.stake_amount} GEN
                     </div>
                   </div>
                   <div className="bg-pv-surface2 p-4">
@@ -780,7 +832,7 @@ export default function VSDetailPage() {
                           {t("challengerStake")}
                         </div>
                         <div className="font-mono font-semibold text-pv-fuch">
-                          ${challenger.stake}
+                          {challenger.stake} GEN
                         </div>
                       </div>
                       <div>
@@ -788,7 +840,7 @@ export default function VSDetailPage() {
                           {t("potentialPayout")}
                         </div>
                         <div className="font-mono font-semibold text-pv-gold">
-                          ${challenger.potential_payout}
+                          {challenger.potential_payout} GEN
                         </div>
                       </div>
                     </div>
@@ -856,54 +908,6 @@ export default function VSDetailPage() {
         {!isSampleVS ? (
           <AnimatedItem>
             <div className="flex flex-col gap-3 lg:max-w-[800px] lg:mx-auto">
-              {demoMode && (
-                <GlassCard>
-                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80 mb-2">
-                    {t("operatorModeTitle")}
-                  </div>
-                  <p className="text-sm text-pv-muted mb-4">{t("demoModeHint")}</p>
-                  <div className="space-y-3">
-                    <div className="bg-pv-surface2 p-4">
-                      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2">
-                        {t("operatorReadCommand")}
-                      </div>
-                      <code className="block break-all text-xs text-pv-cyan font-mono">
-                        {readCommand}
-                      </code>
-                    </div>
-
-                    {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) && (
-                      <p className="text-sm text-pv-muted">{t("operatorStudioFunding")}</p>
-                    )}
-
-                    {vs.state === "accepted" && countdown.expired && (
-                      <div className="bg-pv-surface2 p-4">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2">
-                          {t("operatorResolveCommand")}
-                        </div>
-                        <code className="block break-all text-xs text-pv-cyan font-mono">
-                          {resolveCommand}
-                        </code>
-                        <p className="text-xs text-pv-muted mt-3">{t("operatorResolveHint")}</p>
-                      </div>
-                    )}
-
-                    {vs.state === "open" && isCreator && (
-                      <div className="bg-pv-surface2 p-4">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2">
-                          {t("operatorCancelCommand")}
-                        </div>
-                        <code className="block break-all text-xs text-pv-cyan font-mono">
-                          {cancelCommand}
-                        </code>
-                        <p className="text-xs text-pv-muted mt-3">{t("operatorCancelHint")}</p>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-sm text-pv-muted mt-4">{t("operatorRefreshHint")}</p>
-                </GlassCard>
-              )}
-
               {missingPrivateInvite && (
                 <GlassCard>
                   <div className="text-sm font-semibold mb-2 text-pv-emerald">
@@ -954,7 +958,7 @@ export default function VSDetailPage() {
                 </GlassCard>
               )}
 
-              {vs.state === "open" && !isConnected && !demoMode && (
+              {vs.state === "open" && !isConnected && (
                 <Button onClick={connect}>{t("connectToAccept")}</Button>
               )}
 
@@ -970,7 +974,8 @@ export default function VSDetailPage() {
                 </GlassCard>
               )}
 
-              {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) && isCreator && (
+              {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) &&
+                (demoMode ? (isConnected ? isCreator : demoRole === "creator") : isCreator) && (
                 <GlassCard>
                   <div className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Share2 size={14} className="text-pv-cyan" />
