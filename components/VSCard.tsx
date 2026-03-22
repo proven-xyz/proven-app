@@ -16,16 +16,34 @@ interface VSCardProps {
   vs: VSData;
   showCategory?: boolean;
   showAcceptCTA?: boolean;
+  /** VS de demostración (ids negativos): estilo distinto + badge opcional */
+  isSample?: boolean;
+  sampleBadgeLabel?: string;
+  /**
+   * Si se define, la píldora de categoría enlaza a Explore con `?cat=` (misma categoría que `vs.category`).
+   * Usa overlay + `pointer-events` para evitar `<a>` anidados.
+   */
+  categoryFilterHref?: string;
+  /** Texto "challenges" junto al creador (p. ej. Explore lo oculta) */
+  showChallengesLabel?: boolean;
 }
+
+/** Misma píldora que ArenaCard (categoría + POOL): sin borde blanco del `.chip` global */
+const vsCardPillClass =
+  "rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald/90";
 
 export default function VSCard({
   vs,
   showCategory = false,
   showAcceptCTA = false,
+  isSample = false,
+  sampleBadgeLabel,
+  categoryFilterHref,
+  showChallengesLabel = true,
 }: VSCardProps) {
   const catInfo = getCategoryInfo(vs.category);
-  const isOpen  = vs.opponent === ZERO_ADDRESS;
-  const pool    = getVSTotalPot(vs);
+  const isOpen = vs.opponent === ZERO_ADDRESS;
+  const pool = getVSTotalPot(vs);
   const isJoinable = isVSJoinable(vs);
   const challengerCount = getVSChallengerCount(vs);
   const maxChallengers =
@@ -34,57 +52,71 @@ export default function VSCard({
       : 1;
   const marketType = vs.market_type ?? "binary";
   const oddsMode = vs.odds_mode ?? "pool";
-  const t       = useTranslations("vsDetail");
-  const tCat    = useTranslations("categories");
+  const t = useTranslations("vsDetail");
+  const tCat = useTranslations("categories");
 
   return (
-    <Link href={`/vs/${vs.id}`} className="block group">
-      <motion.div
-        whileHover={{ y: -2 }}
-        transition={{ duration: 0.2 }}
-        className="card card-hover p-5 relative"
-      >
-        <div className="absolute top-0 left-0 w-2/5 h-full bg-[radial-gradient(ellipse_at_0%_50%,rgba(93,230,255,0.05),transparent_65%)] pointer-events-none" />
+    <motion.div
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.2 }}
+      className={`group card card-hover relative p-5 ${
+        isSample
+          ? "border border-dashed border-pv-emerald/35 bg-pv-surface/80 ring-1 ring-pv-emerald/[0.12]"
+          : ""
+      }`}
+    >
+      <Link
+        href={`/vs/${vs.id}`}
+        className="absolute inset-0 z-0 rounded"
+        aria-label={vs.question}
+      />
 
-        <div className="relative">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold">
-                {shortenAddress(vs.creator)}
+      <div className="pointer-events-none absolute left-0 top-0 h-full w-2/5 bg-[radial-gradient(ellipse_at_0%_50%,rgba(78,222,163,0.06),transparent_65%)]" />
+
+      <div className="relative z-10 pointer-events-none">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {isSample && sampleBadgeLabel ? (
+              <span className={`shrink-0 ${vsCardPillClass} tracking-[0.14em]`}>
+                {sampleBadgeLabel}
               </span>
+            ) : null}
+            <span className="text-[13px] font-semibold">
+              {shortenAddress(vs.creator)}
+            </span>
+            {showChallengesLabel ? (
               <span className="text-xs text-pv-muted">{t("challenges")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {showCategory && (
-                <span
-                  className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border"
-                  style={{
-                    backgroundColor: catInfo.color + "12",
-                    borderColor:     catInfo.color + "25",
-                    color:           catInfo.color,
-                  }}
+            ) : null}
+          </div>
+          <div className="flex items-center gap-2">
+            {showCategory &&
+              (categoryFilterHref ? (
+                <Link
+                  href={categoryFilterHref}
+                  className={`pointer-events-auto inline-block ${vsCardPillClass} transition-colors hover:border-pv-emerald/35 hover:bg-pv-emerald/[0.1]`}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   {tCat(catInfo.id)}
-                </span>
-              )}
-              <span className="font-mono text-[13px] font-bold text-pv-gold">
-                ${pool}
-              </span>
-            </div>
+                </Link>
+              ) : (
+                <span className={vsCardPillClass}>{tCat(catInfo.id)}</span>
+              ))}
+            <span className={`inline-block shrink-0 ${vsCardPillClass}`}>${pool}</span>
           </div>
+        </div>
 
-          <div className="font-display text-lg font-bold leading-snug mb-3.5 tracking-tight">
-            {vs.question}
-          </div>
+        <div className="font-display text-lg font-bold leading-snug mb-3.5 tracking-tight">
+          {vs.question}
+        </div>
 
-          <VSStrip
-            creator={vs.creator}
-            creatorPosition={vs.creator_position}
-            opponent={vs.opponent}
-            opponentPosition={vs.opponent_position}
-            isOpen={isOpen}
-            compact
-          />
+        <VSStrip
+          creator={vs.creator}
+          creatorPosition={vs.creator_position}
+          opponent={vs.opponent}
+          opponentPosition={vs.opponent_position}
+          isOpen={isOpen}
+          compact
+        />
 
           <div className="flex flex-wrap gap-2 mt-3">
             <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-cyan/[0.25] bg-pv-cyan/[0.08] text-pv-cyan">
@@ -104,7 +136,6 @@ export default function VSCard({
             </div>
           )}
         </div>
-      </motion.div>
-    </Link>
+    </motion.div>
   );
 }

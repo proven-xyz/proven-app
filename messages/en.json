@@ -16,16 +16,18 @@
   },
   "header": {
     "challenge": "+ Challenge",
+    "challengeMobile": "Challenge",
     "explore": "Explore",
     "myVS": "My VS",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "walletMenu": "Wallet",
+    "disconnect": "Disconnect",
+    "mobileNavAria": "Main navigation"
   },
   "footer": {
-    "tagline": "The truth is proven.",
-    "explore": "Explore",
-    "createVS": "Create VS",
-    "poweredBy": "Powered by GenLayer AI Consensus"
+    "poweredBy": "Powered by GenLayer AI Consensus",
+    "rightsReserved": "© 2024 PROVEN. All rights reserved."
   },
   "home": {
     "vsOfDay": "VS of the day",
@@ -190,6 +192,7 @@
     "subtitle": "Accept someone's VS. Pick your fight.",
     "searchPlaceholder": "Search VS...",
     "clearSearch": "Clear search",
+    "clearSearchMobile": "Clear search",
     "category": "Category",
     "all": "All",
     "minStake": "Min stake",
@@ -204,6 +207,11 @@
     "noResultsDesc": "Try changing the filters or create your own VS.",
     "challengeSomeone": "Challenge someone",
     "eyebrow": "Open Arena",
+    "sampleIntroEmpty": "No open VS on-chain yet. Demo cards below follow your filters and search.",
+    "sampleIntroFiltered": "No live VS match your filters. Demo cards below use the same filters and search.",
+    "sampleNoMatchIntro": "Nothing matches these filters — not even the demos. Try resetting or broadening your search.",
+    "sampleNoMatchHint": "No demo card matches the current filters. Reset filters or adjust search to see examples again.",
+    "sampleCreateHint": "Create your own challenge to go live on the protocol.",
     "resetFilters": "Reset filters",
     "filtersAriaLabel": "Filters: category, minimum stake, and sort order"
   },
@@ -337,6 +345,7 @@
     "deportes": "Sports",
     "clima": "Weather",
     "crypto": "Crypto",
+    "tech": "Tech",
     "cultura": "Culture",
     "custom": "Custom"
   },

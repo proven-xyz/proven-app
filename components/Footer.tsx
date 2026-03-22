@@ -1,41 +1,30 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 
 export default function Footer() {
   const t = useTranslations("footer");
 
   return (
-    <footer className="border-t border-white/[0.08] mt-16">
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-0">
-          <div>
-            <span className="font-display font-bold text-sm tracking-tight text-pv-muted">
+    <footer className="mt-16 border-t border-white/[0.08]">
+      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
+        {/* Una sola banda: 3 columnas en desktop — izq | centro (Powered) | der (©) */}
+        <div className="grid grid-cols-1 items-center gap-5 text-center md:grid-cols-[1fr_auto_1fr] md:gap-6 md:text-left">
+          {/* Izquierda: marca */}
+          <div className="flex flex-col items-center md:items-start md:justify-self-start">
+            <span className="font-display text-sm font-bold tracking-tight text-pv-muted">
               PROVEN<span className="text-pv-emerald">.</span>
             </span>
-            <p className="text-[11px] text-pv-muted/60 mt-1">
-              {t("tagline")}
-            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/explore"
-              className="text-xs text-pv-muted hover:text-pv-text transition-colors"
-            >
-              {t("explore")}
-            </Link>
-            <Link
-              href="/vs/create"
-              className="text-xs text-pv-muted hover:text-pv-text transition-colors"
-            >
-              {t("createVS")}
-            </Link>
-          </div>
-        </div>
-        <div className="mt-6 pt-4 border-t border-white/[0.06]">
-          <p className="text-[10px] text-pv-muted/40 text-center">
+
+          {/* Centro: entre columnas laterales (misma fila en md+) */}
+          <p className="justify-self-center text-[10px] leading-snug text-pv-muted/45 md:px-2 md:text-center">
             {t("poweredBy")}
+          </p>
+
+          {/* Derecha: copyright */}
+          <p className="justify-self-center text-[10px] leading-snug text-pv-muted/40 md:justify-self-end md:text-right">
+            {t("rightsReserved")}
           </p>
         </div>
       </div>

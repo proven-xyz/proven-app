@@ -9,8 +9,11 @@ import { CATEGORIES } from "@/lib/constants";
 import {
   applyExploreFilters,
   DEFAULT_EXPLORE_FILTERS,
+  MIN_STAKE_OPTIONS,
+  serializeExploreFilters,
 } from "@/lib/exploreFilters";
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
+import { getExploreSampleCards } from "@/lib/sampleVs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Button, Chip, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
@@ -53,12 +56,34 @@ export default function ExploreClient() {
     [open, filters]
   );
 
+  const samplePool = useMemo(() => getExploreSampleCards(), []);
+  const filteredSamples = useMemo(
+    () => applyExploreFilters(samplePool, filters),
+    [samplePool, filters]
+  );
+
   const { cat, minStake, sort, search } = filters;
   const hasActiveFilters =
     cat !== DEFAULT_EXPLORE_FILTERS.cat ||
     minStake !== DEFAULT_EXPLORE_FILTERS.minStake ||
     sort !== DEFAULT_EXPLORE_FILTERS.sort ||
     search.trim().length > 0;
+
+  const showResultsCount =
+    !loading &&
+    !(filtered.length === 0 && filteredSamples.length === 0 && hasActiveFilters);
+
+  const resultsMessage = useMemo(() => {
+    if (filtered.length > 0) {
+      return filtered.length === 1
+        ? t("results", { count: filtered.length })
+        : t("resultsPlural", { count: filtered.length });
+    }
+    if (filteredSamples.length > 0) {
+      return open.length === 0 ? t("sampleIntroEmpty") : t("sampleIntroFiltered");
+    }
+    return hasActiveFilters ? t("sampleNoMatchIntro") : null;
+  }, [filtered.length, filteredSamples.length, open.length, hasActiveFilters, t]);
 
   return (
     <PageTransition>
@@ -163,7 +188,7 @@ export default function ExploreClient() {
               <fieldset className="min-w-0 border-0 p-0">
                 <legend className="label">{t("minStake")}</legend>
                 <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={t("minStake")}>
-                  {[0, 2, 5, 10].map((value) => (
+                  {MIN_STAKE_OPTIONS.map((value) => (
                     <Chip
                       key={value}
                       active={minStake === value}
@@ -204,12 +229,10 @@ export default function ExploreClient() {
         </AnimatedItem>
 
         <div>
-          {!loading && filtered.length > 0 ? (
+          {showResultsCount && resultsMessage ? (
             <AnimatedItem>
-              <div className="mb-4 text-xs text-pv-muted" aria-live="polite">
-                {filtered.length === 1
-                  ? t("results", { count: filtered.length })
-                  : t("resultsPlural", { count: filtered.length })}
+              <div className="mb-4 text-xs leading-relaxed text-pv-muted" aria-live="polite">
+                {resultsMessage}
               </div>
             </AnimatedItem>
           ) : null}
@@ -220,11 +243,14 @@ export default function ExploreClient() {
               <VSCardSkeleton />
               <VSCardSkeleton />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : filtered.length === 0 && filteredSamples.length === 0 ? (
             hasActiveFilters ? (
               <div className="mx-auto flex w-full max-w-lg flex-col items-center rounded-xl border border-white/[0.05] bg-pv-bg/60 px-6 py-8 text-center backdrop-blur-[1px] sm:px-8 sm:py-10">
                 <p className="mb-4 max-w-[40ch] text-xs leading-relaxed text-pv-muted">
-                  {t("noResultsDesc")}
+                  {t("sampleNoMatchIntro")}
+                </p>
+                <p className="mb-6 max-w-[34ch] text-sm leading-relaxed text-pv-muted">
+                  {t("sampleCreateHint")}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                   <Button
@@ -250,7 +276,7 @@ export default function ExploreClient() {
                 actionHref="/vs/create"
               />
             )
-          ) : (
+          ) : filtered.length > 0 ? (
             <AnimatePresence mode="popLayout">
               <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
                 {filtered.map((vs) => (
@@ -266,6 +292,33 @@ export default function ExploreClient() {
                       vs={vs}
                       showCategory={cat === "all"}
                       showAcceptCTA
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+                {filteredSamples.map((vs) => (
+                  <motion.div
+                    key={vs.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <VSCard
+                      vs={vs}
+                      showCategory
+                      showAcceptCTA
+                      isSample
+                      showChallengesLabel={false}
+                      categoryFilterHref={`/explore?${serializeExploreFilters({
+                        ...DEFAULT_EXPLORE_FILTERS,
+                        cat: vs.category,
+                      })}`}
                     />
                   </motion.div>
                 ))}
