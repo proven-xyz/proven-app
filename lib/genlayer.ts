@@ -173,23 +173,58 @@ export async function ensureGenlayerWalletChain(ethereum: {
   }
 }
 
+function isConsensusInitNoise(args: unknown[]) {
+  const [first, second] = args;
+  return (
+    typeof first === "string" &&
+    first.includes("Failed to initialize consensus smart contract:") &&
+    second instanceof Error &&
+    second.message === "Client is not connected to the simulator"
+  );
+}
+
+function createClientWithoutConsensusNoise(factory: () => ReturnType<typeof createClient>) {
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    if (isConsensusInitNoise(args)) {
+      return;
+    }
+    originalConsoleError(...(args as Parameters<typeof console.error>));
+  };
+
+  try {
+    const client = factory();
+    queueMicrotask(() => {
+      console.error = originalConsoleError;
+    });
+    return client;
+  } catch (error) {
+    console.error = originalConsoleError;
+    throw error;
+  }
+}
+
 export function createGenlayerClient(accountAddress?: string) {
   const endpoint = getEndpoint();
 
-  return createClient({
-    chain: getChain(endpoint),
-    ...(accountAddress ? { account: accountAddress as any } : {}),
-  } as any);
+  return createClientWithoutConsensusNoise(() =>
+    createClient({
+      chain: getChain(endpoint),
+      ...(accountAddress ? { account: accountAddress as any } : {}),
+    } as any)
+  );
 }
 
 export function createGenlayerClientWithKey(privateKey: string) {
   const account = createAccount(privateKey as any);
   const endpoint = getEndpoint();
 
-  return createClient({
-    chain: getChain(endpoint),
-    account,
-  } as any);
+  return createClientWithoutConsensusNoise(() =>
+    createClient({
+      chain: getChain(endpoint),
+      account,
+    } as any)
+  );
 }
 
 export { createAccount };
