@@ -12,8 +12,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 items-center gap-5 text-center md:grid-cols-[1fr_auto_1fr] md:gap-6 md:text-left">
           {/* Izquierda: marca */}
           <div className="flex flex-col items-center md:items-start md:justify-self-start">
-            <span className="font-display text-sm font-bold tracking-tight text-pv-muted">
-              PROVEN<span className="text-pv-emerald">.</span>
+            <span className="group font-display text-sm font-bold tracking-tight text-pv-emerald transition-colors duration-300 ease-in-out">
+              PROVEN
+              <span className="text-pv-text group-hover:text-pv-emerald transition-colors duration-300 ease-in-out">.</span>
             </span>
           </div>
 

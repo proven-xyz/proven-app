@@ -132,10 +132,10 @@ export default function Header() {
     <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 pt-[env(safe-area-inset-top)] backdrop-blur-[20px]">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="group flex items-center gap-2.5">
-          <span className="font-display text-[17px] font-bold tracking-tight">
+          <span className="font-display text-[17px] font-bold tracking-tight text-pv-emerald group-hover:text-pv-text transition-colors duration-300 ease-in-out">
             PROVEN
             <motion.span
-              className="ml-[1px] inline-block text-[1.38em] leading-none text-pv-emerald"
+              className="ml-[1px] inline-block text-[1.38em] leading-none text-pv-text group-hover:text-pv-emerald transition-colors duration-300 ease-in-out"
               whileHover={{ scale: 1.3, rotate: -8 }}
               transition={{ type: "spring", stiffness: 400 }}
             >
