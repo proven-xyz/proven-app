@@ -9,7 +9,7 @@ import HtmlLang from "@/components/HtmlLang";
 
 type Props = {
   children: React.ReactNode;
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 };
 
 export function generateStaticParams() {
@@ -19,9 +19,9 @@ export function generateStaticParams() {
 export async function generateMetadata({
   params,
 }: {
-  params: { locale: string };
+  params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
-  const { locale } = params;
+  const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "metadata" });
   return {
     title: t("title"),
@@ -35,7 +35,7 @@ export async function generateMetadata({
 }
 
 export default async function LocaleLayout({ children, params }: Props) {
-  const { locale } = params;
+  const { locale } = await params;
 
   if (!routing.locales.includes(locale as any)) {
     notFound();

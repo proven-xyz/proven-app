@@ -457,7 +457,7 @@ proven-app/
 ├── scripts/
 │   ├── genlayer-deploy.mjs               # CLI deploy wrapper
 │   └── warm-vs-index.ts                  # Pre-warm cache script
-├── middleware.ts                          # next-intl locale routing middleware
+├── proxy.ts                               # next-intl locale routing proxy
 ├── next.config.js                        # Next.js config with next-intl plugin
 ├── tailwind.config.ts                    # Custom theme (colors, animations, fonts)
 ├── tsconfig.json                         # TypeScript strict mode config
