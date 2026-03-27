@@ -6,6 +6,8 @@ import { routing } from "@/i18n/routing";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HtmlLang from "@/components/HtmlLang";
+import SkipToContentLink from "../../components/SkipToContentLink";
+import ScrollToTopOnLoad from "../../components/ScrollToTopOnLoad";
 
 type Props = {
   children: React.ReactNode;
@@ -47,16 +49,13 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <NextIntlClientProvider messages={messages}>
       <HtmlLang locale={locale} />
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-pv-emerald focus:text-pv-bg focus:rounded-lg focus:font-bold"
-      >
-        Skip
-      </a>
+      <SkipToContentLink />
+      <ScrollToTopOnLoad />
       <Header />
       <main
         id="main-content"
-        className="mx-auto min-w-0 max-w-[1200px] overflow-x-hidden px-4 py-8 sm:px-6 lg:px-8"
+        tabIndex={-1}
+        className="mx-auto min-w-0 max-w-[1200px] overflow-x-hidden px-4 pb-8 pt-[calc(3.5rem+env(safe-area-inset-top))] sm:px-6 sm:pb-8 lg:px-8"
       >
         {children}
       </main>

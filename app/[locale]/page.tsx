@@ -95,24 +95,26 @@ function AnimatedStatNumber({
   const [display, setDisplay] = useState(initialText);
   const ref = useRef<HTMLSpanElement | null>(null);
   const startedRef = useRef(false);
-  const isInView = useInView(ref, { once: true, amount: 0.35 });
+  const isInView = useInView(ref, { once: true, amount: 0.05 });
 
   useEffect(() => {
-    if (!isInView || startedRef.current) return;
-    startedRef.current = true;
+    if (startedRef.current) return;
 
     if (!parsed) {
+      startedRef.current = true;
       setDisplay(raw);
       return;
     }
 
     if (reducedMotion) {
+      startedRef.current = true;
       setDisplay(targetText);
       return;
     }
 
     let rafId: number | null = null;
     let timeoutId: number | null = null;
+    let fallbackTimeoutId: number | null = null;
 
     const startAnimation = () => {
       const from = 0;
@@ -138,11 +140,42 @@ function AnimatedStatNumber({
       rafId = requestAnimationFrame(tick);
     };
 
-    timeoutId = window.setTimeout(startAnimation, delayMs);
+    const trigger = () => {
+      if (startedRef.current) return;
+      startedRef.current = true;
+      timeoutId = window.setTimeout(startAnimation, delayMs);
+    };
+
+    // Ideal: iniciar en el momento exacto en que entra al viewport.
+    if (isInView) {
+      trigger();
+      return () => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (rafId) window.cancelAnimationFrame(rafId);
+      };
+    }
+
+    // Fallback mobile: en algunos casos con targets inline y header fijo,
+    // IntersectionObserver puede tardar o no disparar con el umbral.
+    const isMobile = window.matchMedia("(max-width: 639px)").matches;
+    if (!isMobile) return;
+
+    fallbackTimeoutId = window.setTimeout(() => {
+      if (startedRef.current) return;
+      const el = ref.current;
+      if (!el) return;
+
+      const rect = el.getBoundingClientRect();
+      const within = rect.top < window.innerHeight * 1.05 && rect.bottom > 0;
+      if (!within) return;
+
+      trigger();
+    }, delayMs + 250);
 
     return () => {
       if (timeoutId) window.clearTimeout(timeoutId);
       if (rafId) window.cancelAnimationFrame(rafId);
+      if (fallbackTimeoutId) window.clearTimeout(fallbackTimeoutId);
     };
   }, [delayMs, isInView, parsed, raw, reducedMotion, targetText]);
 
@@ -153,7 +186,7 @@ function AnimatedStatNumber({
   }, [initialText, raw]);
 
   return (
-    <span ref={ref} aria-label={raw}>
+    <span ref={ref} aria-label={raw} className="inline-block">
       {display}
     </span>
   );
@@ -342,9 +375,9 @@ export default function HomePage() {
                 <div className="overflow-hidden">
                   <motion.div
                     className="font-display text-[36px] sm:text-[40px] lg:text-[48px] font-bold tracking-tight text-pv-emerald leading-none"
-                    initial={{ y: 26, opacity: 0 }}
-                    whileInView={{ y: 0, opacity: 1 }}
-                    viewport={{ once: true, amount: 0.35 }}
+                    // No usamos whileInView aquí para evitar que, en mobile,
+                    // el contenido quede recortado por `overflow-hidden` si el umbral no se cumple.
+                    initial={{ y: 0, opacity: 1 }}
                     transition={{
                       duration: 0.45,
                       ease: "easeOut",

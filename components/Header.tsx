@@ -89,8 +89,8 @@ export default function Header() {
       mobileLabel?: string;
     }> = [
       { href: "/vs/create", label: t("challenge"), accent: true },
-      { href: "/explore", label: t("explore"), accent: false },
       { href: "/dashboard", label: t("myVS"), accent: false },
+      { href: "/explore", label: t("explore"), accent: false },
     ];
     if (xmtpNavEnabled) {
       items.push({
@@ -129,7 +129,7 @@ export default function Header() {
   }, [walletMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 backdrop-blur-[20px]">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 pt-[env(safe-area-inset-top)] backdrop-blur-[20px]">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="group flex items-center gap-2.5">
           <span className="font-display text-[17px] font-bold tracking-tight">
