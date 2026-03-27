@@ -20,7 +20,6 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import ArenaCard from "@/components/ArenaCard";
-import { Shield } from "lucide-react";
 
 type ParsedStat = {
   prefix: string;
@@ -269,21 +268,21 @@ export default function HomePage() {
     },
     {
       icon: null,
-      iconSrc: "/icons/message-chat-circle.svg",
+      iconSrc: "/icons/letter.svg",
       title: "2. INVITE",
       description:
         "Broadcast your link. Challenge a specific rival or open it to the public square.",
     },
     {
       icon: null,
-      iconSrc: "/icons/users-alt.svg",
+      iconSrc: "/icons/check-circle-logo.svg",
       title: "3. ACCEPT",
       description:
         "Rival stakes their matching amount. Smart contract activates and locks the pool.",
     },
     {
-      icon: Shield,
-      iconSrc: null,
+      icon: null,
+      iconSrc: "/icons/verified.svg",
       title: "4. PROVEN",
       description:
         "Consensus validates the proof, and the winner gets paid on-chain instantly.",
@@ -396,46 +395,192 @@ export default function HomePage() {
         </div>
       </AnimatedItem>
 
-      {/* How it works — 2 cols en mobile, 4 en tablet+ */}
+      {/* THE PROTOCOL — layout tipo bento (inspirado en “Market Intelligence” del prototipo) */}
       <AnimatedItem>
         <div className="mb-12">
-          <div className="mb-5 text-left">
-            <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
+          <div className="mb-10 flex items-center gap-4 sm:gap-6">
+            <h2 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
               THE PROTOCOL
             </h2>
+            <div className="h-px flex-1 bg-white/[0.12]" aria-hidden />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {steps.map(({ icon: Icon, iconSrc, title, description }) => (
-              <div
-                key={title}
-                className="card p-4 text-left border-white/[0.12] transition-all duration-200 hover:border-pv-emerald/[0.5] hover:shadow-glow-emerald group"
-              >
-                <div className="w-12 h-12 bg-pv-surface2/70 border border-white/[0.14] text-pv-emerald flex items-center justify-center mb-2.5 rounded-md transition-all duration-200 group-hover:border-pv-emerald/[0.5] group-hover:bg-pv-emerald/[0.14] group-hover:shadow-glow-emerald">
-                  {iconSrc ? (
-                    <span
-                      className="w-6 h-6 bg-pv-emerald"
-                      style={{
-                        WebkitMaskImage: `url(${iconSrc})`,
-                        maskImage: `url(${iconSrc})`,
-                        WebkitMaskRepeat: "no-repeat",
-                        maskRepeat: "no-repeat",
-                        WebkitMaskPosition: "center",
-                        maskPosition: "center",
-                        WebkitMaskSize: "contain",
-                        maskSize: "contain",
-                      }}
-                      aria-label={title}
-                    />
-                  ) : (
-                    Icon && <Icon size={20} />
-                  )}
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4 md:auto-rows-[minmax(240px,auto)]">
+            {steps.map(({ iconSrc, title, description }, index) => {
+              const stepLabel = `STEP ${String(index + 1).padStart(2, "0")}`;
+
+              const renderIcon = (sizeClass: string) =>
+                iconSrc ? (
+                  <span
+                    className={`${sizeClass} shrink-0 bg-pv-emerald`}
+                    style={{
+                      WebkitMaskImage: `url(${iconSrc})`,
+                      maskImage: `url(${iconSrc})`,
+                      WebkitMaskRepeat: "no-repeat",
+                      maskRepeat: "no-repeat",
+                      WebkitMaskPosition: "center",
+                      maskPosition: "center",
+                      WebkitMaskSize: "contain",
+                      maskSize: "contain",
+                    }}
+                    aria-hidden
+                  />
+                ) : null;
+
+              /* Fila 1: tile destacado (2 cols) + dos compactas (1+1). Fila 2: barra ancha (4 cols). */
+              if (index === 0) {
+                return (
+                  <div
+                    key={title}
+                    className="card group relative col-span-1 flex flex-col justify-between overflow-hidden border-white/[0.12] p-6 transition-all duration-200 hover:border-pv-emerald/[0.45] hover:shadow-glow-emerald sm:p-8 md:col-span-2 md:min-h-[280px]"
+                  >
+                    <div className="pointer-events-none absolute -right-6 -top-6 opacity-[0.06] transition-opacity group-hover:opacity-[0.1] sm:-right-10 sm:-top-10">
+                      {iconSrc ? (
+                        <span
+                          className="block h-40 w-40 bg-pv-emerald sm:h-48 sm:w-48"
+                          style={{
+                            WebkitMaskImage: `url(${iconSrc})`,
+                            maskImage: `url(${iconSrc})`,
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                          }}
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                    <div className="relative z-10">
+                      <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
+                        {stepLabel}
+                      </div>
+                      <div className="mb-3 flex items-start gap-4">
+                        {renderIcon("h-12 w-12 sm:h-14 sm:w-14")}
+                        <h3 className="font-display text-xl font-bold leading-tight tracking-tight text-pv-text sm:text-2xl md:text-3xl">
+                          {title.replace(/^\d+\.\s*/, "")}
+                        </h3>
+                      </div>
+                      <p className="max-w-prose text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+                        {description}
+                      </p>
+                    </div>
+                    <div className="relative z-10 mt-6 h-px bg-gradient-to-r from-pv-emerald/40 to-transparent opacity-40" />
+                    <div className="relative z-10 mt-4 flex items-center justify-between gap-3">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-pv-muted">
+                        Protocol layer
+                      </span>
+                      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
+                        Live
+                      </span>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (index === 1 || index === 2) {
+                return (
+                  <div
+                    key={title}
+                    className="card group relative overflow-hidden flex flex-col justify-between border-white/[0.12] p-6 transition-all duration-200 hover:border-pv-emerald/[0.45] hover:shadow-glow-emerald sm:p-8 md:col-span-1 md:min-h-[280px]"
+                  >
+                    <div className="pointer-events-none absolute -right-9 -top-6 z-0 opacity-[0.06] transition-opacity group-hover:opacity-[0.1] sm:-right-13 sm:-top-10">
+                      {iconSrc ? (
+                        <span
+                          className="block h-40 w-40 bg-pv-emerald sm:h-48 sm:w-48"
+                          style={{
+                            WebkitMaskImage: `url(${
+                              index === 1
+                                ? "/icons/user.svg"
+                                : index === 2
+                                  ? "/icons/thumb-up.svg"
+                                  : iconSrc
+                            })`,
+                            maskImage: `url(${
+                              index === 1
+                                ? "/icons/user.svg"
+                                : index === 2
+                                  ? "/icons/thumb-up.svg"
+                                  : iconSrc
+                            })`,
+                            WebkitMaskRepeat: "no-repeat",
+                            maskRepeat: "no-repeat",
+                            WebkitMaskPosition: "center",
+                            maskPosition: "center",
+                            WebkitMaskSize: "contain",
+                            maskSize: "contain",
+                          }}
+                          aria-hidden
+                        />
+                      ) : null}
+                    </div>
+                    <div className="relative z-10">
+                      <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-muted">
+                        {stepLabel}
+                      </div>
+                      <div className="mb-4">{renderIcon("h-10 w-10 sm:h-11 sm:w-11")}</div>
+                      <h3 className="font-display text-lg font-bold leading-tight tracking-tight text-pv-text sm:text-xl">
+                        {title}
+                      </h3>
+                    </div>
+                    <p className="relative z-10 mt-4 text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+                      {description}
+                    </p>
+                  </div>
+                );
+              }
+
+              /* index === 3 — barra ancha */
+              return (
+                <div
+                  key={title}
+                  className="card group relative col-span-1 overflow-hidden flex flex-col gap-6 border-white/[0.12] p-6 transition-all duration-200 hover:border-pv-emerald/[0.45] hover:shadow-glow-emerald sm:p-8 md:col-span-4 md:flex-row md:items-center md:justify-between md:gap-10"
+                >
+                  <div className="pointer-events-none absolute -right-9 -top-6 z-0 opacity-[0.06] transition-opacity group-hover:opacity-[0.1] sm:-right-13 sm:-top-10">
+                    {iconSrc ? (
+                      <span
+                        className="block h-40 w-40 bg-pv-emerald sm:h-48 sm:w-48"
+                        style={{
+                          WebkitMaskImage: "url(/icons/verify.svg)",
+                          maskImage: "url(/icons/verify.svg)",
+                          WebkitMaskRepeat: "no-repeat",
+                          maskRepeat: "no-repeat",
+                          WebkitMaskPosition: "center",
+                          maskPosition: "center",
+                          WebkitMaskSize: "contain",
+                          maskSize: "contain",
+                        }}
+                        aria-hidden
+                      />
+                    ) : null}
+                  </div>
+                  <div className="relative z-10 flex min-w-0 flex-1 items-start gap-4 md:items-center">
+                    {renderIcon("h-11 w-11 shrink-0 sm:h-12 sm:w-12")}
+                    <div className="min-w-0">
+                      <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-muted">
+                        {stepLabel}
+                      </div>
+                      <h3 className="font-display text-xl font-medium tracking-tighter text-pv-text sm:text-2xl md:text-3xl">
+                        {title}
+                      </h3>
+                      <p className="mt-2 max-w-2xl text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+                        {description}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="relative z-10 hidden h-12 w-px shrink-0 bg-white/[0.1] md:block" aria-hidden />
+                  <div className="relative z-10 flex shrink-0 flex-col items-start gap-1 md:items-end md:text-right">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-pv-muted">
+                      Settlement
+                    </span>
+                    <span className="font-display text-lg font-semibold text-pv-emerald sm:text-xl">
+                      On-chain
+                    </span>
+                  </div>
                 </div>
-                <div className="font-display text-[15px] sm:text-[17px] font-bold text-pv-emerald tracking-tight mb-1.5">
-                  {title}
-                </div>
-                <div className="text-[13px] text-pv-muted leading-relaxed">{description}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </AnimatedItem>
