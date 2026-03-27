@@ -10,8 +10,8 @@ const config: Config = {
     extend: {
       colors: {
         pv: {
-          bg:       "#131315",
-          surface:  "#201f22",
+          bg:       "#0E0E0E",
+          surface:  "#1A1919",
           surface2: "#353437",
           border:   "#353437",
           text:     "#F4F3F5",

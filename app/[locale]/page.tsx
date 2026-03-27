@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
@@ -21,6 +21,143 @@ import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import ArenaCard from "@/components/ArenaCard";
 import { Shield } from "lucide-react";
+
+type ParsedStat = {
+  prefix: string;
+  unit: string; // e.g. "M" or "B"
+  suffix: string; // e.g. "+" or "%"
+  target: number;
+  decimals: number;
+};
+
+function parseStat(raw: string): ParsedStat | null {
+  const trimmed = raw.trim();
+
+  let prefix = "";
+  let suffix = "";
+  let unit = "";
+  let working = trimmed;
+
+  if (working.startsWith("$")) {
+    prefix = "$";
+    working = working.slice(1);
+  }
+
+  if (working.endsWith("%")) {
+    suffix = "%";
+    working = working.slice(0, -1);
+  }
+
+  const m = working.match(/^([0-9]+(?:\.[0-9]+)?)([MB])?(\+)?$/);
+  if (!m) return null;
+
+  const numStr = m[1];
+  unit = m[2] ?? "";
+  const matchSuffix = m[3] ?? "";
+  suffix = suffix || matchSuffix;
+  const decimals = numStr.includes(".") ? numStr.split(".")[1].length : 0;
+
+  return {
+    prefix,
+    unit,
+    suffix,
+    target: Number.parseFloat(numStr),
+    decimals,
+  };
+}
+
+function formatStat(current: number, parsed: ParsedStat): string {
+  const formattedNumber =
+    parsed.decimals > 0 ? current.toFixed(parsed.decimals) : current.toFixed(0);
+
+  return `${parsed.prefix}${formattedNumber}${parsed.unit}${parsed.suffix}`;
+}
+
+function AnimatedStatNumber({
+  raw,
+  delayMs,
+}: {
+  raw: string;
+  delayMs: number;
+}) {
+  const parsed = useMemo(() => parseStat(raw), [raw]);
+  const reducedMotion = useReducedMotion();
+
+  const targetText = useMemo(
+    () => (parsed ? formatStat(parsed.target, parsed) : raw),
+    [parsed, raw]
+  );
+  const initialText = useMemo(
+    () => (parsed ? formatStat(0, parsed) : raw),
+    [parsed, raw]
+  );
+
+  const [display, setDisplay] = useState(initialText);
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const startedRef = useRef(false);
+  const isInView = useInView(ref, { once: true, amount: 0.35 });
+
+  useEffect(() => {
+    if (!isInView || startedRef.current) return;
+    startedRef.current = true;
+
+    if (!parsed) {
+      setDisplay(raw);
+      return;
+    }
+
+    if (reducedMotion) {
+      setDisplay(targetText);
+      return;
+    }
+
+    let rafId: number | null = null;
+    let timeoutId: number | null = null;
+
+    const startAnimation = () => {
+      const from = 0;
+      const to = parsed.target;
+      const durationMs = 1700;
+      const start = performance.now();
+
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / durationMs);
+        // Ease-out cubic for a professional, smooth feel.
+        const eased = 1 - Math.pow(1 - t, 3);
+        const current = from + (to - from) * eased;
+
+        setDisplay(formatStat(current, parsed));
+
+        if (t < 1) {
+          rafId = requestAnimationFrame(tick);
+        } else {
+          setDisplay(targetText);
+        }
+      };
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    timeoutId = window.setTimeout(startAnimation, delayMs);
+
+    return () => {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      if (rafId) window.cancelAnimationFrame(rafId);
+    };
+  }, [delayMs, isInView, parsed, raw, reducedMotion, targetText]);
+
+  useEffect(() => {
+    // If the stat text changes (new locale/data), reset and allow replay once.
+    startedRef.current = false;
+    setDisplay(initialText);
+  }, [initialText, raw]);
+
+  return (
+    <span ref={ref} aria-label={raw}>
+      {display}
+    </span>
+  );
+}
 
 export default function HomePage() {
   const { isConnected, connect } = useWallet();
@@ -128,18 +265,18 @@ export default function HomePage() {
 
           {/* Hero vacío: siempre visible, se oculta con fade cuando carga un VS destacado */}
           <motion.div
-            className="px-5 py-14 sm:px-8 sm:py-20 text-center"
+            className="px-5 py-14 sm:px-8 sm:py-20 lg:py-28 xl:py-32 text-center"
             animate={{ opacity: featuredVS ? 0 : 1, pointerEvents: featuredVS ? "none" : "auto" }}
             transition={{ duration: 0.3 }}
             style={{ position: featuredVS ? "absolute" : "relative", inset: 0 }}
           >
-            <h1 className="font-display text-[clamp(3rem,11vw,5.5rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
+            <h1 className="font-display text-[clamp(3rem,11vw,5.5rem)] lg:text-[clamp(3.7rem,9vw,8rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
               {t("emptyHeroTitlePrefix")}{" "}
               <span className="italic text-pv-emerald drop-shadow-[0_0_22px_rgba(78,222,163,0.6)]">
                 PROVEN.
               </span>
             </h1>
-            <p className="text-pv-muted text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-8">
+            <p className="text-pv-muted text-sm sm:text-base lg:text-[19px] lg:max-w-[26rem] max-w-xl mx-auto leading-relaxed mb-8">
               {t("emptyHeroSubtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
@@ -158,6 +295,7 @@ export default function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4 }}
+              className="lg:py-28 xl:py-32"
             >
               <GlassCard glow="both">
                 <div className="p-2 text-center">
@@ -203,19 +341,20 @@ export default function HomePage() {
               <div key={item.label} className="p-5 sm:p-6 text-center bg-transparent border-0">
                 <div className="overflow-hidden">
                   <motion.div
-                    className="font-display text-[32px] sm:text-[32px] font-bold tracking-tight text-pv-emerald"
+                    className="font-display text-[36px] sm:text-[40px] lg:text-[48px] font-bold tracking-tight text-pv-emerald leading-none"
                     initial={{ y: 26, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
+                    whileInView={{ y: 0, opacity: 1 }}
+                    viewport={{ once: true, amount: 0.35 }}
                     transition={{
                       duration: 0.45,
                       ease: "easeOut",
                       delay: 0.08 * index,
                     }}
                   >
-                    {item.value}
+                    <AnimatedStatNumber raw={item.value} delayMs={80 * index} />
                   </motion.div>
                 </div>
-                <p className="mt-1 text-[12px] sm:text-[11px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                <p className="mt-2 text-[12px] sm:text-[13px] lg:text-[14px] font-bold uppercase tracking-[0.14em] text-pv-muted">
                   {item.label}
                 </p>
               </div>
@@ -231,9 +370,6 @@ export default function HomePage() {
             <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
               THE PROTOCOL
             </h2>
-            <p className="text-pv-muted text-sm mt-5 sm:mt-6 font-mono tracking-wide">
-              Zero trust. Pure code. Total proof.
-            </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {steps.map(({ icon: Icon, iconSrc, title, description }) => (
@@ -279,9 +415,6 @@ export default function HomePage() {
               <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
                 LIVE ARENA
               </h2>
-            <p className="text-pv-muted text-sm mt-5 sm:mt-6 font-mono tracking-wide">
-                {isArenaFallback ? t("arenaSubtitleFallback") : t("arenaSubtitle")}
-              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
