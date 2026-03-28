@@ -8,18 +8,15 @@ import { useRouter } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   createClaim,
-  createClaimDemo,
   createRematch,
-  createRematchDemo,
   getVS,
   type CreateClaimParams,
   type VSData,
 } from "@/lib/contract";
-import { getDemoModeLabel, isDemoRelayEnabled } from "@/lib/demo-mode";
 import { getExplorerTxUrl } from "@/lib/genlayer";
 import { savePendingVS, type PendingVS } from "@/lib/pending-vs";
 import {
-  CATEGORY_DEMO_GUIDANCE,
+  CATEGORY_GUIDANCE,
   CATEGORIES,
   MIN_STAKE,
   PREFILLS,
@@ -32,7 +29,6 @@ import {
 } from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import DemoRoleSwitcher from "@/components/DemoRoleSwitcher";
 import { GlassCard, Button, Input } from "@/components/ui";
 import Confetti from "@/components/Confetti";
 import {
@@ -46,7 +42,6 @@ import {
   SlidersHorizontal,
   Users,
 } from "lucide-react";
-import { useDemoRole } from "@/hooks/useDemoRole";
 
 const MARKET_TYPES = [
   "binary",
@@ -65,9 +60,6 @@ export default function CreatePage() {
   const t = useTranslations("create");
   const tc = useTranslations("common");
   const tCat = useTranslations("categories");
-  const demoMode = isDemoRelayEnabled();
-  const demoModeLabel = getDemoModeLabel();
-  const { demoRole } = useDemoRole();
 
   const DEADLINE_PRESETS = [
     { label: t("presets.1h"), seconds: 3600 },
@@ -106,10 +98,9 @@ export default function CreatePage() {
   const [rematchId, setRematchId] = useState<number | null>(null);
 
   const categoryGuidance =
-    CATEGORY_DEMO_GUIDANCE[category as keyof typeof CATEGORY_DEMO_GUIDANCE] ??
-    CATEGORY_DEMO_GUIDANCE.custom;
-  const guidanceKey =
-    category in CATEGORY_DEMO_GUIDANCE ? category : "custom";
+    CATEGORY_GUIDANCE[category as keyof typeof CATEGORY_GUIDANCE] ??
+    CATEGORY_GUIDANCE.custom;
+  const guidanceKey = category in CATEGORY_GUIDANCE ? category : "custom";
   const isOneToMany = maxChallengers > 1;
   const isPrivate = visibility === "private";
   const isAdvancedClaim =
@@ -235,12 +226,7 @@ export default function CreatePage() {
       toast.error(t("fillAllFields"));
       return;
     }
-    const walletReady = isConnected && !!address;
-    if (demoMode && !walletReady && demoRole !== "creator") {
-      toast.error(t("creatorRoleRequired"));
-      return;
-    }
-    if (!demoMode && !walletReady) {
+    if (!isConnected || !address) {
       toast.error(t("connectWalletFirst"));
       return;
     }
@@ -299,13 +285,8 @@ export default function CreatePage() {
     setLoading(true);
 
     try {
-      const useWalletWrite = isConnected && !!address;
       const result =
-        demoMode && !useWalletWrite
-          ? rematchId
-            ? await createRematchDemo(rematchId, params)
-            : await createClaimDemo(params)
-          : rematchId
+        rematchId
           ? await createRematch(address!, rematchId, params)
           : await createClaim(address!, params);
 
@@ -325,10 +306,9 @@ export default function CreatePage() {
         }
 
         // Store optimistic VS so it appears in lists before consensus
-        const wallet = useWalletWrite ? address! : "demo";
         savePendingVS({
           id: result.claimId,
-          creator: wallet,
+          creator: address!,
           opponent: "0x0000000000000000000000000000000000000000",
           question,
           creator_position: creatorPos,
@@ -483,18 +463,6 @@ export default function CreatePage() {
           {tc("back")}
         </Link>
         <div className="mb-6 lg:max-w-[720px] lg:mx-auto">
-          {demoMode && !isConnected && (
-            <GlassCard className="mb-5">
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
-                {demoModeLabel}
-              </div>
-              <p className="text-sm text-pv-muted mt-2">
-                {t("demoModeHint")}
-              </p>
-              <DemoRoleSwitcher className="mt-4" />
-            </GlassCard>
-          )}
-
           {rematchId && (
             <GlassCard className="mb-5">
               <div className="flex items-start gap-3">
@@ -959,19 +927,14 @@ export default function CreatePage() {
         </AnimatedItem>
 
         <AnimatedItem>
-          {demoMode || isConnected ? (
+          {isConnected ? (
             <Button
               variant="primary"
               onClick={handleSubmit}
               loading={loading}
-              disabled={demoMode && !isConnected && demoRole !== "creator"}
             >
               {loading
                 ? t("funding")
-                : demoMode && !isConnected && demoRole !== "creator"
-                ? t("switchToCreator")
-                : demoMode && !isConnected
-                ? t("createDemoAndFund", { amount: stake })
                 : rematchId
                 ? t("createRematchAndFund", { amount: stake })
                 : t("createAndFund", { amount: stake })}

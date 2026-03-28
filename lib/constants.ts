@@ -15,14 +15,14 @@ export const CATEGORIES = [
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
 
-type CategoryDemoGuidance = {
+type CategoryGuidance = {
   sourceExamples: string[];
   sourceHint: string;
   settlementTemplate: string;
   questionHint: string;
 };
 
-export const CATEGORY_DEMO_GUIDANCE: Record<CategoryId, CategoryDemoGuidance> = {
+export const CATEGORY_GUIDANCE: Record<CategoryId, CategoryGuidance> = {
   deportes: {
     sourceExamples: [
       "espn.com",
@@ -85,7 +85,7 @@ export const CATEGORY_DEMO_GUIDANCE: Record<CategoryId, CategoryDemoGuidance> = 
       "newsroom or issuer",
       "event results page",
     ],
-    sourceHint: "Custom claims need a very specific source and a clear settlement rule to be demo-safe.",
+    sourceHint: "Custom claims need a very specific source and a clear settlement rule so the outcome stays unambiguous.",
     settlementTemplate:
       "Resolve this exactly as written using the linked source only. If the wording or source leaves room for interpretation, mark it unresolvable.",
     questionHint: "Make the outcome measurable and easy to verify from one source.",

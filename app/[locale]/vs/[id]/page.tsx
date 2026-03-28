@@ -8,9 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   acceptVS,
-  challengeClaimDemo,
   cancelVS,
-  cancelClaimDemo,
   didUserChallengeVS,
   getRivalryChain,
   getVS,
@@ -22,11 +20,9 @@ import {
   isVSJoinable,
   isVSPrivate,
   resolveVS,
-  resolveClaimDemo,
   type ClaimChallenger,
   type VSData,
 } from "@/lib/contract";
-import { getDemoModeLabel, isDemoRelayEnabled } from "@/lib/demo-mode";
 import { getExplorerTxUrl } from "@/lib/genlayer";
 import { getPendingVS } from "@/lib/pending-vs";
 import {
@@ -44,7 +40,6 @@ import {
 } from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import DemoRoleSwitcher from "@/components/DemoRoleSwitcher";
 import {
   Avatar,
   Badge,
@@ -67,7 +62,6 @@ import {
   Share2,
   Users,
 } from "lucide-react";
-import { useDemoRole } from "@/hooks/useDemoRole";
 
 function ProgressBar({ state }: { state: string }) {
   const t = useTranslations("vsDetail");
@@ -152,9 +146,6 @@ export default function VSDetailPage() {
   const tc = useTranslations("common");
   const tCat = useTranslations("categories");
   const tStamp = useTranslations("stamp");
-  const demoMode = isDemoRelayEnabled();
-  const demoModeLabel = getDemoModeLabel();
-  const { demoRole } = useDemoRole();
 
   const [vs, setVS] = useState<VSData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -315,15 +306,14 @@ export default function VSDetailPage() {
   const canAccept =
     !isSampleVS &&
     !missingPrivateInvite &&
-    isVSJoinable(vs, demoMode && !isConnected ? undefined : address) &&
-    (demoMode ? (isConnected || demoRole === "challenger") : isConnected);
+    isVSJoinable(vs, address) &&
+    isConnected;
   const canResolve =
     !isSampleVS &&
     vs.state === "accepted" &&
     countdown.expired &&
-    (demoMode ? (isConnected || demoRole === "resolver") : isConnected);
-  const canCancel =
-    !isSampleVS && vs.state === "open" && (demoMode ? (isConnected ? isCreator : demoRole === "creator") : isCreator);
+    isConnected;
+  const canCancel = !isSampleVS && vs.state === "open" && isCreator;
   const hasWinner = hasVSWinner(vs);
   const challengerCount = getVSChallengerCount(vs);
   const maxChallengers =
@@ -366,7 +356,7 @@ export default function VSDetailPage() {
 
   async function handleAccept() {
     const walletReady = isConnected && !!address;
-    if (!demoMode && !walletReady) {
+    if (!walletReady) {
       return;
     }
     if (!hasValidChallengeStake) {
@@ -389,14 +379,12 @@ export default function VSDetailPage() {
 
       setVS(liveVS);
 
-      if (!isVSJoinable(liveVS, demoMode && !walletReady ? undefined : address)) {
+      if (!isVSJoinable(liveVS, address)) {
         toast.error(t("challengeUnavailable"));
         return;
       }
 
-      const result = demoMode && !walletReady
-        ? await challengeClaimDemo(vsId, challengeStakeValue, inviteKey)
-        : await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
+      const result = await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
 
       toast.success(
@@ -418,7 +406,7 @@ export default function VSDetailPage() {
 
   async function handleResolve() {
     const walletReady = isConnected && !!address;
-    if (!demoMode && !walletReady) {
+    if (!walletReady) {
       return;
     }
     setActionLoading("resolve");
@@ -429,9 +417,7 @@ export default function VSDetailPage() {
     const t3 = setTimeout(() => setResolvePhase(3), 4800);
 
     try {
-      const result = demoMode && !walletReady
-        ? await resolveClaimDemo(vsId)
-        : await resolveVS(address!, vsId);
+      const result = await resolveVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
       toast.success(
         isPending ? t("submittedPending") : t("proven"),
@@ -452,14 +438,12 @@ export default function VSDetailPage() {
 
   async function handleCancel() {
     const walletReady = isConnected && !!address;
-    if (!walletReady && !demoMode) {
+    if (!walletReady) {
       return;
     }
     setActionLoading("cancel");
     try {
-      const result = demoMode && !walletReady
-        ? await cancelClaimDemo(vsId)
-        : await cancelVS(address!, vsId);
+      const result = await cancelVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
       toast.success(
         isPending ? t("submittedPending") : t("cancelledToast"),
@@ -478,16 +462,6 @@ export default function VSDetailPage() {
       <div className="fixed inset-0 rivalry-bg pointer-events-none" style={{ zIndex: 0 }} />
       <PageTransition>
         <AnimatedItem>
-          {demoMode && !isConnected && (
-            <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
-                {demoModeLabel}
-              </div>
-              <p className="text-sm text-pv-muted mt-2">{t("demoModeHint")}</p>
-              <DemoRoleSwitcher className="mt-4" />
-            </GlassCard>
-          )}
-
           <Link
             href={isConnected ? "/dashboard" : "/"}
             className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-5 transition-colors"
@@ -975,7 +949,7 @@ export default function VSDetailPage() {
               )}
 
               {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) &&
-                (demoMode ? (isConnected ? isCreator : demoRole === "creator") : isCreator) && (
+                isCreator && (
                 <GlassCard>
                   <div className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <Share2 size={14} className="text-pv-cyan" />

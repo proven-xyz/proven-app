@@ -21,12 +21,6 @@
     "myVS": "My VS",
     "messages": "Messages",
     "messagesMobile": "Messages",
-    "demoRole": "Demo role",
-    "roles": {
-      "creator": "Creator",
-      "challenger": "Challenger",
-      "resolver": "Resolver"
-    },
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "walletMenu": "Wallet",
@@ -106,9 +100,6 @@
     "sendThisPrivateLink": "Send this private link only to the people you want to invite.",
     "viewVS": "View VS",
     "createAnother": "Create another",
-    "createDemoAndFund": "Create Demo Challenge & Fund {amount} GEN",
-    "switchToCreator": "Switch to Creator",
-    "creatorRoleRequired": "Switch the demo role to Creator before publishing a challenge.",
     "errorCreating": "Error creating VS",
     "submittedPending": "Transaction submitted to Bradbury. It may take a moment to appear.",
     "linkCopied": "Link copied",
@@ -165,15 +156,14 @@
     "eyebrow": "New Challenge",
     "pageTitle": "SET THE TERMS.",
     "pageSubtitle": "Define your claim. Lock your stake. Let the protocol decide.",
-    "demoModeHint": "Demo mode uses hosted Bradbury signers so the flow stays reliable even if browser wallets are unstable.",
     "invalidStakeMin": "Stake must be at least {amount} GEN",
     "sourceRequired": "Add a real verification source before publishing",
     "settlementRuleRequired": "Add a settlement rule for custom or advanced markets",
-    "minimumStakeHint": "Minimum stake for the demo is {amount} GEN.",
+    "minimumStakeHint": "Minimum stake is {amount} GEN.",
     "sourceGuidance": "Verification source guidance",
     "useRecommendedRule": "Use recommended rule",
-    "qualityReview": "Demo safety review",
-    "qualityReady": "This claim looks specific enough for the current demo rules.",
+    "qualityReview": "Claim quality review",
+    "qualityReady": "This claim looks specific enough for the current rules.",
     "qualitySpecificity": "Make the question more specific so the outcome is easy to verify from one source.",
     "qualitySource": "Use a concrete source page instead of leaving the verification source empty or generic.",
     "qualitySettlement": "Advanced and custom markets should include an explicit settlement rule.",
@@ -199,7 +189,7 @@
         "settlementTemplate": "Resolve this only from the linked official or authoritative source. Do not infer beyond the exact published result."
       },
       "custom": {
-        "sourceHint": "Custom claims need a very specific source and a clear settlement rule to be demo-safe.",
+        "sourceHint": "Custom claims need a very specific source and a clear settlement rule so the outcome stays unambiguous.",
         "questionHint": "Make the outcome measurable and easy to verify from one source.",
         "settlementTemplate": "Resolve this exactly as written using the linked source only. If the wording or source is ambiguous, mark it unresolvable."
       }
@@ -313,7 +303,6 @@
     "errorAccepting": "Error accepting",
     "challengeUnavailable": "This challenge is no longer open for staking on the current contract.",
     "submittedPending": "Transaction submitted to Bradbury. The arena will refresh automatically.",
-    "demoModeHint": "Demo mode routes writes through hosted Bradbury signers so judges can see the full flow without flaky browser wallet behavior.",
     "connectToAccept": "Connect Wallet to accept",
     "resolveVS": "Resolve VS",
     "proven": "PROVEN.",
@@ -344,7 +333,7 @@
     "sampleMode": "Preview challenge: this is a sample arena card. Create a real VS to interact onchain.",
     "sampleModeCTA": "Create Real Challenge",
     "invalidChallengeStakeMin": "Enter a stake of at least {amount} GEN",
-    "minimumStakeHint": "Minimum stake for the demo is {amount} GEN."
+    "minimumStakeHint": "Minimum stake is {amount} GEN."
   },
   "stamp": {
     "provenDecided": "PROVEN has decided",
