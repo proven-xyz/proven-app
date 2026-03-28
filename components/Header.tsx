@@ -176,7 +176,7 @@ export default function Header() {
             </div>
             <Link
               href="/explore"
-              className="cursor-pointer rounded px-4 py-1.5 text-[12px] font-bold text-pv-bg transition-all hover:brightness-110 focus-ring sm:text-[13px] bg-pv-emerald"
+              className="btn-compact-primary px-4 py-1.5 text-[12px] focus-ring sm:text-[13px]"
             >
               {t("explore")}
             </Link>
@@ -246,7 +246,7 @@ export default function Header() {
                   type="button"
                   onClick={connect}
                   disabled={isConnecting}
-                  className="cursor-pointer rounded px-4 py-1.5 text-[13px] font-bold text-pv-bg transition-all hover:brightness-110 focus-ring disabled:opacity-50 bg-pv-emerald"
+                  className="btn-compact-primary px-4 py-1.5 text-[13px] focus-ring"
                 >
                   {isConnecting ? "..." : tc("connect")}
                 </button>
@@ -287,7 +287,7 @@ export default function Header() {
                   type="button"
                   onClick={connect}
                   disabled={isConnecting}
-                  className="rounded px-3 py-1.5 text-[12px] font-bold text-pv-bg bg-pv-emerald"
+                  className="btn-compact-primary px-3 py-1.5 text-[12px]"
                 >
                   {isConnecting ? "..." : tc("connect")}
                 </button>
