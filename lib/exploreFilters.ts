@@ -27,8 +27,11 @@ function isValidCategoryId(id: string): boolean {
   return VALID_CATEGORY_IDS.has(id);
 }
 
-function isValidMinStake(n: number): n is (typeof MIN_STAKE_OPTIONS)[number] {
-  return MIN_STAKE_OPTIONS.includes(n as (typeof MIN_STAKE_OPTIONS)[number]);
+/** Redondea a 2 decimales; 0 si no es finito o es negativo. Tope defensivo para URLs. */
+export function normalizeExploreMinStake(n: number): number {
+  if (!Number.isFinite(n) || n < 0) return 0;
+  const rounded = Math.round(n * 100) / 100;
+  return Math.min(rounded, 1_000_000);
 }
 
 /** Lee y valida query params (?cat=&min=&sort=&q=). Valores inválidos → defaults. */
@@ -37,9 +40,9 @@ export function parseExploreSearchParams(sp: URLSearchParams): ExploreFilterStat
   const cat =
     catRaw === "all" || isValidCategoryId(catRaw) ? catRaw : "all";
 
-  const minParsed = Number(sp.get("min"));
-  const minStake =
-    Number.isFinite(minParsed) && isValidMinStake(minParsed) ? minParsed : 0;
+  const minRaw = sp.get("min");
+  const minParsed = minRaw === null || minRaw === "" ? 0 : Number(minRaw);
+  const minStake = normalizeExploreMinStake(minParsed);
 
   const sortRaw = (sp.get("sort") ?? "newest").toLowerCase();
   const sort = SORT_OPTIONS.includes(sortRaw as ExploreSort)

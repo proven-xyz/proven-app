@@ -1,32 +1,52 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { getAllVSFast, isVSJoinable, type VSData } from "@/lib/contract";
 import { mergePendingVS } from "@/lib/pending-vs";
-import { CATEGORIES } from "@/lib/constants";
+import type { CategoryId } from "@/lib/constants";
 import {
   applyExploreFilters,
   DEFAULT_EXPLORE_FILTERS,
   MIN_STAKE_OPTIONS,
+  normalizeExploreMinStake,
   serializeExploreFilters,
+  type ExploreSort,
 } from "@/lib/exploreFilters";
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
 import { getExploreSampleCards } from "@/lib/sampleVs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { Button, Chip, VSCardSkeleton } from "@/components/ui";
+import { Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import EmptyState from "@/components/EmptyState";
-import { Search, X } from "lucide-react";
+import { ChevronDown, ListFilter, Search, X } from "lucide-react";
 
-const EMERALD = "#4edea3";
+/** Fila principal de categorías: ids reales del contrato + copia tipo “mercado” (ESPORTS/POLÍTICA apuntan a cultura/custom). */
+const PRIMARY_CATEGORY_ROW: { id: CategoryId; labelKey: string }[] = [
+  { id: "deportes", labelKey: "catSports" },
+  { id: "crypto", labelKey: "catCrypto" },
+  { id: "tech", labelKey: "catTech" },
+  { id: "cultura", labelKey: "catEsports" },
+  { id: "custom", labelKey: "catPolitics" },
+];
+
+/** Píldoras de filtro (CATEGORIES + Quick minimum): borde tipo botón, mismo hover. */
+const filterPillBase =
+  "shrink-0 rounded border px-4 py-2 font-display text-xs font-bold uppercase tracking-tight transition-[color,border-color,background-color] focus-ring";
+const filterPillActive = "border-pv-emerald/50 bg-pv-emerald text-pv-bg";
+const filterPillInactive =
+  "border-white/[0.15] bg-transparent text-pv-muted hover:border-white/[0.28] hover:text-pv-text";
 
 export default function ExploreClient() {
   const { filters, updateFilters, resetFilters } = useExploreFilterState();
   const [allVS, setAllVS] = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [minDraft, setMinDraft] = useState("");
+  const sortMenuRef = useRef<HTMLDivElement>(null);
 
   const t = useTranslations("explore");
   const tCat = useTranslations("categories");
@@ -46,6 +66,36 @@ export default function ExploreClient() {
     load();
   }, []);
 
+  const commitMinDraft = useCallback(() => {
+    const raw = minDraft.trim().replace(",", ".");
+    if (raw === "") {
+      updateFilters({ minStake: 0 });
+      setMinDraft("");
+      return;
+    }
+    const n = Number(raw);
+    const next = normalizeExploreMinStake(n);
+    updateFilters({ minStake: next });
+    if (next === 0) {
+      setMinDraft("");
+    } else if (Number.isInteger(next)) {
+      setMinDraft(String(next));
+    } else {
+      setMinDraft(next.toFixed(2));
+    }
+  }, [minDraft, updateFilters]);
+
+  const handleMinInputChange = useCallback((value: string) => {
+    const normalized = value.replace(",", ".");
+    if (normalized === "") {
+      setMinDraft("");
+      return;
+    }
+    if (/^\d*\.?\d{0,2}$/.test(normalized)) {
+      setMinDraft(normalized);
+    }
+  }, []);
+
   const open = useMemo(
     () => allVS.filter((vs) => isVSJoinable(vs)),
     [allVS]
@@ -62,7 +112,18 @@ export default function ExploreClient() {
     [samplePool, filters]
   );
 
-  const { cat, minStake, sort, search } = filters;
+  const { cat, sort, search, minStake } = filters;
+
+  useEffect(() => {
+    if (minStake === 0) {
+      setMinDraft("");
+    } else if (Number.isInteger(minStake)) {
+      setMinDraft(String(minStake));
+    } else {
+      setMinDraft(minStake.toFixed(2));
+    }
+  }, [minStake]);
+
   const hasActiveFilters =
     cat !== DEFAULT_EXPLORE_FILTERS.cat ||
     minStake !== DEFAULT_EXPLORE_FILTERS.minStake ||
@@ -84,6 +145,36 @@ export default function ExploreClient() {
     }
     return hasActiveFilters ? t("sampleNoMatchIntro") : null;
   }, [filtered.length, filteredSamples.length, open.length, hasActiveFilters, t]);
+
+  const sortOptions: { key: ExploreSort; label: string }[] = [
+    { key: "newest", label: t("newest") },
+    { key: "highest", label: t("highestStake") },
+    { key: "expiring", label: t("expiring") },
+  ];
+
+  const sortLabel =
+    sortOptions.find((o) => o.key === sort)?.label ?? sortOptions[0].label;
+
+  useEffect(() => {
+    if (!sortMenuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (
+        sortMenuRef.current &&
+        !sortMenuRef.current.contains(e.target as Node)
+      ) {
+        setSortMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSortMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [sortMenuOpen]);
 
   return (
     <PageTransition>
@@ -110,212 +201,326 @@ export default function ExploreClient() {
       </AnimatedItem>
 
       <AnimatedItem>
-        <div className="relative mb-4" role="search">
-          <label htmlFor="explore-search" className="sr-only">
-            {t("searchPlaceholder")}
-          </label>
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3.5 top-1/2 z-[1] -translate-y-1/2 text-pv-muted"
-            aria-hidden
-          />
-          <input
-            id="explore-search"
-            type="text"
-            inputMode="search"
-            enterKeyHint="search"
-            autoComplete="off"
-            placeholder={t("searchPlaceholder")}
-            value={search}
-            onChange={(event) => updateFilters({ search: event.target.value })}
-            className={`input min-h-[44px] pl-10 ${search ? "pr-11" : ""}`}
-          />
-          {search ? (
-            <button
-              type="button"
-              className="absolute right-2 top-1/2 z-[1] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text focus-ring"
-              onClick={() => updateFilters({ search: "" })}
-              aria-label={t("clearSearch")}
-            >
-              <X size={16} strokeWidth={2} />
-            </button>
-          ) : null}
-        </div>
+        <section
+          className="mb-8"
+          aria-label={t("filtersAriaLabel")}
+        >
+          <div className="rounded-lg border border-white/[0.1] bg-pv-surface p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-6">
+            {/* Sort, min stake, búsqueda + avanzado — móvil: sort|min en fila; búsqueda; ADVANCED debajo. lg: fila única 12 cols. */}
+            <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:gap-6 lg:items-end">
+              <div className="relative col-span-1 min-w-0 lg:col-span-3" ref={sortMenuRef}>
+                <label
+                  id="explore-sort-label"
+                  htmlFor="explore-sort-trigger"
+                  className="label"
+                >
+                  {t("sortBy")}
+                </label>
+                <button
+                  type="button"
+                  id="explore-sort-trigger"
+                  aria-label={t("sortSelectAria")}
+                  aria-expanded={sortMenuOpen}
+                  aria-haspopup="listbox"
+                  aria-controls="explore-sort-listbox"
+                  onClick={() => setSortMenuOpen((o) => !o)}
+                  className="input flex h-11 min-h-[44px] w-full cursor-pointer items-center justify-between gap-2 bg-pv-bg py-0 pr-3 text-left font-body text-sm text-pv-text transition-[border-color,box-shadow] hover:border-white/[0.14]"
+                >
+                  <span className="min-w-0 truncate">{sortLabel}</span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-pv-muted transition-transform duration-200 ${
+                      sortMenuOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+                <AnimatePresence>
+                  {sortMenuOpen ? (
+                    <motion.div
+                      key="explore-sort-listbox"
+                      id="explore-sort-listbox"
+                      role="listbox"
+                      aria-labelledby="explore-sort-label"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="absolute left-0 right-0 top-full z-40 mt-1.5 overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
+                    >
+                      {sortOptions.map(({ key, label }) => (
+                        <button
+                          key={key}
+                          type="button"
+                          role="option"
+                          aria-selected={sort === key}
+                          onClick={() => {
+                            updateFilters({ sort: key });
+                            setSortMenuOpen(false);
+                          }}
+                          className={`flex w-full items-center px-4 py-2.5 text-left font-body text-sm transition-colors ${
+                            sort === key
+                              ? "bg-pv-emerald/[0.12] font-medium text-pv-emerald"
+                              : "text-pv-muted hover:bg-white/[0.05] hover:text-pv-text"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+
+              <div className="col-span-1 min-w-0 lg:col-span-2">
+                <label htmlFor="explore-min-stake" className="label">
+                  {t("minStake")}
+                </label>
+                <input
+                  id="explore-min-stake"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  placeholder={t("minStakePlaceholder")}
+                  aria-label={t("minStakeInputAria")}
+                  value={minDraft}
+                  onChange={(e) => handleMinInputChange(e.target.value)}
+                  onBlur={commitMinDraft}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className="input h-11 min-h-[44px] bg-pv-bg py-2.5 font-mono text-sm tabular-nums"
+                />
+              </div>
+
+              <div className="col-span-2 flex flex-col gap-3 lg:col-span-7 lg:flex-row lg:items-end lg:gap-3">
+                <label htmlFor="explore-search" className="sr-only">
+                  {t("searchMarketsPlaceholder")}
+                </label>
+                <div className="relative min-w-0 w-full lg:flex-1">
+                    <Search
+                      size={16}
+                      className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-pv-muted"
+                      aria-hidden
+                    />
+                    <input
+                      id="explore-search"
+                      type="text"
+                      inputMode="search"
+                      enterKeyHint="search"
+                      autoComplete="off"
+                      placeholder={t("searchMarketsPlaceholder")}
+                      value={search}
+                      onChange={(event) =>
+                        updateFilters({ search: event.target.value })
+                      }
+                      className={`input h-11 min-h-[44px] bg-pv-bg py-2.5 pl-10 font-body text-sm ${
+                        search ? "pr-11" : ""
+                      }`}
+                    />
+                    {search ? (
+                      <button
+                        type="button"
+                        className="absolute right-2 top-1/2 z-[1] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text focus-ring"
+                        onClick={() => updateFilters({ search: "" })}
+                        aria-label={t("clearSearch")}
+                      >
+                        <X size={16} strokeWidth={2} />
+                      </button>
+                    ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen((o) => !o)}
+                  aria-expanded={advancedOpen}
+                  className="flex h-11 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded border border-white/[0.1] bg-pv-bg px-5 font-display text-[11px] font-bold uppercase tracking-[0.18em] text-pv-text transition-colors hover:border-pv-emerald/30 hover:bg-white/[0.04] lg:w-auto"
+                >
+                  <ListFilter size={16} className="text-pv-muted" aria-hidden />
+                  {t("advanced")}
+                </button>
+              </div>
+            </div>
+
+            {advancedOpen ? (
+              <div className="mt-6 border-t border-white/[0.06] pt-6">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-6 sm:items-start">
+                  <div className="min-w-0">
+                    <span className="mb-3 block font-display text-[10px] font-bold uppercase tracking-[0.22em] text-pv-muted">
+                      {t("categoriesHeading")}
+                    </span>
+                    <div
+                      className="flex flex-wrap gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      role="group"
+                      aria-label={t("category")}
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={cat === "all"}
+                        onClick={() => updateFilters({ cat: "all" })}
+                        className={`${filterPillBase} ${
+                          cat === "all" ? filterPillActive : filterPillInactive
+                        }`}
+                      >
+                        {t("all")}
+                      </button>
+                      {PRIMARY_CATEGORY_ROW.map(({ id, labelKey }) => (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-pressed={cat === id}
+                          onClick={() => updateFilters({ cat: id })}
+                          className={`${filterPillBase} ${
+                            cat === id ? filterPillActive : filterPillInactive
+                          }`}
+                        >
+                          {t(labelKey)}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        aria-pressed={cat === "clima"}
+                        onClick={() => updateFilters({ cat: "clima" })}
+                        className={`${filterPillBase} ${
+                          cat === "clima" ? filterPillActive : filterPillInactive
+                        }`}
+                      >
+                        <span className="uppercase">{tCat("clima")}</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="mb-3 block font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted">
+                      {t("advancedMinPresets")}
+                    </span>
+                    <div className="flex flex-wrap gap-2" role="group">
+                      {MIN_STAKE_OPTIONS.map((value) => (
+                        <button
+                          key={value}
+                          type="button"
+                          aria-pressed={minStake === value}
+                          onClick={() => {
+                            updateFilters({ minStake: value });
+                            setMinDraft(
+                              value === 0 ? "" : String(value)
+                            );
+                          }}
+                          className={`${filterPillBase} ${
+                            minStake === value
+                              ? filterPillActive
+                              : filterPillInactive
+                          }`}
+                        >
+                          {value === 0 ? t("any") : `$${value}+`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
       </AnimatedItem>
 
-      <div className="lg:grid lg:grid-cols-[280px_1fr] lg:items-start lg:gap-6">
-        <AnimatedItem>
-          <aside
-            className="card mb-6 border-pv-emerald/[0.08] p-5 lg:sticky lg:top-[72px] lg:mb-0"
-            aria-label={t("filtersAriaLabel")}
-          >
-            <div className="mb-4">
-              <fieldset className="min-w-0 border-0 p-0">
-                <legend className="label">{t("category")}</legend>
-                <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={t("category")}>
-                  <Chip
-                    active={cat === "all"}
-                    color={EMERALD}
-                    onClick={() => updateFilters({ cat: "all" })}
-                  >
-                    {t("all")}
-                  </Chip>
-                  {CATEGORIES.map((category) => (
-                    <Chip
-                      key={category.id}
-                      active={cat === category.id}
-                      color={EMERALD}
-                      onClick={() => updateFilters({ cat: category.id })}
-                    >
-                      {tCat(category.id)}
-                    </Chip>
-                  ))}
-                </div>
-              </fieldset>
+      <div>
+        {showResultsCount && resultsMessage ? (
+          <AnimatedItem>
+            <div className="mb-4 text-xs leading-relaxed text-pv-muted" aria-live="polite">
+              {resultsMessage}
             </div>
+          </AnimatedItem>
+        ) : null}
 
-            <div className="mb-4">
-              <fieldset className="min-w-0 border-0 p-0">
-                <legend className="label">{t("minStake")}</legend>
-                <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={t("minStake")}>
-                  {MIN_STAKE_OPTIONS.map((value) => (
-                    <Chip
-                      key={value}
-                      active={minStake === value}
-                      color={EMERALD}
-                      onClick={() => updateFilters({ minStake: value })}
-                    >
-                      {value === 0 ? t("any") : `$${value}+`}
-                    </Chip>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-
-            <div>
-              <fieldset className="min-w-0 border-0 p-0">
-                <legend className="label">{t("sortBy")}</legend>
-                <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label={t("sortBy")}>
-                  {(
-                    [
-                      { key: "newest" as const, label: t("newest") },
-                      { key: "highest" as const, label: t("highestStake") },
-                      { key: "expiring" as const, label: t("expiring") },
-                    ] as const
-                  ).map(({ key, label }) => (
-                    <Chip
-                      key={key}
-                      active={sort === key}
-                      color={EMERALD}
-                      onClick={() => updateFilters({ sort: key })}
-                    >
-                      {label}
-                    </Chip>
-                  ))}
-                </div>
-              </fieldset>
-            </div>
-          </aside>
-        </AnimatedItem>
-
-        <div>
-          {showResultsCount && resultsMessage ? (
-            <AnimatedItem>
-              <div className="mb-4 text-xs leading-relaxed text-pv-muted" aria-live="polite">
-                {resultsMessage}
-              </div>
-            </AnimatedItem>
-          ) : null}
-
-          {loading ? (
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              <VSCardSkeleton />
-              <VSCardSkeleton />
-              <VSCardSkeleton />
-            </div>
-          ) : filtered.length === 0 && filteredSamples.length === 0 ? (
-            hasActiveFilters ? (
-              <div className="mx-auto flex w-full max-w-lg flex-col items-center rounded-xl border border-white/[0.05] bg-pv-bg/60 px-6 py-8 text-center backdrop-blur-[1px] sm:px-8 sm:py-10">
-                <p className="mb-4 max-w-[40ch] text-xs leading-relaxed text-pv-muted">
-                  {t("sampleNoMatchIntro")}
-                </p>
-                <p className="mb-6 max-w-[34ch] text-sm leading-relaxed text-pv-muted">
-                  {t("sampleCreateHint")}
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    fullWidth={false}
-                    onClick={resetFilters}
-                  >
-                    {t("resetFilters")}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <VSCardSkeleton />
+            <VSCardSkeleton />
+            <VSCardSkeleton />
+          </div>
+        ) : filtered.length === 0 && filteredSamples.length === 0 ? (
+          hasActiveFilters ? (
+            <div className="mx-auto flex w-full max-w-lg flex-col items-center rounded-xl border border-white/[0.05] bg-pv-bg/60 px-6 py-8 text-center backdrop-blur-[1px] sm:px-8 sm:py-10">
+              <p className="mb-4 max-w-[40ch] text-xs leading-relaxed text-pv-muted">
+                {t("sampleNoMatchIntro")}
+              </p>
+              <p className="mb-6 max-w-[34ch] text-sm leading-relaxed text-pv-muted">
+                {t("sampleCreateHint")}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  fullWidth={false}
+                  onClick={resetFilters}
+                >
+                  {t("resetFilters")}
+                </Button>
+                <Link href="/vs/create" className="inline-block">
+                  <Button variant="primary" fullWidth={false}>
+                    {t("challengeSomeone")}
                   </Button>
-                  <Link href="/vs/create" className="inline-block">
-                    <Button variant="primary" fullWidth={false}>
-                      {t("challengeSomeone")}
-                    </Button>
-                  </Link>
-                </div>
+                </Link>
               </div>
-            ) : (
-              <EmptyState
-                title={t("noResults")}
-                description={t("noResultsDesc")}
-                actionLabel={t("challengeSomeone")}
-                actionHref="/vs/create"
-              />
-            )
-          ) : filtered.length > 0 ? (
-            <AnimatePresence mode="popLayout">
-              <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-                {filtered.map((vs) => (
-                  <motion.div
-                    key={vs.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <VSCard
-                      vs={vs}
-                      showCategory={cat === "all"}
-                      showAcceptCTA
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
-            </AnimatePresence>
+            </div>
           ) : (
-            <AnimatePresence mode="popLayout">
-              <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
-                {filteredSamples.map((vs) => (
-                  <motion.div
-                    key={vs.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <VSCard
-                      vs={vs}
-                      showCategory
-                      showAcceptCTA
-                      isSample
-                      showChallengesLabel={false}
-                      categoryFilterHref={`/explore?${serializeExploreFilters({
-                        ...DEFAULT_EXPLORE_FILTERS,
-                        cat: vs.category,
-                      })}`}
-                    />
-                  </motion.div>
-                ))}
-              </motion.div>
-            </AnimatePresence>
-          )}
-        </div>
+            <EmptyState
+              title={t("noResults")}
+              description={t("noResultsDesc")}
+              actionLabel={t("challengeSomeone")}
+              actionHref="/vs/create"
+            />
+          )
+        ) : filtered.length > 0 ? (
+          <AnimatePresence mode="popLayout">
+            <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+              {filtered.map((vs) => (
+                <motion.div
+                  key={vs.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <VSCard
+                    vs={vs}
+                    showCategory={cat === "all"}
+                    showAcceptCTA
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+              {filteredSamples.map((vs) => (
+                <motion.div
+                  key={vs.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.97 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <VSCard
+                    vs={vs}
+                    showCategory
+                    showAcceptCTA
+                    isSample
+                    showChallengesLabel={false}
+                    categoryFilterHref={`/explore?${serializeExploreFilters({
+                      ...DEFAULT_EXPLORE_FILTERS,
+                      cat: vs.category,
+                    })}`}
+                  />
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        )}
       </div>
     </PageTransition>
   );
