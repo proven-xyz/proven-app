@@ -100,12 +100,15 @@ export default function ExploreFeaturedCarousel() {
                   fill
                   className={`object-cover transition-[transform] duration-[750ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-transform group-hover/card:scale-[1.045] ${
                     exploreFeaturedSlideMedia[activeId].imageObjectPosition ===
-                    "bottom"
-                      ? "object-bottom"
+                    "top"
+                      ? "object-top"
                       : exploreFeaturedSlideMedia[activeId].imageObjectPosition ===
-                          "bottomLifted"
-                        ? "object-[center_84%]"
-                        : "object-center"
+                          "bottom"
+                        ? "object-bottom"
+                        : exploreFeaturedSlideMedia[activeId].imageObjectPosition ===
+                            "bottomLifted"
+                          ? "object-[center_84%]"
+                          : "object-center"
                   }`}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1200px"
                   priority={index === 0}
