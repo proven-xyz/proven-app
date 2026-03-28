@@ -20,6 +20,8 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import ArenaCard from "@/components/ArenaCard";
+import ArenaProposeCard from "@/components/ArenaProposeCard";
+import SettlementArchiveSection from "@/components/SettlementArchiveSection";
 
 type ParsedStat = {
   prefix: string;
@@ -250,13 +252,36 @@ export default function HomePage() {
       },
       challengersCount: 4,
     },
+    {
+      vs: {
+        id: -4,
+        question: "Fed cuts rates before Q3 2026",
+        stake_amount: 15,
+        opponent: ZERO_ADDRESS,
+        category: "custom",
+        state: "accepted" as const,
+      },
+      challengersCount: 3,
+    },
+    {
+      vs: {
+        id: -5,
+        question: "Ethereum ETF daily inflows exceed $50M",
+        stake_amount: 6,
+        opponent: ZERO_ADDRESS,
+        category: "crypto",
+        state: "resolved" as const,
+      },
+      challengersCount: 11,
+    },
   ];
 
   const arenaFromData = [...openVS, ...allVS.filter((v) => v.state !== "open")]
-    .slice(0, 3)
+    .slice(0, 6)
     .map((vs) => ({ vs, challengersCount: undefined as number | undefined }));
-  const arenaCards = [...arenaFromData, ...fallbackArenaCards].slice(0, 3);
-  const isArenaFallback = openVS.length === 0;
+  const arenaMerged = [...arenaFromData, ...fallbackArenaCards];
+  const arenaCardsRow1 = arenaMerged.slice(0, 3);
+  const arenaCardsRow2 = arenaMerged.slice(3, 5);
 
   const steps = [
     {
@@ -586,23 +611,43 @@ export default function HomePage() {
       </AnimatedItem>
 
       {/* LIVE ARENA */}
-      {arenaCards.length > 0 && (
+      {arenaCardsRow1.length > 0 && (
         <AnimatedItem>
           <div className="mb-12">
-            <div className="mb-5 text-left">
-              <h2 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold tracking-tight text-pv-text leading-none">
+            <div className="mb-10 flex items-center gap-4 sm:gap-6">
+              <h2 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
                 LIVE ARENA
               </h2>
+              <div className="h-px flex-1 bg-white/[0.12]" aria-hidden />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {arenaCards.map(({ vs, challengersCount }) => (
-                <ArenaCard key={vs.id} vs={vs} challengersCount={challengersCount} />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+              {arenaCardsRow1.map(({ vs, challengersCount }) => (
+                <ArenaCard
+                  key={vs.id}
+                  vs={vs}
+                  challengersCount={challengersCount}
+                  archiveLabelShort={vs.id === -5}
+                />
               ))}
+              {arenaCardsRow2.map(({ vs, challengersCount }) => (
+                <ArenaCard
+                  key={vs.id}
+                  vs={vs}
+                  challengersCount={challengersCount}
+                  archiveLabelShort={vs.id === -5}
+                />
+              ))}
+              <ArenaProposeCard />
             </div>
           </div>
         </AnimatedItem>
       )}
+
+      {/* THE ARCHIVE — settlement index + terminal (inspirado en “Archive / Odds” editorial) */}
+      <AnimatedItem>
+        <SettlementArchiveSection allVS={allVS} loading={loading} />
+      </AnimatedItem>
 
       {/* READY TO WIN CTA */}
       <AnimatedItem>
