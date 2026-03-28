@@ -27,6 +27,7 @@ import { Button, ArenaCardSkeleton } from "@/components/ui";
 import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
 import { ChevronDown, ListFilter, Search, X } from "lucide-react";
+import Image from "next/image";
 
 /** Fila principal de categorías: ids reales del contrato + copia tipo “mercado” (ESPORTS/POLÍTICA apuntan a cultura/custom). */
 const PRIMARY_CATEGORY_ROW: { id: CategoryId; labelKey: string }[] = [
@@ -146,10 +147,10 @@ export default function ExploreClient() {
         : t("resultsPlural", { count: filtered.length });
     }
     if (filteredSamples.length > 0) {
-      return open.length === 0 ? t("sampleIntroEmpty") : t("sampleIntroFiltered");
+      return null;
     }
     return hasActiveFilters ? t("sampleNoMatchIntro") : null;
-  }, [filtered.length, filteredSamples.length, open.length, hasActiveFilters, t]);
+  }, [filtered.length, filteredSamples.length, hasActiveFilters, t]);
 
   const sortOptions: { key: ExploreSort; label: string }[] = [
     { key: "newest", label: t("newest") },
@@ -425,6 +426,72 @@ export default function ExploreClient() {
                 </div>
               </div>
             ) : null}
+          </div>
+        </section>
+      </AnimatedItem>
+
+      <AnimatedItem>
+        <section
+          className="mb-8"
+          aria-labelledby="explore-featured-title"
+        >
+          <div className="group relative min-h-[280px] overflow-hidden rounded-lg border border-white/[0.12] bg-pv-bg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] sm:min-h-[300px]">
+            <div className="absolute inset-0 overflow-hidden">
+              <Image
+                src="/images/fight-11.png"
+                alt={t("featuredEventImageAlt")}
+                fill
+                className="object-cover object-center transition-[transform] duration-[750ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-transform group-hover:scale-[1.045]"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1200px"
+                priority={false}
+              />
+            </div>
+            {/* Lectura en columna izquierda: contraste sobre la foto */}
+            <div
+              className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-r from-black/[0.82] via-black/[0.48] to-black/[0.32]"
+              aria-hidden
+            />
+            {/* Sombreado inferior: más denso abajo, se diluye hacia arriba (detrás del copy) */}
+            <div
+              className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/[0.78] via-black/[0.28] to-transparent sm:from-black/[0.72] sm:via-black/[0.2]"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute left-0 top-0 z-[2] h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
+              aria-hidden
+            />
+            <div className="relative z-10 p-6 sm:p-8">
+              <p className="mb-6 sm:mb-7">
+                <span className="inline-flex rounded border border-pv-emerald/35 bg-pv-emerald/[0.1] px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald">
+                  {t("featuredEventPill")}
+                </span>
+              </p>
+              <h2
+                id="explore-featured-title"
+                className="text-left font-display text-3xl font-bold uppercase leading-[1.08] tracking-tight text-pv-text sm:text-4xl md:text-5xl lg:text-6xl"
+              >
+                <span className="block">{t("featuredTitleLine1")}</span>
+                <span className="mt-2 block uppercase text-pv-emerald sm:mt-2.5">
+                  {t("featuredTitleLine2")}
+                </span>
+              </h2>
+              <p className="mt-4 max-w-3xl whitespace-pre-line text-left text-sm leading-relaxed text-pv-muted sm:mt-5 sm:text-[15px]">
+                {t("featuredBody")}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-3 sm:mt-6">
+                <Button type="button" variant="primary" fullWidth={false}>
+                  {t("featuredCtaPrimary")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  fullWidth={false}
+                  className="!border !border-white/[0.18] !bg-white/[0.06] !text-pv-text shadow-none hover:!border-white/[0.28] hover:!bg-white/[0.1]"
+                >
+                  {t("featuredCtaSecondary")}
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
       </AnimatedItem>

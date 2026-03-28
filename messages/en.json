@@ -279,14 +279,19 @@
     "noResults": "No VS match these filters",
     "noResultsDesc": "Try changing the filters or create your own VS.",
     "challengeSomeone": "Challenge someone",
-    "sampleIntroEmpty": "No live listings on-chain yet. Demo cards below follow your filters and search.",
-    "sampleIntroFiltered": "No live VS match your filters. Demo cards below use the same filters and search.",
     "sampleNoMatchIntro": "Nothing matches these filters — not even the demos. Try resetting or broadening your search.",
     "sampleNoMatchHint": "No demo card matches the current filters. Reset filters or adjust search to see examples again.",
     "sampleCreateHint": "Create your own challenge to go live on the protocol.",
     "resetFilters": "Reset filters",
     "filtersAriaLabel": "Filters: category, minimum stake, and sort order",
-    "sampleBadge": "Demo"
+    "sampleBadge": "Demo",
+    "featuredEventImageAlt": "Featured boxing event artwork",
+    "featuredEventPill": "Featured event",
+    "featuredTitleLine1": "Pereira vs Canelo",
+    "featuredTitleLine2": "Over 7 rounds",
+    "featuredBody": "Predicting high-intensity technical exchanges. System intelligence\nsuggests a 68% probability of extended duration.",
+    "featuredCtaPrimary": "JOIN CHALLENGE",
+    "featuredCtaSecondary": "ANALYZE STATS"
   },
   "dashboard": {
     "title": "My VS",

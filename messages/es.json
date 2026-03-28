@@ -278,14 +278,19 @@
     "noResults": "No hay VS con estos filtros",
     "noResultsDesc": "Prueba cambiando los filtros o crea tu propio VS.",
     "challengeSomeone": "Desafiar a alguien",
-    "sampleIntroEmpty": "Aún no hay listados en cadena. Las demos de abajo respetan tus filtros y búsqueda.",
-    "sampleIntroFiltered": "Ningún VS en vivo coincide. Las demos de abajo usan los mismos filtros y búsqueda.",
     "sampleNoMatchIntro": "Nada coincide con estos filtros, ni siquiera las demos. Probá restablecer o ampliar la búsqueda.",
     "sampleNoMatchHint": "Ninguna demo coincide con los filtros actuales. Restablecé o ajustá la búsqueda para ver ejemplos.",
     "sampleCreateHint": "Creá tu propio desafío para publicarlo en el protocolo.",
     "resetFilters": "Restablecer filtros",
     "filtersAriaLabel": "Filtros: categoría, apuesta mínima y orden",
-    "sampleBadge": "Demo"
+    "sampleBadge": "Demo",
+    "featuredEventImageAlt": "Arte del evento destacado de boxeo",
+    "featuredEventPill": "Evento destacado",
+    "featuredTitleLine1": "Pereira vs Canelo",
+    "featuredTitleLine2": "Más de 7 asaltos",
+    "featuredBody": "Prediciendo intercambios técnicos de alta intensidad. La inteligencia del sistema\nsugiere un 68% de probabilidad de duración extendida.",
+    "featuredCtaPrimary": "UNIRSE AL DESAFÍO",
+    "featuredCtaSecondary": "ANALIZAR ESTADÍSTICAS"
   },
   "dashboard": {
     "title": "Mis VS",
