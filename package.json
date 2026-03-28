@@ -18,6 +18,7 @@
     "deploy:contract:sdk": "npx tsx deploy/deploy.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.2",
     "@xmtp/browser-sdk": "^7.0.0",
     "framer-motion": "^12.38.0",
     "genlayer-js": "^0.23.0",

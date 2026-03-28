@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 
-import { getVSWithAccess } from "@/lib/contract";
-import { getVSByIdFast, VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 import {
   createApiError,
   parseInviteKey,
   parsePositiveIntegerParam,
 } from "@/lib/server/api-validation";
+import { getVsDetail, getVsWithInvite } from "@/lib/server/vs-index";
+import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +41,7 @@ export async function GET(request: Request, { params }: Props) {
     }
 
     if (inviteKey) {
-      const privateItem = await getVSWithAccess(vsId, inviteKey);
+      const privateItem = await getVsWithInvite(vsId, inviteKey);
       if (!privateItem) {
         return NextResponse.json(
           createApiError("not_found", "VS not found"),
@@ -61,7 +61,7 @@ export async function GET(request: Request, { params }: Props) {
       );
     }
 
-    const item = await getVSByIdFast(vsId);
+    const item = await getVsDetail(vsId);
     if (!item) {
       return NextResponse.json(
         createApiError("not_found", "VS not found"),

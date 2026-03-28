@@ -7,7 +7,7 @@ import {
   isVSPrivate,
   mapClaimToVS,
   type ClaimData,
-} from "../../lib/contract.ts";
+} from "../../lib/contract";
 
 function makeClaim(overrides: Partial<ClaimData> = {}): ClaimData {
   return {
