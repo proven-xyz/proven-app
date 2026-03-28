@@ -284,13 +284,29 @@
     "resetFilters": "Restablecer filtros",
     "filtersAriaLabel": "Filtros: categoría, apuesta mínima y orden",
     "sampleBadge": "Demo",
-    "featuredEventImageAlt": "Arte del evento destacado de boxeo",
-    "featuredEventPill": "Evento destacado",
-    "featuredTitleLine1": "Pereira vs Canelo",
-    "featuredTitleLine2": "Más de 7 asaltos",
-    "featuredBody": "Prediciendo intercambios técnicos de alta intensidad. La inteligencia del sistema\nsugiere un 68% de probabilidad de duración extendida.",
+    "featuredCarouselRegionAria": "Eventos destacados",
+    "featuredCarouselNavAria": "Navegación de destacados",
+    "featuredCarouselPrevAria": "Destacado anterior",
+    "featuredCarouselNextAria": "Destacado siguiente",
+    "featuredCarouselStatus": "Destacado {current} de {total}",
     "featuredCtaPrimary": "UNIRSE AL DESAFÍO",
-    "featuredCtaSecondary": "ANALIZAR ESTADÍSTICAS"
+    "featuredCtaSecondary": "ANALIZAR ESTADÍSTICAS",
+    "featuredSlides": {
+      "boxing": {
+        "imageAlt": "Arte del evento destacado de boxeo",
+        "pill": "Evento destacado",
+        "titleLine1": "Pereira vs Canelo",
+        "titleLine2": "Más de 7 asaltos",
+        "body": "Prediciendo intercambios técnicos de alta intensidad. La inteligencia del sistema\nsugiere un 68% de probabilidad de duración extendida."
+      },
+      "f1": {
+        "imageAlt": "Destacado de Fórmula 1 — Franco Colapinto",
+        "pill": "Evento destacado",
+        "titleLine1": "Franco Colapinto",
+        "titleLine2": "Termina P17",
+        "body": "El ritmo en Austin premia el cuidado de neumáticos.\nNuestro modelo sitúa el P17 como resultado modal frente a las líneas iniciales."
+      }
+    }
   },
   "dashboard": {
     "title": "Mis VS",

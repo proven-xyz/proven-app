@@ -285,13 +285,29 @@
     "resetFilters": "Reset filters",
     "filtersAriaLabel": "Filters: category, minimum stake, and sort order",
     "sampleBadge": "Demo",
-    "featuredEventImageAlt": "Featured boxing event artwork",
-    "featuredEventPill": "Featured event",
-    "featuredTitleLine1": "Pereira vs Canelo",
-    "featuredTitleLine2": "Over 7 rounds",
-    "featuredBody": "Predicting high-intensity technical exchanges. System intelligence\nsuggests a 68% probability of extended duration.",
+    "featuredCarouselRegionAria": "Featured spotlights",
+    "featuredCarouselNavAria": "Spotlight navigation",
+    "featuredCarouselPrevAria": "Previous spotlight",
+    "featuredCarouselNextAria": "Next spotlight",
+    "featuredCarouselStatus": "Spotlight {current} of {total}",
     "featuredCtaPrimary": "JOIN CHALLENGE",
-    "featuredCtaSecondary": "ANALYZE STATS"
+    "featuredCtaSecondary": "ANALYZE STATS",
+    "featuredSlides": {
+      "boxing": {
+        "imageAlt": "Featured boxing event artwork",
+        "pill": "Featured event",
+        "titleLine1": "Pereira vs Canelo",
+        "titleLine2": "Over 7 rounds",
+        "body": "Predicting high-intensity technical exchanges. System intelligence\nsuggests a 68% probability of extended duration."
+      },
+      "f1": {
+        "imageAlt": "Formula 1 featured spotlight — Franco Colapinto",
+        "pill": "Featured event",
+        "titleLine1": "Franco Colapinto",
+        "titleLine2": "Finishes P17",
+        "body": "Austin race rhythm rewards tire discipline.\nOur stack prices P17 as the modal outcome versus opening lines."
+      }
+    }
   },
   "dashboard": {
     "title": "My VS",
