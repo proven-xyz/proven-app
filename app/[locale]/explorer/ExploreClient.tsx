@@ -434,7 +434,7 @@ export default function ExploreClient() {
         ) : null}
 
         {loading ? (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <VSCardSkeleton />
             <VSCardSkeleton />
             <VSCardSkeleton />
@@ -474,7 +474,7 @@ export default function ExploreClient() {
           )
         ) : filtered.length > 0 ? (
           <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+            <motion.div layout className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((vs) => (
                 <motion.div
                   key={vs.id}
@@ -495,7 +495,7 @@ export default function ExploreClient() {
           </AnimatePresence>
         ) : (
           <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-1 gap-2.5 lg:grid-cols-2">
+            <motion.div layout className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredSamples.map((vs) => (
                 <motion.div
                   key={vs.id}
@@ -511,7 +511,7 @@ export default function ExploreClient() {
                     showAcceptCTA
                     isSample
                     showChallengesLabel={false}
-                    categoryFilterHref={`/explore?${serializeExploreFilters({
+                    categoryFilterHref={`/explorer?${serializeExploreFilters({
                       ...DEFAULT_EXPLORE_FILTERS,
                       cat: vs.category,
                     })}`}

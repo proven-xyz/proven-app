@@ -340,7 +340,7 @@ export default function HomePage() {
               <Link href="/vs/create" className="block sm:flex-1 sm:min-w-0">
                 <Button variant="primary">{t("heroChallengeSomeone")}</Button>
               </Link>
-              <Link href="/explore" className="block sm:flex-1 sm:min-w-0">
+              <Link href="/explorer" className="block sm:flex-1 sm:min-w-0">
                 <Button variant="ghost">{t("heroExploreChallenges")}</Button>
               </Link>
             </div>
@@ -377,7 +377,7 @@ export default function HomePage() {
                 ) : (
                   <Button onClick={connect} className="sm:flex-1">{t("connectWalletToStart")}</Button>
                 )}
-                <Link href="/explore" className="block sm:flex-1">
+                <Link href="/explorer" className="block sm:flex-1">
                   <Button variant="ghost">{t("exploreOpenVS")}</Button>
                 </Link>
               </div>
@@ -735,7 +735,7 @@ export default function HomePage() {
 
             {openVS.length > 4 && (
               <Link
-                href="/explore"
+                href="/explorer"
                 className="block w-full py-3.5 border border-pv-emerald/[0.24] bg-pv-emerald/[0.06] text-center font-display text-sm font-bold text-pv-emerald mt-2.5 hover:bg-pv-emerald/[0.1] transition-colors"
               >
                 {t("viewAllOpen", { count: openVS.length })}

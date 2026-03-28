@@ -86,13 +86,13 @@ export default function Header() {
 
   const NAV_ITEMS = useMemo(() => {
     const items: Array<{
-      href: "/vs/create" | "/explore" | "/dashboard" | "/messages";
+      href: "/vs/create" | "/explorer" | "/dashboard" | "/messages";
       label: string;
       accent: boolean;
       mobileLabel?: string;
     }> = [
       { href: "/vs/create", label: t("challenge"), accent: true },
-      { href: "/explore", label: t("explore"), accent: false },
+      { href: "/explorer", label: t("explore"), accent: false },
       { href: "/dashboard", label: t("myVS"), accent: false },
     ];
     if (xmtpNavEnabled) {
@@ -174,7 +174,7 @@ export default function Header() {
               </Link>
             </div>
             <Link
-              href="/explore"
+              href="/explorer"
               className="btn-compact-primary px-4 py-1.5 text-[12px] focus-ring sm:text-[13px]"
             >
               {t("explore")}

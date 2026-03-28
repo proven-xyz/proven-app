@@ -40,13 +40,10 @@ function ExploreLoading() {
       <div className="h-8 w-40 rounded bg-pv-surface2" />
       <div className="h-10 w-full max-w-2xl rounded bg-pv-surface2 sm:h-12" />
       <div className="h-11 w-full max-w-2xl rounded bg-pv-surface2" />
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-        <div className="h-80 rounded border border-white/[0.06] bg-pv-surface2/50" />
-        <div className="space-y-3">
-          <div className="h-4 w-40 rounded bg-pv-surface2" />
-          <div className="h-52 rounded bg-pv-surface2/80" />
-          <div className="h-52 rounded bg-pv-surface2/80" />
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="h-52 rounded border border-white/[0.06] bg-pv-surface2/80" />
+        <div className="h-52 rounded border border-white/[0.06] bg-pv-surface2/80" />
+        <div className="h-52 rounded border border-white/[0.06] bg-pv-surface2/80" />
       </div>
     </div>
   );

@@ -367,8 +367,8 @@ proven-app/
 │   │   ├── page.tsx                      # Landing page — hero VS + open claim previews
 │   │   ├── dashboard/
 │   │   │   └── page.tsx                  # User dashboard — my claims, stats, tabs
-│   │   ├── explore/
-│   │   │   ├── page.tsx                  # Server component — explore entry point
+│   │   ├── explorer/
+│   │   │   ├── page.tsx                  # Server component — Market Explorer entry
 │   │   │   └── ExploreClient.tsx         # Client component — filters, search, grid
 │   │   └── vs/
 │   │       ├── create/
@@ -420,7 +420,7 @@ proven-app/
 ├── deploy/
 │   └── deploy.ts                         # SDK-based deploy script (private key)
 ├── hooks/
-│   ├── useExploreFilterState.ts          # URL-synced filter state for explore page
+│   ├── useExploreFilterState.ts          # URL-synced filter state for /explorer page
 │   └── useDemoRole.ts                    # Demo role state (creator/challenger/resolver)
 ├── i18n/
 │   ├── routing.ts                        # Locale config (es, en) + prefix strategy

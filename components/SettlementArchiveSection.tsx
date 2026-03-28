@@ -171,7 +171,7 @@ export default function SettlementArchiveSection({
           <p className="mb-10 font-display text-[clamp(1.35rem,4vw,2.25rem)] font-medium leading-tight tracking-tight text-pv-text">
             {t("archiveGlassHeadline")}
           </p>
-          <Link href="/explore" className="inline-block">
+          <Link href="/explorer" className="inline-block">
             <Button variant="primary" className="px-8 font-display text-xs font-bold uppercase tracking-[0.2em]">
               {t("archiveGlassCta")}
             </Button>
