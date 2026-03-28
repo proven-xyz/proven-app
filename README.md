@@ -105,10 +105,6 @@ Once a challenge is accepted, creator and challenger can message each other dire
 
 Connect your MetaMask wallet to authenticate and sign all transactions directly on GenLayer Bradbury (Chain ID: 4221). The app auto-detects the network and prompts to add it if needed. Your address, claims, and stats are tied to your connected wallet.
 
-### Demo Mode (Fallback)
-
-When no wallet is connected and demo mode is enabled, a built-in relay routes writes through server-side signers so visitors can test the full create → challenge → resolve flow. A role switcher lets you act as Creator, Challenger, or Resolver from the same browser session. The demo banner hides when a wallet is connected.
-
 ### Optimistic UI
 
 Newly created claims appear instantly in Dashboard and Explore via localStorage, with a pulsing "Pending" badge, while GenLayer consensus finalizes in the background.
@@ -132,7 +128,6 @@ flowchart TB
     subgraph API["Next.js API Layer"]
         Cache["In-Memory Cache\n15s revalidation"]
         Routes["/api/vs/*\nREST endpoints"]
-        DemoRelay["/api/demo/write\nServer-side signers"]
     end
 
     subgraph GenLayer["GenLayer Bradbury Testnet"]
@@ -151,8 +146,6 @@ flowchart TB
     UI -- "genlayer-js SDK" --> Contract
     Wallet -- "EIP-1193 / JSON-RPC" --> Contract
     UI -- "fetch" --> Routes
-    UI -- "demo writes" --> DemoRelay
-    DemoRelay -- "server-side writeContract" --> Contract
     Routes -- "contract read" --> Contract
     Routes -- "read/write" --> Cache
     Contract -- "gl.nondet.web.get()" --> Sources
@@ -276,7 +269,6 @@ sequenceDiagram
 
 When a wallet is connected, all write operations are signed by the user's private key via EIP-1193. The Dashboard shows claims where the connected address is creator or challenger, and win/loss stats are calculated from the user's onchain history.
 
-**Demo relay fallback**: When `NEXT_PUBLIC_DEMO_MODE=1` is enabled and no wallet is connected, write operations fall back to server-side demo signers via `/api/demo/write`. This allows visitors to test the full create → challenge → resolve flow without configuring MetaMask on Bradbury. The demo mode banner hides automatically when a wallet is connected.
 
 ---
 
@@ -333,7 +325,7 @@ npm install
 3. Configure environment:
 
 ```bash
-echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9" > .env.local
+echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0xYOUR_ADDRESS" > .env.local
 ```
 
 4. Start the development server:
@@ -378,9 +370,6 @@ proven-app/
 │   │   └── messages/
 │   │       └── page.tsx                  # XMTP messages hub — all active 1v1 conversations
 │   └── api/
-│       ├── demo/
-│       │   └── write/
-│       │       └── route.ts              # POST /api/demo/write — server-side demo relay
 │       └── vs/
 │           ├── route.ts                  # GET /api/vs — list all public VS
 │           ├── [id]/
@@ -397,7 +386,6 @@ proven-app/
 │   ├── ProvenStamp.tsx                   # PROVEN. stamp victory animation
 │   ├── ResolutionTerminal.tsx            # Terminal-style resolution reveal
 │   ├── PageTransition.tsx                # Framer Motion page transitions
-│   ├── DemoRoleSwitcher.tsx               # Demo mode role toggle (creator/challenger/resolver)
 │   ├── EmptyState.tsx                    # Empty results fallback
 │   ├── HtmlLang.tsx                      # HTML lang attribute provider
 │   ├── xmtp/
@@ -421,7 +409,6 @@ proven-app/
 │   └── deploy.ts                         # SDK-based deploy script (private key)
 ├── hooks/
 │   ├── useExploreFilterState.ts          # URL-synced filter state for explore page
-│   └── useDemoRole.ts                    # Demo role state (creator/challenger/resolver)
 ├── i18n/
 │   ├── routing.ts                        # Locale config (es, en) + prefix strategy
 │   ├── request.ts                        # Server-side locale message loader
@@ -435,7 +422,6 @@ proven-app/
 │   ├── fonts.ts                          # Custom font loading
 │   ├── exploreFilters.ts                 # Filter type definitions
 │   ├── pending-vs.ts                     # Optimistic pending VS store (localStorage)
-│   ├── demo-mode.ts                      # Demo mode helpers
 │   ├── private-links.ts                  # Private invite key generation + storage
 │   ├── xmtp/                             # XMTP messaging integration
 │   │   ├── XmtpProvider.tsx              # XMTP client context provider
@@ -448,7 +434,6 @@ proven-app/
 │   │   └── index.ts                      # Barrel exports
 │   └── server/
 │       ├── vs-cache.ts                   # Server-side in-memory cache layer
-│       └── demo-relay.ts                 # Demo relay — server-side write execution
 ├── messages/
 │   ├── en.json                           # English translations (310 keys)
 │   └── es.json                           # Spanish translations (310 keys)
@@ -469,14 +454,13 @@ proven-app/
 
 ## API Endpoints
 
-Claim data is public onchain. Private claims require an `invite` query parameter. The demo write endpoint is gated behind `NEXT_PUBLIC_DEMO_MODE=1`.
+Claim data is public onchain. Private claims require an `invite` query parameter.
 
 | Method | Path | Description | Auth |
 | --- | --- | --- | --- |
 | GET | `/api/vs` | List all public VS claims. Pass `?refresh=1` to force cache rebuild. | None |
 | GET | `/api/vs/[id]` | Get a single VS by ID. Pass `?invite=KEY` for private claims. | Invite key (private only) |
 | GET | `/api/vs/user/[address]` | Get all VS where the address is creator or challenger. | None |
-| POST | `/api/demo/write` | Execute a demo relay write (create, challenge, resolve, cancel). | Demo mode enabled |
 
 Response headers include `Cache-Control: public, s-maxage=15, stale-while-revalidate=60` for public endpoints. Private claim responses use `Cache-Control: private, no-store`.
 
@@ -489,17 +473,14 @@ Response headers include `Cache-Control: public, s-maxage=15, stale-while-revali
 | `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed PROVEN contract address | `0x000...000` |
 | `NEXT_PUBLIC_GENLAYER_RPC` | GenLayer RPC endpoint (overrides default) | `https://rpc-bradbury.genlayer.com` |
 | `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
-| `NEXT_PUBLIC_DEMO_MODE` | Set to `1` to route website writes through demo signers | Off |
-| `NEXT_PUBLIC_DEMO_MODE_LABEL` | Optional demo banner label | `Bradbury demo mode` |
 | `NEXT_PUBLIC_XMTP_ENV` | XMTP network: `local`, `dev`, or `production` | `dev` (in-app default if unset) |
 | `NEXT_PUBLIC_FEATURE_XMTP` | Enable XMTP UI when `1`, `true`, or `yes` | disabled if unset |
 | `NEXT_PUBLIC_XMTP_APP_VERSION` | App id for XMTP telemetry (e.g. `proven-app/1.0.0`) | `proven-app/0.1` |
 | `GENLAYER_RPC` | Server-side RPC override (not exposed to browser) | Same as public default |
 | `GENLAYER_MAIN_CONTRACT` | Server-side consensus contract override | Same as public default |
-| `DEMO_CREATOR_PRIVATE_KEY` | Server-only Bradbury wallet used for create/rematch writes | Unset |
-| `DEMO_CHALLENGER_PRIVATE_KEY` | Server-only Bradbury wallet used for challenge writes | Unset |
-| `DEMO_RESOLVER_PRIVATE_KEY` | Server-only Bradbury wallet used for resolve writes | Unset |
-| `DEMO_SIGNER_PRIVATE_KEY` | Optional fallback demo signer when the role-specific keys are unset | Unset |
+| `TURSO_DATABASE_URL` | Turso/libSQL database URL for the disposable read index | Unset |
+| `TURSO_AUTH_TOKEN` | Turso auth token for the read index | Unset |
+| `CRON_SECRET` | Bearer token protecting `/api/cron/sync` | Unset |
 
 All `NEXT_PUBLIC_*` variables are exposed to the browser. Server-only variables are used by API routes and build scripts.
 
@@ -608,6 +589,33 @@ npm run deploy:contract:bradbury
 npm run deploy:contract:env
 ```
 
+### Staged contract workflow
+
+Use the staged workflow when you want to gate Bradbury behind faster checks first:
+
+```bash
+# 1. Lint -> direct tests -> localnet -> studionet
+npm run contract:stage
+
+# 2. Same flow, then deploy to Bradbury
+npm run contract:stage:deploy
+```
+
+Supporting commands:
+
+```bash
+npm run contract:check
+npm run test:direct
+npm run test:integration:localnet
+npm run test:integration:studionet
+```
+
+The staged workflow uses:
+- `genvm-lint` for structural contract validation
+- direct tests for the fastest feedback loop
+- integration smoke tests on `localnet` and `studionet`
+- Bradbury only as the final deploy stage
+
 #### Option C: SDK Deploy Script
 
 ```bash
@@ -645,61 +653,6 @@ Or import the GitHub repo at [vercel.com](https://vercel.com) and add `NEXT_PUBL
 
 ---
 
-## Bradbury Demo Workflow
-
-For the current Bradbury demo contract, use:
-
-```bash
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9
-NEXT_PUBLIC_DEMO_MODE=1
-```
-
-This keeps the website interactive while bypassing flaky browser wallet writes on Bradbury.
-
-To make the site interactive again, add server-only demo signers:
-
-```bash
-DEMO_CREATOR_PRIVATE_KEY=0x...
-DEMO_CHALLENGER_PRIVATE_KEY=0x...
-DEMO_RESOLVER_PRIVATE_KEY=0x...
-```
-
-These keys stay on the server and are used by `/api/demo/write`. Use small, dedicated Bradbury wallets for the demo only.
-
-### Website relay flow
-
-With `NEXT_PUBLIC_DEMO_MODE=1` and demo signers configured:
-
-- `create_claim` and `create_rematch` use the creator signer
-- `challenge_claim` uses the challenger signer
-- `resolve_claim` uses the resolver signer
-- the UI shows pending/success states once Bradbury accepts the transaction
-
-### CLI caveat
-
-The current `genlayer write` CLI in `0.37.1` always sends `value: 0n`, so it is not reliable for payable or funded actions.
-
-### Safe CLI commands
-
-```bash
-genlayer network set testnet-bradbury
-genlayer account use <your-account>
-
-genlayer call 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 get_claim_count
-genlayer call 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 get_open_claim_summaries
-
-genlayer write 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 resolve_claim --args <claim_id>
-genlayer write 0xeFCA2836E4Be9A97c5691c0C74a87794003ce3a9 cancel_claim --args <claim_id>
-genlayer receipt <tx_hash>
-```
-
-Recommended demo flow:
-
-- Use the website for create, rematch, challenge, and resolve through the demo relay
-- Keep CLI handy for inspection and recovery
-- Refresh the website after any pending Bradbury transaction reaches `ACCEPTED`
-
----
 
 <div align="center">
 
