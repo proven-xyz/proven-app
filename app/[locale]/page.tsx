@@ -711,7 +711,7 @@ export default function HomePage() {
         </AnimatedItem>
       )}
 
-      {/* Open VS preview — 2 cols en desktop */}
+      {/* Market Explorer preview — 2 cols en desktop */}
       {openVS.length > 0 && (
         <AnimatedItem>
           <div className="mb-10">
@@ -719,7 +719,7 @@ export default function HomePage() {
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
-                  {t("openVS")}
+                  {t("marketExplorerTeaser")}
                 </span>
               </div>
               <span className="text-[11px] text-pv-muted">

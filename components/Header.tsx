@@ -137,13 +137,12 @@ export default function Header() {
         <Link href="/" className="flex items-center gap-2.5">
           <span className="group font-display text-lg font-bold tracking-tight text-pv-emerald transition-colors duration-300 ease-in-out sm:text-xl">
             PROVEN
-            <motion.span
-              className="ml-[1px] inline-block leading-none text-pv-text transition-colors duration-300 ease-in-out group-hover:text-pv-emerald"
-              whileHover={{ scale: 1.3, rotate: -8 }}
-              transition={{ type: "spring", stiffness: 400 }}
+            <span
+              className="ml-[1px] inline-block origin-center leading-none text-pv-text transition-[color,transform] duration-300 ease-out will-change-transform group-hover:scale-[1.22] group-hover:-rotate-6 group-hover:text-pv-emerald"
+              aria-hidden
             >
               .
-            </motion.span>
+            </span>
           </span>
         </Link>
 

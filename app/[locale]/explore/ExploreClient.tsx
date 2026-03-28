@@ -19,7 +19,7 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Button, Chip, VSCardSkeleton } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import EmptyState from "@/components/EmptyState";
-import { ArrowLeft, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 const EMERALD = "#4edea3";
 
@@ -29,7 +29,6 @@ export default function ExploreClient() {
   const [loading, setLoading] = useState(true);
 
   const t = useTranslations("explore");
-  const tc = useTranslations("common");
   const tCat = useTranslations("categories");
 
   useEffect(() => {
@@ -89,34 +88,24 @@ export default function ExploreClient() {
   return (
     <PageTransition>
       <AnimatedItem>
-        <Link
-          href="/"
-          className="mb-5 inline-flex items-center gap-1.5 text-sm text-pv-muted transition-colors hover:text-pv-text"
-        >
-          <ArrowLeft size={14} />
-          {tc("back")}
-        </Link>
-      </AnimatedItem>
-
-      <AnimatedItem>
-        <div className="mb-6">
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald/80">
-            {t("eyebrow")}
-          </div>
-          <div className="flex items-end justify-between gap-3">
-            <h1 className="font-display text-[clamp(1.5rem,5vw,2.25rem)] font-bold leading-none tracking-tight">
-              {t("title")}
-            </h1>
-            <div className="flex flex-shrink-0 items-center gap-1.5 pb-0.5">
+        <div className="mb-10">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-4 sm:gap-6">
+            <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-6">
+              <h1 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
+                {t("title")}
+              </h1>
+              <div className="h-px min-w-[2rem] flex-1 bg-white/[0.12]" aria-hidden />
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-1.5">
               <div className="h-1.5 w-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
               <span className="font-mono text-xs text-pv-muted">
                 {t("available", { count: open.length })}
               </span>
             </div>
           </div>
-          <p className="mt-2 font-mono text-sm tracking-wide text-pv-muted">
-            {t("subtitle")}
-          </p>
+          <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
+            {t("lead")}
+          </span>
         </div>
       </AnimatedItem>
 
