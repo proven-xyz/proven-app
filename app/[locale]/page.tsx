@@ -17,7 +17,7 @@ import {
 import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
 import { mergePendingVS } from "@/lib/pending-vs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { GlassCard, PoolBadge, Button, VSCardSkeleton } from "@/components/ui";
+import { GlassCard, PoolBadge, Button } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import ArenaCard from "@/components/ArenaCard";
 import ArenaProposeCard from "@/components/ArenaProposeCard";
@@ -788,14 +788,6 @@ export default function HomePage() {
             </div>
           </div>
         </AnimatedItem>
-      )}
-
-      {/* Loading skeletons */}
-      {loading && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <VSCardSkeleton />
-          <VSCardSkeleton />
-        </div>
       )}
     </PageTransition>
   );
