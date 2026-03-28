@@ -1,7 +1,7 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import { getVSChallengerCount, getVSTotalPot, type VSData } from "@/lib/contract";
+import { getVSChallengerCount, type VSData } from "@/lib/contract";
 import { useTranslations } from "next-intl";
 import { UserRound } from "lucide-react";
 
@@ -15,15 +15,23 @@ type ArenaVS = Pick<
   | "state"
   | "challenger_count"
   | "market_type"
-  | "total_pot"
   | "max_challengers"
+  | "odds_mode"
 >;
+
+const sampleBadgePillClass =
+  "rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-pv-emerald/90";
 
 interface ArenaCardProps {
   vs: ArenaVS;
   challengersCount?: number;
   /** Pill label “ARCHIVE” (shorter) instead of “ARCHIVED” for curated / demo cards. */
   archiveLabelShort?: boolean;
+  /** Explorer demos: dashed border + ring like legacy VSCard samples. */
+  isSample?: boolean;
+  sampleBadgeLabel?: string;
+  /** When set, category in the subtitle links to this href (e.g. Explore with `?cat=`). */
+  categoryFilterHref?: string;
 }
 
 function formatArenaIdCode(id: number): string {
@@ -34,6 +42,9 @@ function formatArenaIdCode(id: number): string {
 }
 
 type ArenaStatusKey = "arenaStatusLive" | "arenaStatusPending" | "arenaStatusArchived";
+
+const ARENA_STAT_CELL =
+  "rounded border border-white/[0.1] bg-white/[0.03] px-3 py-2.5 sm:px-3.5 sm:py-3";
 
 function getArenaPresentation(vs: ArenaVS): {
   statusKey: ArenaStatusKey;
@@ -52,14 +63,21 @@ export default function ArenaCard({
   vs,
   challengersCount,
   archiveLabelShort = false,
+  isSample = false,
+  sampleBadgeLabel,
+  categoryFilterHref,
 }: ArenaCardProps) {
   const t = useTranslations("home");
   const tCat = useTranslations("categories");
   const tDetail = useTranslations("vsDetail");
 
-  const pool = getVSTotalPot(vs as VSData);
   const activeChallengers = challengersCount ?? getVSChallengerCount(vs as VSData);
   const marketType = vs.market_type ?? "binary";
+  const oddsMode = vs.odds_mode ?? "pool";
+  const maxChallengers =
+    typeof vs.max_challengers === "number" && vs.max_challengers > 0
+      ? vs.max_challengers
+      : 1;
   const { statusKey, statusVariant } = getArenaPresentation(vs);
   const isArchived = vs.state === "resolved" || vs.state === "cancelled";
   const statusPillMessageKey =
@@ -72,17 +90,29 @@ export default function ArenaCard({
         ? "font-display text-xs font-semibold uppercase tracking-wide text-pv-muted bg-white/[0.06] px-2 py-1 ring-1 ring-white/[0.08]"
         : "font-display text-xs font-semibold uppercase tracking-wide text-pv-muted bg-white/[0.06] px-2 py-1 ring-1 ring-white/[0.08]";
 
+  const marketLabel = tDetail(`marketTypes.${marketType}`);
+  const oddsLabel = tDetail(`oddsModes.${oddsMode}`);
+
   return (
     <article
-      className="card group relative flex h-full flex-col gap-6 overflow-hidden border-white/[0.12] bg-pv-surface p-6 transition-all duration-300 hover:border-pv-emerald/30 hover:bg-[#242323] sm:gap-8 sm:p-8"
+      className={`card group relative flex h-full flex-col gap-6 overflow-hidden border-white/[0.12] bg-pv-surface p-6 transition-all duration-300 hover:border-pv-emerald/30 hover:bg-[#242323] sm:gap-8 sm:p-8 ${
+        isSample
+          ? "border border-dashed border-pv-emerald/35 bg-pv-surface/80 ring-1 ring-pv-emerald/[0.12]"
+          : ""
+      }`}
     >
       <div
         className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
         aria-hidden
       />
 
-      <div className="relative z-10 flex items-start justify-between gap-3">
-        <span className={statusPillClass}>{t(statusPillMessageKey)}</span>
+      <div className="relative z-10 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {isSample && sampleBadgeLabel ? (
+            <span className={`shrink-0 ${sampleBadgePillClass}`}>{sampleBadgeLabel}</span>
+          ) : null}
+          <span className={statusPillClass}>{t(statusPillMessageKey)}</span>
+        </div>
         <span className="rounded px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-pv-muted ring-1 ring-white/[0.1] bg-white/[0.03] backdrop-blur-sm">
           {t("arenaIdBadge", { code: formatArenaIdCode(vs.id) })}
         </span>
@@ -92,13 +122,54 @@ export default function ArenaCard({
         <h3 className="line-clamp-3 font-display text-xl font-bold uppercase leading-tight tracking-tight text-pv-text sm:text-2xl">
           {vs.question}
         </h3>
-        <p className="mt-2 text-left text-xs leading-relaxed text-pv-muted sm:text-[13px]">
-          {t("arenaCardSubtitle", {
-            category: tCat(vs.category),
-            market: tDetail(`marketTypes.${marketType}`),
-            pool,
-          })}
-        </p>
+        <div className="mt-3 space-y-3">
+          <p className="text-left text-[11px] font-display font-bold uppercase tracking-[0.12em] text-pv-muted sm:text-xs">
+            {categoryFilterHref ? (
+              <Link
+                href={categoryFilterHref}
+                className="text-pv-muted underline-offset-2 transition-colors hover:text-pv-text hover:underline"
+              >
+                {tCat(vs.category)}
+              </Link>
+            ) : (
+              tCat(vs.category)
+            )}
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+            <div className={ARENA_STAT_CELL}>
+              <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                {t("arenaStatMinStake")}
+              </span>
+              <span className="mt-1 block font-display text-sm font-bold uppercase tabular-nums tracking-tight text-pv-text sm:text-[15px]">
+                {vs.stake_amount} GEN
+              </span>
+            </div>
+            <div className={ARENA_STAT_CELL}>
+              <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                {t("arenaStatBetType")}
+              </span>
+              <span className="mt-1 block truncate font-display text-sm font-bold uppercase leading-snug tracking-tight text-pv-text sm:text-[15px]">
+                {marketLabel}
+              </span>
+            </div>
+            <div className={ARENA_STAT_CELL}>
+              <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                {t("arenaStatOddsMode")}
+              </span>
+              <span className="mt-1 block truncate font-display text-sm font-bold uppercase leading-snug tracking-tight text-pv-text sm:text-[15px]">
+                {oddsLabel}
+              </span>
+            </div>
+            <div className={ARENA_STAT_CELL}>
+              <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                {t("arenaStatFillStatus")}
+              </span>
+              <span className="mt-1 block font-display text-sm font-bold uppercase tabular-nums tracking-tight text-pv-text sm:text-[15px]">
+                {activeChallengers}/{maxChallengers}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="relative z-10 mt-auto border-t border-white/[0.1] pt-6">

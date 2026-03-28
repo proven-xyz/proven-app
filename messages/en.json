@@ -103,7 +103,10 @@
     "arenaStatusArchived": "Archived",
     "arenaStatusArchive": "Archive",
     "arenaIdBadge": "ID: {code}",
-    "arenaCardSubtitle": "{category} · {market}. {pool} GEN in the vault.",
+    "arenaStatMinStake": "Min stake",
+    "arenaStatBetType": "Bet type",
+    "arenaStatOddsMode": "Odds mode",
+    "arenaStatFillStatus": "Fill status",
     "arenaViewDetails": "View details",
     "arenaProposeTitleLine1": "Propose new",
     "arenaProposeTitleLine2": "challenge",
@@ -282,7 +285,8 @@
     "sampleNoMatchHint": "No demo card matches the current filters. Reset filters or adjust search to see examples again.",
     "sampleCreateHint": "Create your own challenge to go live on the protocol.",
     "resetFilters": "Reset filters",
-    "filtersAriaLabel": "Filters: category, minimum stake, and sort order"
+    "filtersAriaLabel": "Filters: category, minimum stake, and sort order",
+    "sampleBadge": "Demo"
   },
   "dashboard": {
     "title": "My VS",

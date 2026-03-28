@@ -227,6 +227,9 @@ export default function HomePage() {
         opponent: ZERO_ADDRESS,
         category: "crypto",
         state: "open" as const,
+        market_type: "binary" as const,
+        odds_mode: "pool" as const,
+        max_challengers: 8,
       },
       challengersCount: 7,
     },
@@ -238,6 +241,9 @@ export default function HomePage() {
         opponent: ZERO_ADDRESS,
         category: "tech",
         state: "open" as const,
+        market_type: "binary" as const,
+        odds_mode: "pool" as const,
+        max_challengers: 20,
       },
       challengersCount: 13,
     },
@@ -249,6 +255,9 @@ export default function HomePage() {
         opponent: ZERO_ADDRESS,
         category: "deportes",
         state: "open" as const,
+        market_type: "binary" as const,
+        odds_mode: "pool" as const,
+        max_challengers: 8,
       },
       challengersCount: 4,
     },
@@ -260,6 +269,9 @@ export default function HomePage() {
         opponent: ZERO_ADDRESS,
         category: "custom",
         state: "accepted" as const,
+        market_type: "binary" as const,
+        odds_mode: "fixed" as const,
+        max_challengers: 5,
       },
       challengersCount: 3,
     },
@@ -271,6 +283,9 @@ export default function HomePage() {
         opponent: ZERO_ADDRESS,
         category: "crypto",
         state: "resolved" as const,
+        market_type: "binary" as const,
+        odds_mode: "pool" as const,
+        max_challengers: 15,
       },
       challengersCount: 11,
     },
@@ -729,7 +744,7 @@ export default function HomePage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
               {openVS.slice(0, 4).map((vs) => (
-                <VSCard key={vs.id} vs={vs} showAcceptCTA />
+                <VSCard key={vs.id} vs={vs} />
               ))}
             </div>
 

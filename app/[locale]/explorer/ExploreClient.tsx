@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getAllVSFast, isVSJoinable, type VSData } from "@/lib/contract";
+import {
+  getAllVSFast,
+  getVSChallengerCount,
+  isVSJoinable,
+  type VSData,
+} from "@/lib/contract";
 import { mergePendingVS } from "@/lib/pending-vs";
 import type { CategoryId } from "@/lib/constants";
 import {
@@ -18,8 +23,8 @@ import {
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
 import { getExploreSampleCards } from "@/lib/sampleVs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { Button, VSCardSkeleton } from "@/components/ui";
-import VSCard from "@/components/VSCard";
+import { Button, ArenaCardSkeleton } from "@/components/ui";
+import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
 import { ChevronDown, ListFilter, Search, X } from "lucide-react";
 
@@ -435,9 +440,9 @@ export default function ExploreClient() {
 
         {loading ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <VSCardSkeleton />
-            <VSCardSkeleton />
-            <VSCardSkeleton />
+            <ArenaCardSkeleton />
+            <ArenaCardSkeleton />
+            <ArenaCardSkeleton />
           </div>
         ) : filtered.length === 0 && filteredSamples.length === 0 ? (
           hasActiveFilters ? (
@@ -484,10 +489,9 @@ export default function ExploreClient() {
                   exit={{ opacity: 0, scale: 0.97 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <VSCard
+                  <ArenaCard
                     vs={vs}
-                    showCategory={cat === "all"}
-                    showAcceptCTA
+                    challengersCount={getVSChallengerCount(vs)}
                   />
                 </motion.div>
               ))}
@@ -505,12 +509,11 @@ export default function ExploreClient() {
                   exit={{ opacity: 0, scale: 0.97 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <VSCard
+                  <ArenaCard
                     vs={vs}
-                    showCategory
-                    showAcceptCTA
+                    challengersCount={getVSChallengerCount(vs)}
                     isSample
-                    showChallengesLabel={false}
+                    sampleBadgeLabel={t("sampleBadge")}
                     categoryFilterHref={`/explorer?${serializeExploreFilters({
                       ...DEFAULT_EXPLORE_FILTERS,
                       cat: vs.category,

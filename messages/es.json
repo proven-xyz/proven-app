@@ -103,7 +103,10 @@
     "arenaStatusArchived": "Archivado",
     "arenaStatusArchive": "Archivo",
     "arenaIdBadge": "ID: {code}",
-    "arenaCardSubtitle": "{category} · {market}. {pool} GEN en la bóveda.",
+    "arenaStatMinStake": "Apuesta mín.",
+    "arenaStatBetType": "Tipo de apuesta",
+    "arenaStatOddsMode": "Modo de cuotas",
+    "arenaStatFillStatus": "Cupo",
     "arenaViewDetails": "Ver detalles",
     "arenaProposeTitleLine1": "Propón un nuevo",
     "arenaProposeTitleLine2": "desafío",
@@ -281,7 +284,8 @@
     "sampleNoMatchHint": "Ninguna demo coincide con los filtros actuales. Restablecé o ajustá la búsqueda para ver ejemplos.",
     "sampleCreateHint": "Creá tu propio desafío para publicarlo en el protocolo.",
     "resetFilters": "Restablecer filtros",
-    "filtersAriaLabel": "Filtros: categoría, apuesta mínima y orden"
+    "filtersAriaLabel": "Filtros: categoría, apuesta mínima y orden",
+    "sampleBadge": "Demo"
   },
   "dashboard": {
     "title": "Mis VS",

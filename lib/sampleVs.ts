@@ -27,6 +27,9 @@ export const SAMPLE_VS: Record<number, VSData> = {
     resolution_summary: "",
     created_at: Math.floor(Date.now() / 1000),
     category: "crypto",
+    market_type: "binary",
+    odds_mode: "pool",
+    max_challengers: 8,
   },
   [-2]: {
     id: -2,
@@ -43,6 +46,9 @@ export const SAMPLE_VS: Record<number, VSData> = {
     resolution_summary: "",
     created_at: Math.floor(Date.now() / 1000),
     category: "tech",
+    market_type: "binary",
+    odds_mode: "pool",
+    max_challengers: 12,
   },
   [-3]: {
     id: -3,
@@ -59,6 +65,9 @@ export const SAMPLE_VS: Record<number, VSData> = {
     resolution_summary: "",
     created_at: Math.floor(Date.now() / 1000),
     category: "deportes",
+    market_type: "binary",
+    odds_mode: "pool",
+    max_challengers: 8,
   },
 };
 
