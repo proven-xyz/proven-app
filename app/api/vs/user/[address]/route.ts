@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { getUserVSFast, VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 import {
@@ -8,15 +8,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
-type Props = {
-  params: {
-    address: string;
-  };
-};
-
-export async function GET(_: Request, { params }: Props) {
+export async function GET(
+  _: NextRequest,
+  { params }: { params: Promise<{ address: string }> }
+) {
   try {
-    const address = parseAddressParam(params.address);
+    const { address: rawAddress } = await params;
+    const address = parseAddressParam(rawAddress);
     if (!address) {
       return NextResponse.json(
         createApiError("invalid_parameter", "Invalid address"),
