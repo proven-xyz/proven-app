@@ -5,7 +5,7 @@ import {
   parseAddressParam,
   parseInviteKey,
   parsePositiveIntegerParam,
-} from "../../lib/server/api-validation.ts";
+} from "../../lib/server/api-validation";
 
 test("parsePositiveIntegerParam accepts positive integer ids", () => {
   assert.equal(parsePositiveIntegerParam("7"), 7);

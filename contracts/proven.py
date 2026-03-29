@@ -67,13 +67,9 @@ class ProvenContract(gl.Contract):
     claim_count: u256
     ch_addr: TreeMap[u256, Address]
     ch_amount: TreeMap[u256, u256]
-    wins: TreeMap[Address, u256]
-    losses: TreeMap[Address, u256]
-    total_resolved: u256
 
     def __init__(self):
         self.claim_count = u256(0)
-        self.total_resolved = u256(0)
 
     def _ch_key(self, claim_id: u256, index: u256) -> u256:
         return u256(claim_id * u256(MAX_CHALLENGERS) + index)
@@ -198,18 +194,6 @@ class ProvenContract(gl.Contract):
         if amount <= u256(0):
             return
         gl.get_contract_at(addr).emit_transfer(value=amount)
-
-    def _add_win(self, addr: Address):
-        current = u256(0)
-        if addr in self.wins:
-            current = self.wins[addr]
-        self.wins[addr] = u256(current + u256(1))
-
-    def _add_loss(self, addr: Address):
-        current = u256(0)
-        if addr in self.losses:
-            current = self.losses[addr]
-        self.losses[addr] = u256(current + u256(1))
 
     def _claim_to_dict(self, claim_id: u256, include_challengers: bool) -> dict:
         if claim_id not in self.claims:
@@ -630,14 +614,9 @@ Confidence: integer 0-100."""
 
         if verdict == SIDE_CREATOR:
             self._transfer(claim.creator, total_pot)
-            self._add_win(claim.creator)
-            for i in range(ch_count):
-                key = self._ch_key(claim_id, u256(i))
-                self._add_loss(self.ch_addr[key])
 
         elif verdict == SIDE_CHALLENGERS:
             total_challenger_payout = u256(0)
-            self._add_loss(claim.creator)
 
             for i in range(ch_count):
                 key = self._ch_key(claim_id, u256(i))
@@ -654,7 +633,6 @@ Confidence: integer 0-100."""
 
                 total_challenger_payout = u256(total_challenger_payout + payout)
                 self._transfer(ch_addr, payout)
-                self._add_win(ch_addr)
 
             if claim.odds_mode == ODDS_FIXED and total_pot > total_challenger_payout:
                 self._transfer(claim.creator, u256(total_pot - total_challenger_payout))
@@ -664,8 +642,6 @@ Confidence: integer 0-100."""
             for i in range(ch_count):
                 key = self._ch_key(claim_id, u256(i))
                 self._transfer(self.ch_addr[key], self.ch_amount[key])
-
-        self.total_resolved = u256(self.total_resolved + u256(1))
 
     @gl.public.write
     def cancel_claim(self, claim_id: u256):
@@ -692,15 +668,6 @@ Confidence: integer 0-100."""
         return self._claim_to_dict(claim_id, True)
 
     @gl.public.view
-    def get_claim_summary(self, claim_id: u256) -> dict:
-        claim = self.claims[claim_id] if claim_id in self.claims else None
-        if claim is None:
-            raise gl.vm.UserError("Claim not found")
-        if claim.visibility == VISIBILITY_PRIVATE:
-            raise gl.vm.UserError("Private claim requires access link")
-        return self._claim_to_dict(claim_id, False)
-
-    @gl.public.view
     def get_claim_with_access(self, claim_id: u256, invite_key: str = "") -> dict:
         if claim_id not in self.claims:
             raise gl.vm.UserError("Claim not found")
@@ -711,18 +678,6 @@ Confidence: integer 0-100."""
             if not normalized_invite_key or normalized_invite_key != claim.invite_key:
                 raise gl.vm.UserError("Private claim requires a valid invite link")
         return self._claim_to_dict(claim_id, True)
-
-    @gl.public.view
-    def get_claim_summary_with_access(self, claim_id: u256, invite_key: str = "") -> dict:
-        if claim_id not in self.claims:
-            raise gl.vm.UserError("Claim not found")
-
-        claim = self.claims[claim_id]
-        normalized_invite_key = self._normalize_invite_key(invite_key)
-        if claim.visibility == VISIBILITY_PRIVATE:
-            if not normalized_invite_key or normalized_invite_key != claim.invite_key:
-                raise gl.vm.UserError("Private claim requires a valid invite link")
-        return self._claim_to_dict(claim_id, False)
 
     @gl.public.view
     def get_claim_summaries(self, start_id: u256 = u256(1), limit: u256 = u256(50)) -> list:
@@ -809,38 +764,6 @@ Confidence: integer 0-100."""
         for claim_id in self.get_open_claims():
             result.append(self._claim_to_dict(u256(claim_id), False))
         return result
-
-    @gl.public.view
-    def get_claims_by_parent(self, parent_id: u256) -> list:
-        result = []
-        total = int(self.claim_count)
-        for i in range(total):
-            cid = u256(i + 1)
-            if cid not in self.claims:
-                continue
-            claim = self.claims[cid]
-            if claim.parent_id == parent_id:
-                result.append(int(cid))
-        return result
-
-    @gl.public.view
-    def get_user_stats(self, user_address: str) -> dict:
-        addr = self._coerce_address(user_address)
-        wins = int(self.wins[addr]) if addr in self.wins else 0
-        losses = int(self.losses[addr]) if addr in self.losses else 0
-        return {"wins": wins, "losses": losses, "total": wins + losses}
-
-    @gl.public.view
-    def get_pool(self) -> int:
-        return int(self.balance)
-
-    @gl.public.view
-    def get_platform_stats(self) -> dict:
-        return {
-            "total_claims": int(self.claim_count),
-            "total_resolved": int(self.total_resolved),
-            "total_pool": int(self.balance),
-        }
 
     @gl.public.view
     def get_rivalry_chain(self, claim_id: u256) -> list:

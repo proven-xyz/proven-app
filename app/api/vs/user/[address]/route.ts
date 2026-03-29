@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getUserVSFast, VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 import {
   createApiError,
   parseAddressParam,
 } from "@/lib/server/api-validation";
+import { getUserVs } from "@/lib/server/vs-index";
+import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export async function GET(_: Request, { params }: Props) {
       );
     }
 
-    const items = await getUserVSFast(address);
+    const items = await getUserVs(address);
 
     return NextResponse.json(
       {

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
-import { getUserVSDirect, type VSData } from "@/lib/contract";
+import { getUserVSFast, type VSData } from "@/lib/contract";
 import { shortenAddress } from "@/lib/constants";
 import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
 import {
@@ -46,7 +46,7 @@ export default function MessagesHub() {
       setLoading(true);
       setLoadError(false);
       try {
-        const results = await getUserVSDirect(address);
+        const results = await getUserVSFast(address);
         if (!cancelled) {
           results.sort((a, b) => b.id - a.id);
           setDuels(results);
@@ -168,7 +168,7 @@ export default function MessagesHub() {
                   if (!address) return;
                   setLoading(true);
                   setLoadError(false);
-                  void getUserVSDirect(address)
+                  void getUserVSFast(address)
                     .then((r) => {
                       r.sort((a, b) => b.id - a.id);
                       setDuels(r);

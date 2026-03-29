@@ -21,12 +21,6 @@
     "myVS": "Mis VS",
     "messages": "Mensajes",
     "messagesMobile": "Mensajes",
-    "demoRole": "Rol demo",
-    "roles": {
-      "creator": "Creador",
-      "challenger": "Retador",
-      "resolver": "Resolutor"
-    },
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "walletMenu": "Wallet",
@@ -106,9 +100,6 @@
     "sendThisPrivateLink": "Manda este link privado solo a las personas que quieras invitar.",
     "viewVS": "Ver VS",
     "createAnother": "Crear otro",
-    "createDemoAndFund": "Crear desafio demo y fondear {amount} GEN",
-    "switchToCreator": "Cambiar a Creador",
-    "creatorRoleRequired": "Cambia el rol demo a Creador antes de publicar un desafio.",
     "errorCreating": "Error al crear el VS",
     "submittedPending": "La transaccion se envio a Bradbury. Puede tardar un momento en aparecer.",
     "linkCopied": "Link copiado",
@@ -165,15 +156,14 @@
     "eyebrow": "Nuevo desafio",
     "pageTitle": "DEFINE LOS TERMINOS.",
     "pageSubtitle": "Establece tu posicion. Bloquea tu apuesta. El protocolo decide.",
-    "demoModeHint": "El modo demo usa firmantes alojados en Bradbury para que el flujo sea confiable aunque las browser wallets fallen.",
     "invalidStakeMin": "La apuesta debe ser de al menos {amount} GEN",
     "sourceRequired": "Agrega una fuente real de verificacion antes de publicar",
     "settlementRuleRequired": "Agrega una regla de settlement para mercados custom o avanzados",
-    "minimumStakeHint": "La apuesta minima para el demo es {amount} GEN.",
+    "minimumStakeHint": "La apuesta minima es {amount} GEN.",
     "sourceGuidance": "Guia para la fuente de verificacion",
     "useRecommendedRule": "Usar regla recomendada",
-    "qualityReview": "Revision de seguridad para el demo",
-    "qualityReady": "Este claim ya se ve lo bastante especifico para las reglas actuales del demo.",
+    "qualityReview": "Revision de calidad del claim",
+    "qualityReady": "Este claim ya se ve lo bastante especifico para las reglas actuales.",
     "qualitySpecificity": "Haz la pregunta mas especifica para que el resultado se pueda verificar desde una sola fuente.",
     "qualitySource": "Usa una pagina fuente concreta en vez de dejar la verificacion vacia o demasiado generica.",
     "qualitySettlement": "Los mercados avanzados o custom deben tener una regla de settlement explicita.",
@@ -193,13 +183,18 @@
         "questionHint": "Nombra el activo, el umbral, y el deadline de forma explicita.",
         "settlementTemplate": "Resuelve esto usando el spot price visible en la fuente enlazada al momento del deadline. Aplica cualquier umbral o linea exactamente como fue escrito."
       },
+      "tech": {
+        "sourceHint": "Usa un blog oficial del producto, comunicado de prensa, o changelog que siga reflejando el hecho anunciado al momento del settlement.",
+        "questionHint": "Nombra el producto, la empresa, y el hito concreto o ventana de fechas que se va a juzgar.",
+        "settlementTemplate": "Resuelve esto solo con la fuente oficial enlazada al momento del deadline. Trata 'anunciado' como una declaracion publica y atribuible de la parte nombrada."
+      },
       "cultura": {
         "sourceHint": "Prefiere la publicacion oficial, la pagina del premio, o la fuente primaria de entretenimiento detras del claim.",
         "questionHint": "Ancla el claim a un lanzamiento, premio, ranking, o publicacion concretos.",
         "settlementTemplate": "Resuelve esto solo con la fuente oficial o autoritativa enlazada. No infieras mas alla del resultado publicado exacto."
       },
       "custom": {
-        "sourceHint": "Los claims custom necesitan una fuente muy especifica y una regla de settlement clara para ser seguros en el demo.",
+        "sourceHint": "Los claims custom necesitan una fuente muy especifica y una regla de settlement clara para mantener el resultado sin ambiguedad.",
         "questionHint": "Haz que el resultado sea medible y facil de verificar desde una sola fuente.",
         "settlementTemplate": "Resuelve esto exactamente como esta escrito usando solo la fuente enlazada. Si el wording o la fuente son ambiguos, marcala como unresolvable."
       }
@@ -312,7 +307,6 @@
     "errorAccepting": "Error al aceptar",
     "challengeUnavailable": "Este desafio ya no acepta apuestas en el contrato actual.",
     "submittedPending": "La transaccion se envio a Bradbury. La arena se refrescara automaticamente.",
-    "demoModeHint": "El modo demo enruta las escrituras por firmantes alojados en Bradbury para que los jueces vean el flujo completo sin depender de wallets inestables.",
     "connectToAccept": "Conectar Wallet para aceptar",
     "resolveVS": "Resolver VS",
     "proven": "PROVEN.",
@@ -343,7 +337,7 @@
       "fixed": "Odds fijas"
     },
     "invalidChallengeStakeMin": "Ingresa una apuesta de al menos {amount} GEN",
-    "minimumStakeHint": "La apuesta minima para el demo es {amount} GEN."
+    "minimumStakeHint": "La apuesta minima es {amount} GEN."
   },
   "stamp": {
     "provenDecided": "PROVEN ya decidio",

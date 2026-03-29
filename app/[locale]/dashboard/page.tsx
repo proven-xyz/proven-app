@@ -7,8 +7,8 @@ import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   didUserLoseVS,
+  getUserVSFast,
   didUserWinVS,
-  getUserVSDirect,
   getVSUserWinAmount,
   getVSTotalPot,
   isVSPrivate,
@@ -42,7 +42,7 @@ export default function DashboardPage() {
         return;
       }
       try {
-        const results = await getUserVSDirect(address);
+        const results = await getUserVSFast(address);
         results.sort((a, b) => b.id - a.id);
         setDuels(mergePendingVS(results, address));
       } catch (e) {

@@ -552,21 +552,29 @@ export async function getClaim(claimId: number): Promise<ClaimData | null> {
   }
 }
 
-async function postApiJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(path, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(payload?.error?.message || "Request failed");
+async function requestIndexedClaimRefresh(
+  claimId: number,
+  inviteKey = ""
+) {
+  if (typeof window === "undefined") {
+    return;
   }
 
-  return payload as T;
+  try {
+    await fetch("/api/vs/sync", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify({
+        claimId,
+        inviteKey,
+      }),
+    });
+  } catch {
+    // Read freshness degrades gracefully through sync-on-read and the cache fallback.
+  }
 }
 
 export async function getClaimWithAccess(
@@ -581,30 +589,6 @@ export async function getClaimWithAccess(
     return normalizeClaimData(claim);
   } catch {
     return null;
-  }
-}
-
-export async function getClaimSummary(claimId: number): Promise<ClaimData | null> {
-  try {
-    const claim = await readContractValue<ClaimData>("get_claim_summary", [claimId]);
-    return normalizeClaimData(claim);
-  } catch {
-    return getClaim(claimId);
-  }
-}
-
-export async function getClaimSummaryWithAccess(
-  claimId: number,
-  inviteKey: string
-): Promise<ClaimData | null> {
-  try {
-    const claim = await readContractValue<ClaimData>(
-      "get_claim_summary_with_access",
-      [claimId, inviteKey]
-    );
-    return normalizeClaimData(claim);
-  } catch {
-    return getClaimWithAccess(claimId, inviteKey);
   }
 }
 
@@ -749,6 +733,10 @@ export async function createClaim(wallet: string, params: CreateClaimParams): Pr
     ? countBefore + 1
     : await inferCreatedClaimId(wallet);
 
+  if (claimId) {
+    void requestIndexedClaimRefresh(claimId, params.invite_key ?? "");
+  }
+
   return {
     ...writeResult,
     claimId,
@@ -790,6 +778,10 @@ export async function createRematch(
     ? countBefore + 1
     : await inferCreatedClaimId(wallet);
 
+  if (claimId) {
+    void requestIndexedClaimRefresh(claimId, params.invite_key ?? "");
+  }
+
   return {
     ...writeResult,
     claimId,
@@ -802,78 +794,36 @@ export async function challengeClaim(
   stakeAmount: number,
   inviteKey = ""
 ) {
-  return writeAndWait(
+  const result = await writeAndWait(
     "challenge_claim",
     wallet,
     [claimId, stakeAmount, inviteKey],
     stakeAmount
   );
+
+  void requestIndexedClaimRefresh(claimId, inviteKey);
+
+  return result;
 }
 
-export async function resolveClaim(wallet: string, claimId: number) {
-  return writeAndWait("resolve_claim", wallet, [claimId], 0);
-}
-
-export async function cancelClaim(wallet: string, claimId: number) {
-  return writeAndWait("cancel_claim", wallet, [claimId], 0);
-}
-
-export async function createClaimDemo(params: CreateClaimParams): Promise<ClaimWriteResult> {
-  return postApiJson<ClaimWriteResult>("/api/demo/write", {
-    action: "create_claim",
-    params,
-  });
-}
-
-export async function createRematchDemo(
-  parentId: number,
-  params: Omit<CreateClaimParams, "parent_id">
-): Promise<ClaimWriteResult> {
-  return postApiJson<ClaimWriteResult>("/api/demo/write", {
-    action: "create_rematch",
-    parentId,
-    params,
-  });
-}
-
-export async function challengeClaimDemo(
+export async function resolveClaim(
+  wallet: string,
   claimId: number,
-  stakeAmount: number,
   inviteKey = ""
-): Promise<ContractWriteResult & { pending?: boolean; actor?: string }> {
-  return postApiJson<ContractWriteResult & { pending?: boolean; actor?: string }>(
-    "/api/demo/write",
-    {
-      action: "challenge_claim",
-      claimId,
-      stakeAmount,
-      inviteKey,
-    }
-  );
+) {
+  const result = await writeAndWait("resolve_claim", wallet, [claimId], 0);
+  void requestIndexedClaimRefresh(claimId, inviteKey);
+  return result;
 }
 
-export async function resolveClaimDemo(
-  claimId: number
-): Promise<ContractWriteResult & { pending?: boolean; actor?: string }> {
-  return postApiJson<ContractWriteResult & { pending?: boolean; actor?: string }>(
-    "/api/demo/write",
-    {
-      action: "resolve_claim",
-      claimId,
-    }
-  );
-}
-
-export async function cancelClaimDemo(
-  claimId: number
-): Promise<ContractWriteResult & { pending?: boolean; actor?: string }> {
-  return postApiJson<ContractWriteResult & { pending?: boolean; actor?: string }>(
-    "/api/demo/write",
-    {
-      action: "cancel_claim",
-      claimId,
-    }
-  );
+export async function cancelClaim(
+  wallet: string,
+  claimId: number,
+  inviteKey = ""
+) {
+  const result = await writeAndWait("cancel_claim", wallet, [claimId], 0);
+  void requestIndexedClaimRefresh(claimId, inviteKey);
+  return result;
 }
 
 export async function getVS(
@@ -921,26 +871,13 @@ export async function getVS(
   return claim ? mapClaimToVS(claim) : null;
 }
 
-export async function getVSWithAccess(vsId: number, inviteKey: string) {
-  const claim = await getClaimWithAccess(vsId, inviteKey);
-  return claim ? mapClaimToVS(claim) : null;
-}
-
-export async function getVSCount(): Promise<number> {
-  return getClaimCount();
-}
-
-export async function getUserVSList(address: string): Promise<number[]> {
-  return getUserClaims(address);
-}
-
 export async function getAllVSFast(): Promise<VSData[]> {
   if (typeof window !== "undefined") {
     const response = await readApiJson<{ items: VSData[] }>("/api/vs");
     return response?.items ?? [];
   }
 
-  const count = await getVSCount();
+  const count = await getClaimCount();
   if (count <= 0) {
     return [];
   }
@@ -968,33 +905,6 @@ export async function getUserVSFast(address: string): Promise<VSData[]> {
   return results.sort((a, b) => b.id - a.id);
 }
 
-export async function createVS(
-  wallet: string,
-  params: {
-    question: string;
-    creator_position: string;
-    opponent_position: string;
-    resolution_url: string;
-    deadline: number;
-    stake_amount: number;
-    category: string;
-  }
-) {
-  return createClaim(wallet, {
-    question: params.question,
-    creator_position: params.creator_position,
-    counter_position: params.opponent_position,
-    resolution_url: params.resolution_url,
-    deadline: params.deadline,
-    stake_amount: params.stake_amount,
-    category: params.category,
-    market_type: "binary",
-    odds_mode: "pool",
-    max_challengers: 1,
-    visibility: "public",
-  });
-}
-
 export async function acceptVS(
   wallet: string,
   vsId: number,
@@ -1004,10 +914,10 @@ export async function acceptVS(
   return challengeClaim(wallet, vsId, stakeAmount, inviteKey);
 }
 
-export async function resolveVS(wallet: string, vsId: number) {
-  return resolveClaim(wallet, vsId);
+export async function resolveVS(wallet: string, vsId: number, inviteKey = "") {
+  return resolveClaim(wallet, vsId, inviteKey);
 }
 
-export async function cancelVS(wallet: string, vsId: number) {
-  return cancelClaim(wallet, vsId);
+export async function cancelVS(wallet: string, vsId: number, inviteKey = "") {
+  return cancelClaim(wallet, vsId, inviteKey);
 }
