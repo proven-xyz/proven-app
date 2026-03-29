@@ -1,13 +1,16 @@
 import type { VSData } from "@/lib/contract";
 import { CATEGORIES } from "@/lib/constants";
+import { computeClaimQuality } from "@/lib/claimQuality";
 
-export type ExploreSort = "newest" | "highest" | "expiring";
+export type ExploreSort = "newest" | "highest" | "expiring" | "strength";
 
 export interface ExploreFilterState {
   cat: string;
   minStake: number;
   sort: ExploreSort;
   search: string;
+  needsChallengers: boolean;
+  expiringSoon: boolean;
 }
 
 export const DEFAULT_EXPLORE_FILTERS: ExploreFilterState = {
@@ -15,11 +18,13 @@ export const DEFAULT_EXPLORE_FILTERS: ExploreFilterState = {
   minStake: 0,
   sort: "newest",
   search: "",
+  needsChallengers: false,
+  expiringSoon: false,
 };
 
 /** Valores permitidos para `minStake` (URL `?min=`) y chips del sidebar Explore */
 export const MIN_STAKE_OPTIONS = [0, 2, 5, 10, 20] as const;
-const SORT_OPTIONS: ExploreSort[] = ["newest", "highest", "expiring"];
+const SORT_OPTIONS: ExploreSort[] = ["newest", "highest", "expiring", "strength"];
 
 const VALID_CATEGORY_IDS = new Set<string>(CATEGORIES.map((c) => c.id));
 
@@ -50,8 +55,10 @@ export function parseExploreSearchParams(sp: URLSearchParams): ExploreFilterStat
     : "newest";
 
   const search = sp.get("q") ?? "";
+  const needsChallengers = sp.get("needs") === "1";
+  const expiringSoon = sp.get("soon") === "1";
 
-  return { cat, minStake, sort, search };
+  return { cat, minStake, sort, search, needsChallengers, expiringSoon };
 }
 
 /** Serializa solo desviaciones respecto a defaults (URLs limpias). */
@@ -60,6 +67,8 @@ export function serializeExploreFilters(f: ExploreFilterState): string {
   if (f.cat !== "all") p.set("cat", f.cat);
   if (f.minStake !== 0) p.set("min", String(f.minStake));
   if (f.sort !== "newest") p.set("sort", f.sort);
+  if (f.needsChallengers) p.set("needs", "1");
+  if (f.expiringSoon) p.set("soon", "1");
   const q = f.search.trim();
   if (q) p.set("q", q);
   return p.toString();
@@ -86,7 +95,8 @@ export function filterVsByTextQuery(open: VSData[], rawQuery: string): VSData[] 
  */
 export function applyExploreFilters(
   open: VSData[],
-  f: ExploreFilterState
+  f: ExploreFilterState,
+  nowTs = Math.floor(Date.now() / 1000)
 ): VSData[] {
   let list = open;
   if (f.cat !== "all") {
@@ -95,6 +105,14 @@ export function applyExploreFilters(
   if (f.minStake > 0) {
     list = list.filter((v) => v.stake_amount >= f.minStake);
   }
+  if (f.needsChallengers) {
+    list = list.filter((v) => (v.challenger_count ?? 0) < 2);
+  }
+  if (f.expiringSoon) {
+    list = list.filter(
+      (v) => v.deadline > nowTs && v.deadline - nowTs <= 24 * 60 * 60
+    );
+  }
   list = filterVsByTextQuery(list, f.search);
 
   const sorted = [...list];
@@ -102,6 +120,31 @@ export function applyExploreFilters(
     sorted.sort((a, b) => b.stake_amount - a.stake_amount);
   } else if (f.sort === "expiring") {
     sorted.sort((a, b) => a.deadline - b.deadline);
+  } else if (f.sort === "strength") {
+    sorted.sort((a, b) => {
+      const aScore = computeClaimQuality({
+        question: a.question,
+        creator_position: a.creator_position,
+        opponent_position: a.opponent_position,
+        resolution_url: a.resolution_url,
+        settlement_rule: a.settlement_rule ?? "",
+        category: a.category,
+        deadline: a.deadline,
+      }).score;
+      const bScore = computeClaimQuality({
+        question: b.question,
+        creator_position: b.creator_position,
+        opponent_position: b.opponent_position,
+        resolution_url: b.resolution_url,
+        settlement_rule: b.settlement_rule ?? "",
+        category: b.category,
+        deadline: b.deadline,
+      }).score;
+      if (bScore !== aScore) {
+        return bScore - aScore;
+      }
+      return b.id - a.id;
+    });
   } else {
     sorted.sort((a, b) => b.id - a.id);
   }

@@ -4,8 +4,11 @@ import {
   useEffect,
   useId,
   useLayoutEffect,
+  useCallback,
   useMemo,
+  useRef,
   useState,
+  useTransition,
 } from "react";
 import { motion } from "framer-motion";
 import { useLocale, useMessages, useTranslations } from "next-intl";
@@ -30,6 +33,10 @@ import {
   getShareUrl,
   normalizeResolutionSource,
 } from "@/lib/constants";
+import type {
+  SourceClaimDraftCandidate,
+  SourceClaimDraftResponse,
+} from "@/lib/claimDrafts";
 import {
   generatePrivateInviteKey,
   rememberPrivateInviteKey,
@@ -37,6 +44,7 @@ import {
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, Button, Input, ListboxField } from "@/components/ui";
+import ClaimStrengthCard from "@/components/ClaimStrengthCard";
 import CreateChallengeTicket from "@/components/vs/CreateChallengeTicket";
 import Confetti from "@/components/Confetti";
 import {
@@ -48,9 +56,7 @@ import {
   Eye,
   FileEdit,
   GitBranch,
-  AlertCircle,
   Link2,
-  ListChecks,
   SlidersHorizontal,
   User,
   Users,
@@ -75,6 +81,7 @@ const VISIBILITY_TOGGLE_OPTIONS = [
 ];
 
 const STAKE_PRESET_AMOUNTS = [MIN_STAKE, 5, 10, 25] as const;
+const SOURCE_DRAFTS_ENABLED = process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
 
 function isPresetStakeAmount(value: number): boolean {
   return (STAKE_PRESET_AMOUNTS as readonly number[]).includes(value);
@@ -131,6 +138,7 @@ export default function CreatePage() {
   const { address, isConnected, connect } = useWallet();
   const t = useTranslations("create");
   const tc = useTranslations("common");
+  const tCat = useTranslations("categories");
   const locale = useLocale();
   const DEADLINE_PRESETS = useMemo(
     () =>
@@ -180,6 +188,12 @@ export default function CreatePage() {
   const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [draftResult, setDraftResult] = useState<SourceClaimDraftResponse | null>(null);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftError, setDraftError] = useState("");
+  const [lastDraftedUrl, setLastDraftedUrl] = useState("");
+  const [sourceSeedUrl, setSourceSeedUrl] = useState("");
+  const [isApplyingDraft, startApplyingDraft] = useTransition();
   const [rematchSource, setRematchSource] = useState<VSData | null>(null);
   const [hydratedFromRematch, setHydratedFromRematch] = useState(false);
   const [rematchId, setRematchId] = useState<number | null>(null);
@@ -255,23 +269,66 @@ export default function CreatePage() {
   }, [stake]);
 
   const normalizedSourceUrl = useMemo(() => normalizeResolutionSource(url), [url]);
+  useEffect(() => {
+    if (!lastDraftedUrl) {
+      return;
+    }
+
+    if (!normalizedSourceUrl || normalizedSourceUrl !== lastDraftedUrl) {
+      setDraftResult(null);
+      setDraftError("");
+    }
+  }, [lastDraftedUrl, normalizedSourceUrl]);
   const requiresExplicitSettlementRule =
     category === "custom" || marketType !== "binary" || handicapLine.trim().length > 0;
-  const qualityWarnings = useMemo(() => {
-    const warnings: string[] = [];
+  const questionNeedsWork =
+    question.trim().length > 0 && question.trim().length < 24;
+  const sourceNeedsWork =
+    url.trim().length > 0 && normalizedSourceUrl.length === 0;
+  const settlementNeedsWork =
+    requiresExplicitSettlementRule &&
+    settlementRule.trim().length < 16;
+  const claimStrengthInput = useMemo(
+    () => {
+      const deadlineTs = customDeadline
+        ? Math.floor(new Date(customDeadline).getTime() / 1000)
+        : 0;
 
-    if (question.trim().length < 24) {
-      warnings.push(t("qualitySpecificity"));
-    }
-    if (!normalizedSourceUrl) {
-      warnings.push(t("qualitySource"));
-    }
-    if (requiresExplicitSettlementRule && settlementRule.trim().length < 16) {
-      warnings.push(t("qualitySettlement"));
+      return {
+        question,
+        creator_position: creatorPos,
+        opponent_position: opponentPos,
+        resolution_url: url,
+        settlement_rule: settlementRule,
+        category,
+        deadline: Number.isFinite(deadlineTs) ? deadlineTs : 0,
+      };
+    },
+    [category, creatorPos, customDeadline, opponentPos, question, settlementRule, url]
+  );
+  const lastRecommendedTemplateRef = useRef(recommendedSettlementTemplate);
+  const initializedRecommendedTemplateRef = useRef(false);
+
+  useEffect(() => {
+    const previousTemplate = lastRecommendedTemplateRef.current.trim();
+    const nextTemplate = recommendedSettlementTemplate.trim();
+
+    if (!initializedRecommendedTemplateRef.current) {
+      initializedRecommendedTemplateRef.current = true;
+      lastRecommendedTemplateRef.current = nextTemplate;
+      return;
     }
 
-    return warnings;
-  }, [normalizedSourceUrl, question, requiresExplicitSettlementRule, settlementRule, t]);
+    setSettlementRule((current) => {
+      const trimmed = current.trim();
+      if (!trimmed || trimmed === previousTemplate) {
+        return nextTemplate;
+      }
+      return current;
+    });
+
+    lastRecommendedTemplateRef.current = nextTemplate;
+  }, [recommendedSettlementTemplate]);
 
   useLayoutEffect(() => {
     const raw = (
@@ -295,8 +352,15 @@ export default function CreatePage() {
       return;
     }
 
-    const rawRematchId = Number(new URL(window.location.href).searchParams.get("rematch") ?? "");
+    const searchParams = new URL(window.location.href).searchParams;
+    const rawRematchId = Number(searchParams.get("rematch") ?? "");
+    const rawSourceUrl = searchParams.get("source") ?? "";
     setRematchId(Number.isInteger(rawRematchId) && rawRematchId > 0 ? rawRematchId : null);
+    const normalizedSourceSeed = normalizeResolutionSource(rawSourceUrl);
+    if (normalizedSourceSeed) {
+      setUrl(normalizedSourceSeed);
+      setSourceSeedUrl(normalizedSourceSeed);
+    }
   }, []);
 
   useEffect(() => {
@@ -403,11 +467,97 @@ export default function CreatePage() {
       setCreatorPos(prefillValues.a);
       setOpponentPos(prefillValues.b);
       setUrl(prefillValues.u);
-      if (!settlementRule.trim()) {
-        setSettlementRule(t(`guidance.${catId}.settlementTemplate`));
-      }
     }
   }
+
+  const requestSourceDrafts = useCallback(async (sourceUrl: string) => {
+    setDraftLoading(true);
+    setDraftError("");
+    setDraftResult(null);
+
+    try {
+      const response = await fetch("/api/claim-draft", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url: sourceUrl,
+          locale,
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | SourceClaimDraftResponse
+        | { error?: { message?: string } }
+        | null;
+
+      if (!response.ok) {
+        const errorMessage =
+          payload && "error" in payload ? payload.error?.message : undefined;
+        throw new Error(errorMessage || t("sourceDraftFailed"));
+      }
+
+      const result = payload as SourceClaimDraftResponse;
+      setDraftResult(result);
+      setLastDraftedUrl(result.sourceUrl);
+      toast.success(t("sourceDraftReady", { count: result.candidates.length }));
+    } catch (err: any) {
+      const message = err?.message || t("sourceDraftFailed");
+      setDraftError(message);
+      toast.error(message);
+    } finally {
+      setDraftLoading(false);
+    }
+  }, [locale, t]);
+
+  async function handleGenerateFromSource() {
+    if (!normalizedSourceUrl) {
+      toast.error(t("sourceDraftInvalidUrl"));
+      return;
+    }
+
+    await requestSourceDrafts(normalizedSourceUrl);
+  }
+
+  function applySourceDraft(candidate: SourceClaimDraftCandidate) {
+    startApplyingDraft(() => {
+      setQuestion(candidate.claimText);
+      setCreatorPos(candidate.sideA);
+      setOpponentPos(candidate.sideB);
+      setUrl(candidate.primaryResolutionSource);
+      setCategory(candidate.category);
+      setMarketType("binary");
+      setOddsMode("pool");
+      setFixedOddsMultiple("2.00");
+      setHandicapLine("");
+      setSettlementRule(candidate.settlementRule);
+      setMaxChallengers(1);
+      setMaxChallengersSlotDraft("");
+      setAdvancedOpen(Boolean(candidate.settlementRule.trim()));
+      setDeadlinePreset(null);
+
+      const suggestedDeadline = new Date(candidate.deadlineAt);
+      if (Number.isFinite(suggestedDeadline.getTime())) {
+        setCustomDeadlineDate(formatLocalDateInputValue(suggestedDeadline));
+        setCustomDeadlineTime(formatLocalTimeInputValue(suggestedDeadline));
+      }
+
+      setLastDraftedUrl(candidate.primaryResolutionSource);
+    });
+
+    toast.success(t("sourceDraftApplied"));
+  }
+
+  useEffect(() => {
+    if (!SOURCE_DRAFTS_ENABLED || !sourceSeedUrl) {
+      return;
+    }
+
+    void requestSourceDrafts(sourceSeedUrl);
+    setSourceSeedUrl("");
+  }, [requestSourceDrafts, sourceSeedUrl]);
+
   async function handleSubmit() {
     if (!question || !creatorPos || !opponentPos) {
       toast.error(t("fillAllFields"));
@@ -722,6 +872,194 @@ export default function CreatePage() {
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start lg:gap-10">
           <div className="flex flex-col gap-5 lg:col-span-8">
+      {SOURCE_DRAFTS_ENABLED && (
+        <AnimatedItem>
+          <GlassCard
+            glass
+            noPad
+            glow="none"
+            className="mb-6 !rounded-2xl border border-white/[0.12] w-full"
+          >
+            <div className="space-y-5 p-6 sm:p-8">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <h2 className="flex items-center gap-2.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                      aria-hidden
+                    >
+                      <Wand2 size={16} strokeWidth={2} />
+                    </span>
+                    {t("sourceDraftTitle")}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-pv-muted">
+                    {t("sourceDraftHint")}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  fullWidth={false}
+                  onClick={handleGenerateFromSource}
+                  loading={draftLoading}
+                  disabled={!normalizedSourceUrl || draftLoading}
+                  className="rounded-xl px-5 py-3 font-display text-[11px] font-bold uppercase tracking-[0.16em]"
+                >
+                  {draftLoading ? t("sourceDraftGenerating") : t("sourceDraftGenerate")}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                  {t("sourceDraftInputLabel")}
+                </label>
+                <input
+                  type="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  placeholder={t("verificationUrlPlaceholder")}
+                  value={url}
+                  onChange={(event) => setUrl(event.target.value)}
+                  className="form-field-pv min-h-[3.25rem] font-mono text-xs"
+                />
+                <p className="text-xs leading-relaxed text-pv-muted">
+                  {t("sourceDraftInputHint")}
+                </p>
+              </div>
+
+              {draftError ? (
+                <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.08] px-4 py-3 text-sm text-amber-200">
+                  {draftError}
+                </div>
+              ) : null}
+
+              {draftResult ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-pv-emerald/20 bg-pv-emerald/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald">
+                        {t(`sourceDraftSourceTypes.${draftResult.sourceType}`)}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                        {t("sourceDraftSummaryLabel")}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-pv-text/90">
+                      {draftResult.sourceSummary}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4">
+                    {draftResult.candidates.map((candidate, index) => {
+                      const draftDeadline = new Date(candidate.deadlineAt);
+                      const hasDeadline = Number.isFinite(draftDeadline.getTime());
+
+                      return (
+                        <div
+                          key={`${candidate.claimText}-${index}`}
+                          className="rounded-2xl border border-white/[0.08] bg-pv-surface2 p-4 sm:p-5"
+                        >
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full border border-pv-cyan/25 bg-pv-cyan/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-cyan">
+                                  {tCat(candidate.category)}
+                                </span>
+                                <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                                  {candidate.confidenceScore}/100
+                                </span>
+                              </div>
+                              <h3 className="mt-3 font-display text-xl font-bold tracking-tight text-pv-text">
+                                {candidate.claimText}
+                              </h3>
+                            </div>
+                            <Button
+                              variant="primary"
+                              fullWidth={false}
+                              onClick={() => applySourceDraft(candidate)}
+                              disabled={isApplyingDraft}
+                              className="rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em]"
+                            >
+                              {t("sourceDraftUse")}
+                            </Button>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                {t("sourceDraftSideA")}
+                              </div>
+                              <div className="mt-2 text-sm font-medium text-pv-text/90">
+                                {candidate.sideA}
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                {t("sourceDraftSideB")}
+                              </div>
+                              <div className="mt-2 text-sm font-medium text-pv-text/90">
+                                {candidate.sideB}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                {t("sourceDraftDeadline")}
+                              </div>
+                              <div className="mt-2 text-sm font-medium text-pv-text/90">
+                                {hasDeadline
+                                  ? `${draftDeadline.toLocaleString(locale === "en" ? "en-US" : "es-AR", {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })} (${candidate.timezone})`
+                                  : candidate.deadlineAt}
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                {t("sourceDraftPrimarySource")}
+                              </div>
+                              <div className="mt-2 break-all text-sm font-medium text-pv-text/90">
+                                {candidate.primaryResolutionSource}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                              {t("sourceDraftSettlementRule")}
+                            </div>
+                            <p className="mt-2 text-sm leading-relaxed text-pv-text/90">
+                              {candidate.settlementRule}
+                            </p>
+                          </div>
+
+                          {candidate.ambiguityFlags.length > 0 ? (
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {candidate.ambiguityFlags.map((flag) => (
+                                <span
+                                  key={flag}
+                                  className="rounded-full border border-amber-400/20 bg-amber-400/[0.08] px-2.5 py-1 text-[10px] font-medium text-amber-200"
+                                >
+                                  {flag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </GlassCard>
+        </AnimatedItem>
+      )}
       <AnimatedItem>
         <GlassCard
           glass
@@ -755,6 +1093,15 @@ export default function CreatePage() {
                 onChange={(event) => setQuestion(event.target.value)}
               />
             </div>
+            <p
+              className={`text-xs leading-relaxed ${
+                questionNeedsWork ? "text-amber-300" : "text-pv-muted"
+              }`}
+            >
+              {questionNeedsWork
+                ? t("qualitySpecificity")
+                : verificationQuestionHint.trim() || t("questionStrengthHint")}
+            </p>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
               <div className="flex flex-col gap-4">
@@ -1063,6 +1410,13 @@ export default function CreatePage() {
                 onChange={(event) => setUrl(event.target.value)}
                 className="form-field-pv min-h-[3.25rem] font-mono text-xs"
               />
+              <p
+                className={`text-xs leading-relaxed ${
+                  sourceNeedsWork ? "text-amber-300" : "text-pv-muted"
+                }`}
+              >
+                {sourceNeedsWork ? t("qualitySource") : t("sourceStrengthHint")}
+              </p>
 
               <div className="space-y-3 rounded-xl border border-white/[0.08] bg-pv-bg/70 p-4 sm:p-5">
                 <h4 className="text-[11px] font-bold uppercase tracking-[0.16em] text-pv-emerald/85">
@@ -1288,9 +1642,20 @@ export default function CreatePage() {
                     onChange={(event) => setSettlementRule(event.target.value)}
                   />
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <p className="min-w-0 flex-1 text-[10px] italic leading-relaxed text-pv-muted">
-                      {t("settlementRuleHint")}
-                    </p>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <p className="text-[10px] italic leading-relaxed text-pv-muted">
+                        {t("settlementRuleHint")}
+                      </p>
+                      <p
+                        className={`text-xs leading-relaxed ${
+                          settlementNeedsWork ? "text-amber-300" : "text-pv-muted"
+                        }`}
+                      >
+                        {settlementNeedsWork
+                          ? t("qualitySettlement")
+                          : t("settlementStrengthHint")}
+                      </p>
+                    </div>
                     <button
                       type="button"
                       disabled={settlementMatchesRecommended}
@@ -1313,72 +1678,6 @@ export default function CreatePage() {
           </GlassCard>
         </AnimatedItem>
 
-        <AnimatedItem>
-          <GlassCard
-            glass
-            noPad
-            glow="none"
-            className="!rounded-2xl border border-white/[0.12] w-full"
-            role="region"
-            aria-labelledby="create-quality-review-heading"
-          >
-            <div className="space-y-4 p-6 sm:p-8">
-              <div className="space-y-2">
-                <h3
-                  id="create-quality-review-heading"
-                  className="flex items-start gap-2.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:items-center sm:tracking-[0.2em]"
-                >
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
-                    aria-hidden
-                  >
-                    <ListChecks size={16} strokeWidth={2} />
-                  </span>
-                  <span className="min-w-0 pt-0.5 leading-snug sm:pt-0">
-                    {t("qualityReview")}
-                  </span>
-                </h3>
-                <p className="text-[11px] leading-relaxed text-pv-muted sm:pl-[2.625rem] sm:text-xs">
-                  {t("qualityReviewHint")}
-                </p>
-              </div>
-
-              {qualityWarnings.length === 0 ? (
-                <div className="rounded-xl border border-pv-emerald/25 bg-pv-emerald/[0.07] px-4 py-3.5 sm:px-5">
-                  <div className="flex gap-3">
-                    <Check
-                      className="mt-0.5 size-5 shrink-0 text-pv-emerald"
-                      strokeWidth={2.5}
-                      aria-hidden
-                    />
-                    <p className="text-sm leading-relaxed text-pv-text/90">
-                      {t("qualityReady")}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <ul
-                  className="space-y-3 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3.5 sm:px-5"
-                  role="list"
-                >
-                  {qualityWarnings.map((warning, index) => (
-                    <li
-                      key={`${warning}-${index}`}
-                      className="flex gap-3 text-sm leading-relaxed text-pv-muted"
-                    >
-                      <AlertCircle
-                        className="mt-0.5 size-4 shrink-0 text-amber-400/95"
-                        strokeWidth={2}
-                        aria-hidden
-                      />
-                      <span>{warning}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </GlassCard>
-        </AnimatedItem>
           </div>
 
           <aside className="lg:col-span-4 text-pv-text">
@@ -1400,6 +1699,7 @@ export default function CreatePage() {
                   stakeAmount={stake}
                   walletAddress={address}
                 />
+                <ClaimStrengthCard input={claimStrengthInput} />
                 {isConnected ? (
                   <Button
                     variant="primary"

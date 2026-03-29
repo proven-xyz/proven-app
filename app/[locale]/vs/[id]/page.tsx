@@ -49,6 +49,8 @@ import {
   Input,
 } from "@/components/ui";
 import ProvenStamp from "@/components/ProvenStamp";
+import ClaimStrengthCard from "@/components/ClaimStrengthCard";
+import SettlementExplanationCard from "@/components/SettlementExplanationCard";
 import ResolutionTerminal from "@/components/ResolutionTerminal";
 import Confetti from "@/components/Confetti";
 import VsXmtpPanel from "@/components/xmtp/VsXmtpPanel";
@@ -527,13 +529,20 @@ export default function VSDetailPage() {
         </AnimatedItem>
 
         {vs.state === "resolved" && resolvePhase === -1 && (
-          <AnimatedItem>
-            <ProvenStamp
-              title={winnerTitle}
-              amountLabel={winnerAmountLabel}
-              resolutionSummary={vs.resolution_summary}
-            />
-          </AnimatedItem>
+          <>
+            <AnimatedItem>
+              <ProvenStamp
+                title={winnerTitle}
+                amountLabel={winnerAmountLabel}
+                resolutionSummary={vs.resolution_summary}
+              />
+            </AnimatedItem>
+            <AnimatedItem>
+              <div className="mb-5 lg:max-w-[800px] lg:mx-auto">
+                <SettlementExplanationCard vs={vs} />
+              </div>
+            </AnimatedItem>
+          </>
         )}
 
         {actionLoading === "resolve" && (
@@ -770,6 +779,24 @@ export default function VSDetailPage() {
             </div>
           </GlassCard>
         </AnimatedItem>
+
+        {(vs.state === "open" || vs.state === "accepted") && (
+          <AnimatedItem>
+            <div className="mb-5 lg:max-w-[800px] lg:mx-auto">
+              <ClaimStrengthCard
+                input={{
+                  question: vs.question,
+                  creator_position: vs.creator_position,
+                  opponent_position: vs.opponent_position,
+                  resolution_url: vs.resolution_url,
+                  settlement_rule: vs.settlement_rule ?? "",
+                  category: vs.category,
+                  deadline: vs.deadline,
+                }}
+              />
+            </div>
+          </AnimatedItem>
+        )}
 
         <AnimatedItem>
           <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">

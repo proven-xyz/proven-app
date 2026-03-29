@@ -1,5 +1,6 @@
 import { createClient, type Client, type InStatement } from "@libsql/client";
 
+import type { ChallengeOpportunity } from "@/lib/claimDrafts";
 import type { ClaimChallenger, ClaimData } from "@/lib/contract";
 
 export interface ClaimRow {
@@ -51,6 +52,30 @@ export interface ClaimFilters {
   isFinal?: boolean;
   limit?: number;
   orderBy?: "id_desc" | "updated_desc" | "deadline_asc" | "deadline_desc";
+}
+
+export interface ChallengeOpportunityRow {
+  locale: string;
+  id: string;
+  source_url: string;
+  source_type: string;
+  source_summary: string;
+  category: string;
+  claim_text: string;
+  side_a: string;
+  side_b: string;
+  deadline_at: string;
+  timezone: string;
+  primary_resolution_source: string;
+  settlement_rule: string;
+  ambiguity_flags_json: string;
+  confidence_score: number;
+  claim_strength_score: number;
+  claim_strength_tier: string;
+  action: string;
+  existing_claim_id: number | null;
+  generated_at: number;
+  expires_at: number;
 }
 
 type IndexedClaimRecord = Omit<
@@ -119,6 +144,33 @@ const SCHEMA_STATEMENTS = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS challenge_opportunities (
+    locale TEXT NOT NULL,
+    id TEXT NOT NULL,
+    source_url TEXT NOT NULL,
+    source_type TEXT NOT NULL,
+    source_summary TEXT NOT NULL,
+    category TEXT NOT NULL,
+    claim_text TEXT NOT NULL,
+    side_a TEXT NOT NULL,
+    side_b TEXT NOT NULL,
+    deadline_at TEXT NOT NULL,
+    timezone TEXT NOT NULL,
+    primary_resolution_source TEXT NOT NULL,
+    settlement_rule TEXT NOT NULL,
+    ambiguity_flags_json TEXT NOT NULL DEFAULT '[]',
+    confidence_score INTEGER NOT NULL DEFAULT 0,
+    claim_strength_score INTEGER NOT NULL DEFAULT 0,
+    claim_strength_tier TEXT NOT NULL DEFAULT 'weak',
+    action TEXT NOT NULL DEFAULT 'create',
+    existing_claim_id INTEGER,
+    generated_at INTEGER NOT NULL DEFAULT 0,
+    expires_at INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (locale, id)
+  )`,
+  "CREATE INDEX IF NOT EXISTS idx_challenge_opportunities_locale ON challenge_opportunities(locale)",
+  "CREATE INDEX IF NOT EXISTS idx_challenge_opportunities_expires_at ON challenge_opportunities(expires_at)",
+  "CREATE INDEX IF NOT EXISTS idx_challenge_opportunities_action ON challenge_opportunities(action)",
   {
     sql: "INSERT INTO sync_meta(key, value) VALUES(?, ?) ON CONFLICT(key) DO NOTHING",
     args: ["last_claim_count", "0"],
@@ -222,6 +274,35 @@ function normalizeChallengerRow(row: Record<string, unknown>): ChallengerRow {
     address: getString(row.address),
     stake: getNumber(row.stake),
     potential_payout: getNumber(row.potential_payout),
+  };
+}
+
+function normalizeChallengeOpportunityRow(
+  row: Record<string, unknown>
+): ChallengeOpportunityRow {
+  return {
+    locale: getString(row.locale),
+    id: getString(row.id),
+    source_url: getString(row.source_url),
+    source_type: getString(row.source_type),
+    source_summary: getString(row.source_summary),
+    category: getString(row.category),
+    claim_text: getString(row.claim_text),
+    side_a: getString(row.side_a),
+    side_b: getString(row.side_b),
+    deadline_at: getString(row.deadline_at),
+    timezone: getString(row.timezone),
+    primary_resolution_source: getString(row.primary_resolution_source),
+    settlement_rule: getString(row.settlement_rule),
+    ambiguity_flags_json: getString(row.ambiguity_flags_json),
+    confidence_score: getNumber(row.confidence_score),
+    claim_strength_score: getNumber(row.claim_strength_score),
+    claim_strength_tier: getString(row.claim_strength_tier),
+    action: getString(row.action),
+    existing_claim_id:
+      row.existing_claim_id == null ? null : getNumber(row.existing_claim_id),
+    generated_at: getNumber(row.generated_at),
+    expires_at: getNumber(row.expires_at),
   };
 }
 
@@ -631,4 +712,142 @@ export async function setSyncMeta(key: string, value: string) {
       ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
     args: [key, value],
   });
+}
+
+function buildChallengeOpportunityInsertStatement(args: {
+  locale: string;
+  opportunity: ChallengeOpportunity;
+  generatedAt: number;
+  expiresAt: number;
+}): InStatement {
+  return {
+    sql: `INSERT INTO challenge_opportunities (
+      locale,
+      id,
+      source_url,
+      source_type,
+      source_summary,
+      category,
+      claim_text,
+      side_a,
+      side_b,
+      deadline_at,
+      timezone,
+      primary_resolution_source,
+      settlement_rule,
+      ambiguity_flags_json,
+      confidence_score,
+      claim_strength_score,
+      claim_strength_tier,
+      action,
+      existing_claim_id,
+      generated_at,
+      expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(locale, id) DO UPDATE SET
+      source_url = excluded.source_url,
+      source_type = excluded.source_type,
+      source_summary = excluded.source_summary,
+      category = excluded.category,
+      claim_text = excluded.claim_text,
+      side_a = excluded.side_a,
+      side_b = excluded.side_b,
+      deadline_at = excluded.deadline_at,
+      timezone = excluded.timezone,
+      primary_resolution_source = excluded.primary_resolution_source,
+      settlement_rule = excluded.settlement_rule,
+      ambiguity_flags_json = excluded.ambiguity_flags_json,
+      confidence_score = excluded.confidence_score,
+      claim_strength_score = excluded.claim_strength_score,
+      claim_strength_tier = excluded.claim_strength_tier,
+      action = excluded.action,
+      existing_claim_id = excluded.existing_claim_id,
+      generated_at = excluded.generated_at,
+      expires_at = excluded.expires_at`,
+    args: [
+      args.locale,
+      args.opportunity.id,
+      args.opportunity.sourceUrl,
+      args.opportunity.sourceType,
+      args.opportunity.sourceSummary,
+      args.opportunity.candidate.category,
+      args.opportunity.candidate.claimText,
+      args.opportunity.candidate.sideA,
+      args.opportunity.candidate.sideB,
+      args.opportunity.candidate.deadlineAt,
+      args.opportunity.candidate.timezone,
+      args.opportunity.candidate.primaryResolutionSource,
+      args.opportunity.candidate.settlementRule,
+      JSON.stringify(args.opportunity.candidate.ambiguityFlags ?? []),
+      args.opportunity.candidate.confidenceScore,
+      args.opportunity.claimStrengthScore,
+      args.opportunity.claimStrengthTier,
+      args.opportunity.action,
+      args.opportunity.existingClaimId ?? null,
+      args.generatedAt,
+      args.expiresAt,
+    ],
+  };
+}
+
+export async function replaceChallengeOpportunities(args: {
+  locale: string;
+  opportunities: Array<ChallengeOpportunity & { expiresAt: number }>;
+  generatedAt?: number;
+}) {
+  const db = await getDb();
+  const generatedAt = args.generatedAt ?? Date.now();
+  const statements: InStatement[] = [
+    {
+      sql: "DELETE FROM challenge_opportunities WHERE locale = ?",
+      args: [args.locale],
+    },
+    ...args.opportunities.map((opportunity) =>
+      buildChallengeOpportunityInsertStatement({
+        locale: args.locale,
+        opportunity,
+        generatedAt,
+        expiresAt: opportunity.expiresAt,
+      })
+    ),
+  ];
+
+  await db.batch(statements, "write");
+}
+
+export async function pruneExpiredChallengeOpportunities(nowMs = Date.now()) {
+  const db = await getDb();
+  await db.execute({
+    sql: "DELETE FROM challenge_opportunities WHERE expires_at <= ?",
+    args: [nowMs],
+  });
+}
+
+export async function getActiveChallengeOpportunities(args?: {
+  locale?: string;
+  limit?: number;
+  nowMs?: number;
+}) {
+  const db = await getDb();
+  const locale = args?.locale === "es" ? "es" : "en";
+  const limit =
+    typeof args?.limit === "number" && args.limit > 0 ? Math.floor(args.limit) : 6;
+  const nowMs = args?.nowMs ?? Date.now();
+
+  const result = await db.execute({
+    sql: `SELECT * FROM challenge_opportunities
+      WHERE locale = ?
+        AND expires_at > ?
+      ORDER BY
+        CASE action WHEN 'challenge' THEN 0 ELSE 1 END ASC,
+        claim_strength_score DESC,
+        confidence_score DESC,
+        generated_at DESC
+      LIMIT ?`,
+    args: [locale, nowMs, limit],
+  });
+
+  return result.rows.map((row) =>
+    normalizeChallengeOpportunityRow(row as Record<string, unknown>)
+  );
 }

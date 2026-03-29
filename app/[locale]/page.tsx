@@ -218,6 +218,7 @@ export default function HomePage() {
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
   const decidedResolvedVS = resolvedVS.filter((v) => hasVSWinner(v));
   const featuredVS = allVS[0];
+  const totalGenStaked = allVS.reduce((sum, vs) => sum + getVSTotalPot(vs), 0);
   const fallbackArenaCards = [
     {
       vs: {
@@ -404,11 +405,11 @@ export default function HomePage() {
       {/* Differentiator */}
       <AnimatedItem>
         <div className="mb-12">
-          <div className="max-w-[900px] mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="max-w-[900px] mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             {[
-              { value: "1.2M+", label: "TOTAL BETS SETTLED" },
-              { value: "$450M+", label: "TOTAL PAID OUT" },
-              { value: "99.9%", label: "AI ACCURACY" },
+              { value: String(allVS.length), label: t("totalClaims") },
+              { value: String(resolvedVS.length), label: t("resolvedClaims") },
+              { value: String(totalGenStaked), label: t("genStaked") },
             ].map((item, index) => (
               <div key={item.label} className="p-5 sm:p-6 text-center bg-transparent border-0">
                 <div className="overflow-hidden">
@@ -689,42 +690,8 @@ export default function HomePage() {
         </div>
       </AnimatedItem>
 
-      {/* Global stats */}
-      {!loading && allVS.length > 0 && (
-        <AnimatedItem>
-          <div className="grid grid-cols-3 gap-2.5 lg:gap-4 mb-12">
-            <div className="card p-4 text-center">
-              <div className="font-mono text-xl font-bold text-pv-text">
-                {allVS.length}
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-pv-muted mt-1">
-                {t("totalVS")}
-              </div>
-            </div>
-            <div className="card p-4 text-center">
-              <div className="font-mono text-xl font-bold text-pv-emerald">
-                {resolvedVS.length}
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-pv-muted mt-1">
-                {t("resolved")}
-              </div>
-            </div>
-            <div className="card p-4 text-center">
-              <div className="font-mono text-xl font-bold text-pv-gold">
-                $
-                {allVS.reduce(
-                  (sum, v) =>
-                    sum + getVSTotalPot(v),
-                  0
-                )}
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-pv-muted mt-1">
-                {t("totalPool")}
-              </div>
-            </div>
-          </div>
-        </AnimatedItem>
-      )}
+
+      
 
       {/* Market Explorer preview — 2 cols en desktop */}
       {openVS.length > 0 && (

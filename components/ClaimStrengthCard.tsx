@@ -1,0 +1,105 @@
+"use client";
+
+import { useMemo } from "react";
+import { CheckCircle2, CircleDashed } from "lucide-react";
+import { useTranslations } from "next-intl";
+
+import { computeClaimQuality, type ClaimQualityInput } from "@/lib/claimQuality";
+import { GlassCard } from "@/components/ui";
+
+type ClaimStrengthCardProps = {
+  input: ClaimQualityInput;
+  compact?: boolean;
+  className?: string;
+};
+
+const tierClasses = {
+  strong: "border-pv-emerald/35 bg-pv-emerald/[0.12] text-pv-emerald",
+  good: "border-pv-cyan/35 bg-pv-cyan/[0.12] text-pv-cyan",
+  fair: "border-amber-400/35 bg-amber-400/[0.12] text-amber-300",
+  weak: "border-white/[0.14] bg-white/[0.05] text-pv-muted",
+} as const;
+
+export default function ClaimStrengthCard({
+  input,
+  compact = false,
+  className = "",
+}: ClaimStrengthCardProps) {
+  const t = useTranslations("quality");
+  const result = useMemo(() => computeClaimQuality(input), [input]);
+
+  return (
+    <GlassCard
+      glass
+      glow="none"
+      className={`border border-white/[0.12] !rounded-2xl ${className}`}
+    >
+      <div className={compact ? "space-y-3" : "space-y-4"}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
+              {t("claimStrength")}
+            </div>
+            {!compact ? (
+              <p className="mt-1 text-xs leading-relaxed text-pv-muted">
+                {t("hint")}
+              </p>
+            ) : null}
+          </div>
+          <span
+            className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tierClasses[result.tier]}`}
+          >
+            {t(`tiers.${result.tier}`)}
+          </span>
+        </div>
+
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+              {t("score")}
+            </div>
+            <div className="font-display text-3xl font-bold tracking-tight text-pv-text">
+              {result.score}
+            </div>
+          </div>
+          <div className="text-right text-[11px] text-pv-muted">
+            {t("scoreOutOf")}
+          </div>
+        </div>
+
+        <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-pv-emerald via-pv-cyan to-pv-gold transition-[width] duration-300"
+            style={{ width: `${result.score}%` }}
+          />
+        </div>
+
+        <ul className={`grid gap-2 ${compact ? "" : "sm:grid-cols-2"}`} role="list">
+          {result.signals.map((signal) => (
+            <li
+              key={signal.key}
+              className={`flex items-start gap-2 text-xs leading-relaxed ${
+                signal.passed ? "text-pv-text/90" : "text-pv-muted"
+              }`}
+            >
+              {signal.passed ? (
+                <CheckCircle2
+                  size={14}
+                  className="mt-0.5 shrink-0 text-pv-emerald"
+                  aria-hidden
+                />
+              ) : (
+                <CircleDashed
+                  size={14}
+                  className="mt-0.5 shrink-0 text-pv-muted/80"
+                  aria-hidden
+                />
+              )}
+              <span>{t(`signals.${signal.key}`)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </GlassCard>
+  );
+}

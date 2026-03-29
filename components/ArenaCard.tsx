@@ -1,7 +1,8 @@
 "use client";
 
 import { Link } from "@/i18n/navigation";
-import { getVSChallengerCount, type VSData } from "@/lib/contract";
+import { getVSChallengerCount, isVSJoinable, type VSData } from "@/lib/contract";
+import { computeClaimQuality } from "@/lib/claimQuality";
 import { useTranslations } from "next-intl";
 import { UserRound } from "lucide-react";
 
@@ -17,7 +18,17 @@ type ArenaVS = Pick<
   | "market_type"
   | "max_challengers"
   | "odds_mode"
->;
+> &
+  Partial<
+    Pick<
+      VSData,
+      | "creator_position"
+      | "opponent_position"
+      | "resolution_url"
+      | "settlement_rule"
+      | "deadline"
+    >
+  >;
 
 const sampleBadgePillClass =
   "rounded border border-pv-emerald/25 bg-pv-emerald/[0.06] px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-pv-emerald/90";
@@ -25,6 +36,7 @@ const sampleBadgePillClass =
 interface ArenaCardProps {
   vs: ArenaVS;
   challengersCount?: number;
+  viewerAddress?: string | null;
   /** Pill label “ARCHIVE” (shorter) instead of “ARCHIVED” for curated / demo cards. */
   archiveLabelShort?: boolean;
   /** Explorer demos: dashed border + ring like legacy VSCard samples. */
@@ -62,6 +74,7 @@ function getArenaPresentation(vs: ArenaVS): {
 export default function ArenaCard({
   vs,
   challengersCount,
+  viewerAddress,
   archiveLabelShort = false,
   isSample = false,
   sampleBadgeLabel,
@@ -70,6 +83,7 @@ export default function ArenaCard({
   const t = useTranslations("home");
   const tCat = useTranslations("categories");
   const tDetail = useTranslations("vsDetail");
+  const tQuality = useTranslations("quality");
 
   const activeChallengers = challengersCount ?? getVSChallengerCount(vs as VSData);
   const marketType = vs.market_type ?? "binary";
@@ -82,6 +96,17 @@ export default function ArenaCard({
   const isArchived = vs.state === "resolved" || vs.state === "cancelled";
   const statusPillMessageKey =
     isArchived && archiveLabelShort ? "arenaStatusArchive" : statusKey;
+  const claimQuality = computeClaimQuality({
+    question: vs.question,
+    creator_position: vs.creator_position ?? "",
+    opponent_position: vs.opponent_position ?? "",
+    resolution_url: vs.resolution_url ?? "",
+    settlement_rule: vs.settlement_rule ?? "",
+    category: vs.category,
+    deadline: vs.deadline ?? 0,
+  });
+  const canJoin = isVSJoinable(vs as VSData, viewerAddress ?? undefined);
+  const showNeedsBadge = !isArchived && activeChallengers < 2 && canJoin;
 
   const statusPillClass =
     statusVariant === "live"
@@ -92,6 +117,14 @@ export default function ArenaCard({
 
   const marketLabel = tDetail(`marketTypes.${marketType}`);
   const oddsLabel = tDetail(`oddsModes.${oddsMode}`);
+  const strengthBadgeClass =
+    claimQuality.tier === "strong"
+      ? "border-pv-emerald/35 bg-pv-emerald/[0.12] text-pv-emerald"
+      : claimQuality.tier === "good"
+        ? "border-pv-cyan/35 bg-pv-cyan/[0.12] text-pv-cyan"
+        : claimQuality.tier === "fair"
+          ? "border-amber-400/35 bg-amber-400/[0.12] text-amber-300"
+          : "border-white/[0.14] bg-white/[0.05] text-pv-muted";
 
   return (
     <article
@@ -123,18 +156,30 @@ export default function ArenaCard({
           {vs.question}
         </h3>
         <div className="mt-3 space-y-3">
-          <p className="text-left text-[11px] font-display font-bold uppercase tracking-[0.12em] text-pv-muted sm:text-xs">
-            {categoryFilterHref ? (
-              <Link
-                href={categoryFilterHref}
-                className="text-pv-muted underline-offset-2 transition-colors hover:text-pv-text hover:underline"
-              >
-                {tCat(vs.category)}
-              </Link>
-            ) : (
-              tCat(vs.category)
-            )}
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-left text-[11px] font-display font-bold uppercase tracking-[0.12em] text-pv-muted sm:text-xs">
+              {categoryFilterHref ? (
+                <Link
+                  href={categoryFilterHref}
+                  className="text-pv-muted underline-offset-2 transition-colors hover:text-pv-text hover:underline"
+                >
+                  {tCat(vs.category)}
+                </Link>
+              ) : (
+                tCat(vs.category)
+              )}
+            </p>
+            <span
+              className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${strengthBadgeClass}`}
+            >
+              {tQuality("claimStrength")}: {tQuality(`tiers.${claimQuality.tier}`)}
+            </span>
+            {showNeedsBadge ? (
+              <span className="inline-flex items-center rounded-full border border-pv-emerald/30 bg-pv-emerald/[0.08] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald">
+                {tQuality("needsChallengers")}
+              </span>
+            ) : null}
+          </div>
           <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
             <div className={ARENA_STAT_CELL}>
               <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">

@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useWallet } from "@/lib/wallet";
 import {
   getAllVSFast,
   getVSChallengerCount,
@@ -19,6 +20,7 @@ import {
   serializeExploreFilters,
   type ExploreSort,
 } from "@/lib/exploreFilters";
+import type { ChallengeOpportunitiesResponse, ChallengeOpportunity } from "@/lib/claimDrafts";
 import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
 import { getExploreSampleCards } from "@/lib/sampleVs";
@@ -28,6 +30,7 @@ import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
 import { ChevronDown, ListFilter, Search, X } from "lucide-react";
 import ExploreFeaturedCarousel from "@/components/explorer/ExploreFeaturedCarousel";
+import ChallengeOpportunityCard from "@/components/explorer/ChallengeOpportunityCard";
 
 /** Píldoras de filtro (CATEGORIES + Quick minimum): borde tipo botón, mismo hover. */
 const filterPillBase =
@@ -38,30 +41,68 @@ const filterPillInactive =
 
 export default function ExploreClient() {
   const { filters, updateFilters, resetFilters } = useExploreFilterState();
+  const { address, isConnected } = useWallet();
+  const locale = useLocale();
   const [allVS, setAllVS] = useState<VSData[]>([]);
+  const [opportunities, setOpportunities] = useState<ChallengeOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [minDraft, setMinDraft] = useState("");
   const sortMenuRef = useRef<HTMLDivElement>(null);
+  const opportunitiesEnabled =
+    process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
 
   const t = useTranslations("explore");
   const tCat = useTranslations("categories");
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      if (opportunitiesEnabled) {
+        setOpportunitiesLoading(true);
+      }
+
       try {
-        const results = await getAllVSFast();
+        const resultsPromise = getAllVSFast();
+        const opportunitiesPromise = opportunitiesEnabled
+          ? fetch(`/api/challenge-opportunities?locale=${locale}&limit=6`, {
+              cache: "no-store",
+            })
+              .then(async (response) => {
+                const payload = (await response.json().catch(() => null)) as
+                  | ChallengeOpportunitiesResponse
+                  | { error?: { message?: string } }
+                  | null;
+
+                if (!response.ok) {
+                  const errorMessage =
+                    payload && "error" in payload ? payload.error?.message : undefined;
+                  throw new Error(errorMessage || "Unable to load challenge opportunities");
+                }
+
+                return payload as ChallengeOpportunitiesResponse;
+              })
+          : Promise.resolve(null);
+
+        const [results, opportunityResult] = await Promise.all([
+          resultsPromise,
+          opportunitiesPromise,
+        ]);
         setAllVS(mergePendingVS(results));
+        setOpportunities(opportunityResult?.items ?? []);
       } catch (error) {
         console.error(error);
+        setOpportunities([]);
       } finally {
         setLoading(false);
+        setOpportunitiesLoading(false);
       }
     }
 
     load();
-  }, []);
+  }, [locale, opportunitiesEnabled]);
 
   const commitMinDraft = useCallback(() => {
     const raw = minDraft.trim().replace(",", ".");
@@ -94,14 +135,23 @@ export default function ExploreClient() {
   }, []);
 
   const open = useMemo(
-    () => allVS.filter((vs) => isVSJoinable(vs)),
-    [allVS]
+    () => allVS.filter((vs) => isVSJoinable(vs, address ?? undefined)),
+    [address, allVS]
   );
 
   const filtered = useMemo(
     () => applyExploreFilters(open, filters),
     [open, filters]
   );
+  const readyToChallenge = useMemo(() => {
+    if (!address) {
+      return [];
+    }
+    return applyExploreFilters(
+      allVS.filter((vs) => isVSJoinable(vs, address)),
+      { ...filters, sort: "strength" }
+    ).slice(0, 3);
+  }, [address, allVS, filters]);
 
   const samplePool = useMemo(() => getExploreSampleCards(), []);
   const filteredSamples = useMemo(
@@ -109,7 +159,7 @@ export default function ExploreClient() {
     [samplePool, filters]
   );
 
-  const { cat, sort, search, minStake } = filters;
+  const { cat, sort, search, minStake, needsChallengers, expiringSoon } = filters;
 
   useEffect(() => {
     if (minStake === 0) {
@@ -125,7 +175,9 @@ export default function ExploreClient() {
     cat !== DEFAULT_EXPLORE_FILTERS.cat ||
     minStake !== DEFAULT_EXPLORE_FILTERS.minStake ||
     sort !== DEFAULT_EXPLORE_FILTERS.sort ||
-    search.trim().length > 0;
+    search.trim().length > 0 ||
+    needsChallengers !== DEFAULT_EXPLORE_FILTERS.needsChallengers ||
+    expiringSoon !== DEFAULT_EXPLORE_FILTERS.expiringSoon;
 
   const showResultsCount =
     !loading &&
@@ -147,6 +199,7 @@ export default function ExploreClient() {
     { key: "newest", label: t("newest") },
     { key: "highest", label: t("highestStake") },
     { key: "expiring", label: t("expiring") },
+    { key: "strength", label: t("strength") },
   ];
 
   const sortLabel =
@@ -340,6 +393,31 @@ export default function ExploreClient() {
               </div>
             </div>
 
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                aria-pressed={needsChallengers}
+                onClick={() =>
+                  updateFilters({ needsChallengers: !needsChallengers })
+                }
+                className={`${filterPillBase} ${
+                  needsChallengers ? filterPillActive : filterPillInactive
+                }`}
+              >
+                {t("needsChallengers")}
+              </button>
+              <button
+                type="button"
+                aria-pressed={expiringSoon}
+                onClick={() => updateFilters({ expiringSoon: !expiringSoon })}
+                className={`${filterPillBase} ${
+                  expiringSoon ? filterPillActive : filterPillInactive
+                }`}
+              >
+                {t("expiringSoon")}
+              </button>
+            </div>
+
             {advancedOpen ? (
               <div className="mt-6 border-t border-white/[0.06] pt-6">
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-6 sm:items-start">
@@ -409,7 +487,7 @@ export default function ExploreClient() {
                               : filterPillInactive
                           }`}
                         >
-                          {value === 0 ? t("any") : `$${value}+`}
+                          {value === 0 ? t("any") : `${value}+ GEN`}
                         </button>
                       ))}
                     </div>
@@ -426,6 +504,62 @@ export default function ExploreClient() {
       </AnimatedItem>
 
       <div>
+        {opportunitiesEnabled && (opportunitiesLoading || opportunities.length > 0) ? (
+          <AnimatedItem>
+            <section className="mb-8" aria-label={t("challengeOpportunities")}>
+              <div className="mb-4 flex flex-col gap-1.5">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
+                  {t("challengeOpportunities")}
+                </div>
+                <p className="max-w-3xl text-sm leading-relaxed text-pv-muted">
+                  {t("challengeOpportunitiesHint")}
+                </p>
+              </div>
+              {opportunitiesLoading ? (
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                  <ArenaCardSkeleton />
+                  <ArenaCardSkeleton />
+                  <ArenaCardSkeleton />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
+                  {opportunities.map((opportunity) => (
+                    <ChallengeOpportunityCard
+                      key={opportunity.id}
+                      opportunity={opportunity}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          </AnimatedItem>
+        ) : null}
+
+        {isConnected && readyToChallenge.length > 0 ? (
+          <AnimatedItem>
+            <section className="mb-8" aria-label={t("readyToChallenge")}>
+              <div className="mb-4 flex flex-col gap-1.5">
+                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
+                  {t("readyToChallenge")}
+                </div>
+                <p className="text-sm leading-relaxed text-pv-muted">
+                  {t("readyToChallengeHint")}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {readyToChallenge.map((vs) => (
+                  <ArenaCard
+                    key={`ready-${vs.id}`}
+                    vs={vs}
+                    challengersCount={getVSChallengerCount(vs)}
+                    viewerAddress={address}
+                  />
+                ))}
+              </div>
+            </section>
+          </AnimatedItem>
+        ) : null}
+
         {showResultsCount && resultsMessage ? (
           <AnimatedItem>
             <div className="mb-4 text-xs leading-relaxed text-pv-muted" aria-live="polite">
@@ -488,6 +622,7 @@ export default function ExploreClient() {
                   <ArenaCard
                     vs={vs}
                     challengersCount={getVSChallengerCount(vs)}
+                    viewerAddress={address}
                   />
                 </motion.div>
               ))}
@@ -508,6 +643,7 @@ export default function ExploreClient() {
                   <ArenaCard
                     vs={vs}
                     challengersCount={getVSChallengerCount(vs)}
+                    viewerAddress={address}
                     isSample
                     sampleBadgeLabel={t("sampleBadge")}
                     categoryFilterHref={`/explorer?${serializeExploreFilters({

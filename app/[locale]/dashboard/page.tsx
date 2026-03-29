@@ -88,6 +88,8 @@ export default function DashboardPage() {
         minStake: minStakeFilter,
         sort: "newest",
         search: searchQuery,
+        needsChallengers: false,
+        expiringSoon: false,
       }),
     [tabFiltered, categoryFilter, minStakeFilter, searchQuery]
   );
