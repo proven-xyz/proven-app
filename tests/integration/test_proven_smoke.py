@@ -25,7 +25,7 @@ def _create_claim_args(stake_amount: int) -> list:
 
 def test_public_claim_flow_smoke():
     creator, challenger = get_accounts()[:2]
-    factory = get_contract_factory(contract_file_path="contracts/proven.py")
+    factory = get_contract_factory(contract_file_path="proven.py")
     contract = factory.deploy(args=[], account=creator)
 
     create_receipt = contract.create_claim(args=_create_claim_args(5)).transact(value=5)
