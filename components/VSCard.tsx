@@ -127,7 +127,7 @@ export default function VSCard({
             <span className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-fuch/[0.25] bg-pv-fuch/[0.08] text-pv-fuch">
               {oddsMode === "fixed" ? t("oddsModes.fixed") : t("oddsModes.pool")}
             </span>
-            <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-white/[0.12] text-pv-muted">
+            <span className="px-2 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-emerald/30 bg-pv-emerald/[0.08] text-pv-emerald">
               {t("slotsFilled", { count: challengerCount, total: maxChallengers })}
             </span>
           </div>

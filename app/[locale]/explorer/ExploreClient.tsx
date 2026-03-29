@@ -730,6 +730,7 @@ export default function ExploreClient() {
                     vs={vs}
                     challengersCount={getVSChallengerCount(vs)}
                     viewerAddress={address}
+                    hideQualityPills
                   />
                 ))}
               </div>
@@ -800,6 +801,7 @@ export default function ExploreClient() {
                     vs={vs}
                     challengersCount={getVSChallengerCount(vs)}
                     viewerAddress={address}
+                    hideQualityPills
                   />
                 </motion.div>
               ))}
@@ -821,6 +823,7 @@ export default function ExploreClient() {
                     vs={vs}
                     challengersCount={getVSChallengerCount(vs)}
                     viewerAddress={address}
+                    hideQualityPills
                     isSample
                     sampleBadgeLabel={t("sampleBadge")}
                     categoryFilterHref={`/explorer?${serializeExploreFilters({

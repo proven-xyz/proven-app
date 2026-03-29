@@ -44,6 +44,8 @@ interface ArenaCardProps {
   sampleBadgeLabel?: string;
   /** When set, category in the subtitle links to this href (e.g. Explore with `?cat=`). */
   categoryFilterHref?: string;
+  /** Explorer: hide claim-strength / needs-challengers pills for a cleaner grid. */
+  hideQualityPills?: boolean;
 }
 
 function formatArenaIdCode(id: number): string {
@@ -79,6 +81,7 @@ export default function ArenaCard({
   isSample = false,
   sampleBadgeLabel,
   categoryFilterHref,
+  hideQualityPills = false,
 }: ArenaCardProps) {
   const t = useTranslations("home");
   const tCat = useTranslations("categories");
@@ -96,17 +99,20 @@ export default function ArenaCard({
   const isArchived = vs.state === "resolved" || vs.state === "cancelled";
   const statusPillMessageKey =
     isArchived && archiveLabelShort ? "arenaStatusArchive" : statusKey;
-  const claimQuality = computeClaimQuality({
-    question: vs.question,
-    creator_position: vs.creator_position ?? "",
-    opponent_position: vs.opponent_position ?? "",
-    resolution_url: vs.resolution_url ?? "",
-    settlement_rule: vs.settlement_rule ?? "",
-    category: vs.category,
-    deadline: vs.deadline ?? 0,
-  });
+  const claimQuality = hideQualityPills
+    ? null
+    : computeClaimQuality({
+        question: vs.question,
+        creator_position: vs.creator_position ?? "",
+        opponent_position: vs.opponent_position ?? "",
+        resolution_url: vs.resolution_url ?? "",
+        settlement_rule: vs.settlement_rule ?? "",
+        category: vs.category,
+        deadline: vs.deadline ?? 0,
+      });
   const canJoin = isVSJoinable(vs as VSData, viewerAddress ?? undefined);
-  const showNeedsBadge = !isArchived && activeChallengers < 2 && canJoin;
+  const showNeedsBadge =
+    !hideQualityPills && !isArchived && activeChallengers < 2 && canJoin;
 
   const statusPillClass =
     statusVariant === "live"
@@ -117,14 +123,15 @@ export default function ArenaCard({
 
   const marketLabel = tDetail(`marketTypes.${marketType}`);
   const oddsLabel = tDetail(`oddsModes.${oddsMode}`);
-  const strengthBadgeClass =
-    claimQuality.tier === "strong"
+  const strengthBadgeClass = claimQuality
+    ? claimQuality.tier === "strong"
       ? "border-pv-emerald/35 bg-pv-emerald/[0.12] text-pv-emerald"
       : claimQuality.tier === "good"
         ? "border-pv-cyan/35 bg-pv-cyan/[0.12] text-pv-cyan"
         : claimQuality.tier === "fair"
           ? "border-amber-400/35 bg-amber-400/[0.12] text-amber-300"
-          : "border-white/[0.14] bg-white/[0.05] text-pv-muted";
+          : "border-white/[0.14] bg-white/[0.05] text-pv-muted"
+    : "";
 
   return (
     <article
@@ -169,11 +176,13 @@ export default function ArenaCard({
                 tCat(vs.category)
               )}
             </p>
-            <span
-              className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${strengthBadgeClass}`}
-            >
-              {tQuality("claimStrength")}: {tQuality(`tiers.${claimQuality.tier}`)}
-            </span>
+            {claimQuality ? (
+              <span
+                className={`inline-flex items-center rounded-full border px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${strengthBadgeClass}`}
+              >
+                {tQuality("claimStrength")}: {tQuality(`tiers.${claimQuality.tier}`)}
+              </span>
+            ) : null}
             {showNeedsBadge ? (
               <span className="inline-flex items-center rounded-full border border-pv-emerald/30 bg-pv-emerald/[0.08] px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald">
                 {tQuality("needsChallengers")}
@@ -209,7 +218,7 @@ export default function ArenaCard({
               <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                 {t("arenaStatFillStatus")}
               </span>
-              <span className="mt-1 block font-display text-sm font-bold uppercase tabular-nums tracking-tight text-pv-text sm:text-[15px]">
+              <span className="mt-1 block font-display text-sm font-bold uppercase tabular-nums tracking-tight text-pv-emerald sm:text-[15px]">
                 {activeChallengers}/{maxChallengers}
               </span>
             </div>
