@@ -631,9 +631,9 @@
     "disclaimer": "Los mensajes viajan por XMTP (cifrado E2E). No se guardan en los servidores de PROVEN."
   },
   "messagesHub": {
-    "eyebrow": "Bandeja XMTP",
-    "title": "Mensajes",
-    "subtitle": "Hilos 1v1 cifrados ligados a tus duelos aceptados. Sin inbox global: solo rivales emparejados.",
+    "eyebrow": "Canal privado // XMTP — claves atadas a la wallet",
+    "title": "MENSAJES",
+    "subtitle": "Hilos de extremo a extremo con tu rival del VS cuando el duelo está aceptado. Sin feed público: DMs acotados al duelo y a tu dirección.",
     "connectTitle": "Conecta tu wallet",
     "connectDesc": "Tu lista de VS y los hilos XMTP cifrados van ligados a tu dirección. Conectá para cargar la bandeja.",
     "connect": "Conectar wallet",
