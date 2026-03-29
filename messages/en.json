@@ -255,6 +255,12 @@
     "qualitySpecificity": "Make the question more specific so the outcome is easy to verify from one source.",
     "qualitySource": "Use a concrete source page instead of leaving the verification source empty or generic.",
     "qualitySettlement": "Advanced and custom markets should include an explicit settlement rule.",
+    "challengeTicketTitle": "YOUR TICKET",
+    "ticketIdLabel": "ID:",
+    "ticketYourCommitment": "YOUR COMMITMENT",
+    "ticketAuthSig": "AUTH_SIG",
+    "ticketSignatureNote": "Initialization requires smart contract signature",
+    "ticketSettlementFallback": "Add a settlement rule or use the category default from the Advanced section.",
     "guidance": {
       "deportes": {
         "sourceHint": "Use the official match, league, or scoreboard page for the exact event you want to settle.",

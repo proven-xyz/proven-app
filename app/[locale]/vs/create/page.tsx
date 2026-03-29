@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import DemoRoleSwitcher from "@/components/DemoRoleSwitcher";
 import { GlassCard, Button, ListboxField } from "@/components/ui";
+import CreateChallengeTicket from "@/components/vs/CreateChallengeTicket";
 import Confetti from "@/components/Confetti";
 import {
   Calendar,
@@ -59,6 +60,7 @@ import {
   User,
   Users,
   Wand2,
+  Zap,
 } from "lucide-react";
 import { useDemoRole } from "@/hooks/useDemoRole";
 
@@ -244,6 +246,20 @@ export default function CreatePage() {
   );
   const settlementMatchesRecommended =
     settlementRule.trim() === recommendedSettlementTemplate.trim();
+  const ticketSettlementPreview =
+    settlementRule.trim() || recommendedSettlementTemplate;
+  const ticketDraftId = useMemo(() => {
+    const s = `${question}|${creatorPos}|${stake}|${marketType}|${oddsMode}`;
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619);
+    }
+    const n = Math.abs(h);
+    const part = (n % 0xffff).toString(16).toUpperCase().padStart(4, "0");
+    const suffix = String.fromCharCode(65 + (n % 26));
+    return `PRV-${part}-${suffix}`;
+  }, [question, creatorPos, stake, marketType, oddsMode]);
   const verificationQuestionHint = t(
     `guidance.${guidanceKey}.questionHint`,
   );
@@ -627,8 +643,9 @@ export default function CreatePage() {
 
   return (
     <PageTransition>
-      <AnimatedItem>
-        <div className="mb-6 lg:max-w-[720px] lg:mx-auto">
+      <div className="mx-auto w-full max-w-[1280px] px-4 pb-12 sm:px-6">
+        <AnimatedItem>
+          <div className="mb-8 w-full sm:mb-10">
           {demoMode && !isConnected && (
             <GlassCard className="mb-5">
               <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
@@ -678,15 +695,17 @@ export default function CreatePage() {
               aria-hidden
             />
           </div>
-        </div>
-      </AnimatedItem>
+          </div>
+        </AnimatedItem>
 
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-12 lg:items-start lg:gap-10">
+          <div className="flex flex-col gap-5 lg:col-span-8">
       <AnimatedItem>
         <GlassCard
           glass
           noPad
           glow="none"
-          className="mb-6 !rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px]"
+          className="mb-6 !rounded-2xl border border-white/[0.12] w-full"
         >
           <div className="space-y-6 p-6 sm:p-8">
             <div className="mb-2 flex items-center gap-3">
@@ -772,7 +791,7 @@ export default function CreatePage() {
           glass
           noPad
           glow="none"
-          className="mb-6 !rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px]"
+          className="mb-6 !rounded-2xl border border-white/[0.12] w-full"
           role="group"
           aria-label={t("visibility")}
         >
@@ -815,13 +834,12 @@ export default function CreatePage() {
         </GlassCard>
       </AnimatedItem>
 
-      <div className="flex flex-col gap-5 lg:max-w-[720px] lg:mx-auto">
         <AnimatedItem>
           <GlassCard
             glass
             noPad
             glow="none"
-            className="!rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px]"
+            className="!rounded-2xl border border-white/[0.12] w-full"
           >
             <div className="space-y-3 p-6 sm:p-8">
               <h3 className="flex items-center gap-2.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
@@ -921,7 +939,7 @@ export default function CreatePage() {
             glass
             noPad
             glow="none"
-            className="!rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px]"
+            className="!rounded-2xl border border-white/[0.12] w-full"
             role="group"
             aria-label={t("deadline")}
           >
@@ -1008,7 +1026,7 @@ export default function CreatePage() {
             glass
             noPad
             glow="none"
-            className="!rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px]"
+            className="!rounded-2xl border border-white/[0.12] w-full"
             role="group"
             aria-label={t("verificationSourceSectionTitle")}
           >
@@ -1072,7 +1090,7 @@ export default function CreatePage() {
             glass
             noPad
             glow="none"
-            className="!rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px] overflow-hidden"
+            className="!rounded-2xl border border-white/[0.12] w-full overflow-hidden"
           >
             <button
               type="button"
@@ -1292,7 +1310,7 @@ export default function CreatePage() {
             glass
             noPad
             glow="none"
-            className="!rounded-2xl border border-white/[0.12] lg:mx-auto lg:max-w-[720px]"
+            className="!rounded-2xl border border-white/[0.12] w-full"
             role="region"
             aria-labelledby="create-quality-review-heading"
           >
@@ -1353,82 +1371,67 @@ export default function CreatePage() {
             </div>
           </GlassCard>
         </AnimatedItem>
+          </div>
 
-        <AnimatedItem>
-          <GlassCard className="py-4">
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1">
-                  {t("marketType")}
-                </div>
-                <div className="font-semibold">{t(`marketTypes.${marketType}`)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1">
-                  {t("oddsMode")}
-                </div>
-                <div className="font-semibold">{t(`oddsModes.${oddsMode}`)}</div>
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1">
-                  {t("format")}
-                </div>
-                <div className="font-semibold">
-                  {isOneToMany
-                    ? t("oneToManySummary", { count: maxChallengers })
-                    : t("headToHeadSummary")}
-                </div>
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1">
-                  {t("visibility")}
-                </div>
-                <div className="font-semibold">
-                  {isPrivate ? t("visibilityPrivate") : t("visibilityPublic")}
-                </div>
-              </div>
-            </div>
-            {(handicapLine || settlementRule || isAdvancedClaim) && (
-              <div className="border-t border-white/[0.08] mt-4 pt-4 text-sm text-pv-muted space-y-2">
-                {handicapLine && (
-                  <p>
-                    <span className="text-pv-text font-semibold">{t("handicapLine")}:</span>{" "}
-                    {handicapLine}
-                  </p>
+          <aside className="lg:col-span-4 text-pv-text">
+            <AnimatedItem>
+              <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+                <CreateChallengeTicket
+                  draftId={ticketDraftId}
+                  marketTypeLabel={t(`marketTypes.${marketType}`)}
+                  oddsModeLabel={t(`oddsModes.${oddsMode}`)}
+                  formatLabel={
+                    isOneToMany
+                      ? t("oneToManySummary", { count: maxChallengers })
+                      : t("headToHeadSummary")
+                  }
+                  visibilityLabel={
+                    isPrivate ? t("visibilityPrivate") : t("visibilityPublic")
+                  }
+                  settlementPreview={ticketSettlementPreview}
+                  stakeAmount={stake}
+                  walletAddress={address}
+                />
+                {demoMode || isConnected ? (
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmit}
+                    loading={loading}
+                    disabled={demoMode && !isConnected && demoRole !== "creator"}
+                    className="rounded-2xl py-5 font-display text-sm font-bold uppercase tracking-widest"
+                  >
+                    {loading ? (
+                      t("funding")
+                    ) : (
+                      <>
+                        <span>
+                          {demoMode && !isConnected && demoRole !== "creator"
+                            ? t("switchToCreator")
+                            : demoMode && !isConnected
+                            ? t("createDemoAndFund", { amount: stake })
+                            : rematchId
+                            ? t("createRematchAndFund", { amount: stake })
+                            : t("createAndFund", { amount: stake })}
+                        </span>
+                        <Zap className="size-5 shrink-0" aria-hidden />
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={connect}
+                    className="rounded-2xl py-5 font-display text-sm font-bold uppercase tracking-widest"
+                  >
+                    {t("connectWallet")}
+                  </Button>
                 )}
-                {settlementRule && (
-                  <p>
-                    <span className="text-pv-text font-semibold">{t("settlementRule")}:</span>{" "}
-                    {settlementRule}
-                  </p>
-                )}
+                <p className="text-center text-[9px] font-bold uppercase tracking-widest text-pv-muted/55 leading-snug">
+                  {t("ticketSignatureNote")}
+                </p>
               </div>
-            )}
-          </GlassCard>
-        </AnimatedItem>
-
-        <AnimatedItem>
-          {demoMode || isConnected ? (
-            <Button
-              variant="primary"
-              onClick={handleSubmit}
-              loading={loading}
-              disabled={demoMode && !isConnected && demoRole !== "creator"}
-            >
-              {loading
-                ? t("funding")
-                : demoMode && !isConnected && demoRole !== "creator"
-                ? t("switchToCreator")
-                : demoMode && !isConnected
-                ? t("createDemoAndFund", { amount: stake })
-                : rematchId
-                ? t("createRematchAndFund", { amount: stake })
-                : t("createAndFund", { amount: stake })}
-            </Button>
-          ) : (
-            <Button onClick={connect}>{t("connectWallet")}</Button>
-          )}
-        </AnimatedItem>
+            </AnimatedItem>
+          </aside>
+        </div>
       </div>
     </PageTransition>
   );

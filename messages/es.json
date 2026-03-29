@@ -255,6 +255,12 @@
     "qualitySpecificity": "Haz la pregunta mas especifica para que el resultado se pueda verificar desde una sola fuente.",
     "qualitySource": "Usa una pagina fuente concreta en vez de dejar la verificacion vacia o demasiado generica.",
     "qualitySettlement": "Los mercados avanzados o custom deben tener una regla de settlement explicita.",
+    "challengeTicketTitle": "TU TICKET",
+    "ticketIdLabel": "ID:",
+    "ticketYourCommitment": "TU COMPROMISO",
+    "ticketAuthSig": "AUTH_SIG",
+    "ticketSignatureNote": "La inicializacion requiere firma del smart contract",
+    "ticketSettlementFallback": "Anade una regla de settlement o usa el valor por categoria en Avanzado.",
     "guidance": {
       "deportes": {
         "sourceHint": "Usa la pagina oficial del partido, liga, o scoreboard del evento exacto que quieres resolver.",
