@@ -644,6 +644,7 @@ export default function HomePage() {
                   vs={vs}
                   challengersCount={challengersCount}
                   archiveLabelShort={vs.id === -5}
+                  hideClaimStrengthPill
                 />
               ))}
               {arenaCardsRow2.map(({ vs, challengersCount }) => (
@@ -652,6 +653,7 @@ export default function HomePage() {
                   vs={vs}
                   challengersCount={challengersCount}
                   archiveLabelShort={vs.id === -5}
+                  hideClaimStrengthPill
                 />
               ))}
               <ArenaProposeCard />

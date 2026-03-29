@@ -46,6 +46,8 @@ interface ArenaCardProps {
   categoryFilterHref?: string;
   /** Explorer: hide claim-strength / needs-challengers pills for a cleaner grid. */
   hideQualityPills?: boolean;
+  /** e.g. home LIVE ARENA: hide only the claim-strength pill; needs-challengers can still show. */
+  hideClaimStrengthPill?: boolean;
 }
 
 function formatArenaIdCode(id: number): string {
@@ -82,6 +84,7 @@ export default function ArenaCard({
   sampleBadgeLabel,
   categoryFilterHref,
   hideQualityPills = false,
+  hideClaimStrengthPill = false,
 }: ArenaCardProps) {
   const t = useTranslations("home");
   const tCat = useTranslations("categories");
@@ -99,7 +102,8 @@ export default function ArenaCard({
   const isArchived = vs.state === "resolved" || vs.state === "cancelled";
   const statusPillMessageKey =
     isArchived && archiveLabelShort ? "arenaStatusArchive" : statusKey;
-  const claimQuality = hideQualityPills
+  const claimQuality =
+    hideQualityPills || hideClaimStrengthPill
     ? null
     : computeClaimQuality({
         question: vs.question,
