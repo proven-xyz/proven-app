@@ -530,7 +530,7 @@ See [`.env.example`](.env.example) for a commented template and [`docs/xmtp-inte
 
 ## Security Model
 
-For full details, see the [implementation checklist](implementation-checklist.md) and [deep research report](deep-research-report.md).
+For full details, see the current [product roadmap](implementation-checklist.md) and the background [deep research report](deep-research-report.md).
 
 ### Key Security Properties
 

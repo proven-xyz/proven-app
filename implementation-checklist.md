@@ -1,130 +1,187 @@
-# PROVEN Implementation Checklist
+# PROVEN Product Direction and Roadmap
 
-This checklist turns `deep-research-report.md` into concrete repo work.
+This file is the current product roadmap for PROVEN.
 
-Source of truth:
+`deep-research-report.md` remains useful background research, but this document is the active direction for product and engineering work.
+
+Current implementation anchors:
 
 - Contract: `contracts/proven.py`
 - Client wrapper: `lib/contract.ts`
 - Create flow: `app/[locale]/vs/create/page.tsx`
 - Detail flow: `app/[locale]/vs/[id]/page.tsx`
 
-## Already Implemented
+## Product Direction
 
-- [x] Unified claim engine instead of separate contracts
-- [x] Head-to-head and `1 vs many` via `max_challengers`
-- [x] Pool odds and fixed odds via `odds_mode`
-- [x] Market typing via `market_type`
-- [x] Custom handicap lines and settlement rules
-- [x] Rivalry/rematch support via `parent_id` and `create_rematch(...)`
-- [x] Public and private-link claim visibility
-- [x] Advanced create UI for custom market terms
-- [x] Detail UI for challenger list, market terms, and rivalry chain
-- [x] Fast read layer and API cache for demo performance
-- [x] Minimum stake enforcement in contract and UI
+PROVEN should be built as a **Claim Duel Engine**, not as a trader-first prediction market.
 
-## High Priority Next
+In plain English:
 
-- [ ] Add event-time and lock-window rules to stop late information sniping
-  - Suggested contract fields: `event_time`, `lock_window_seconds`
-  - Suggested rule: challengers cannot join after `event_time - lock_window`
+- a user makes a clear claim about a future outcome
+- defines both sides
+- locks the rules before the deadline
+- invites a challenger or joins an open challenge
+- lets evidence settle the result automatically
 
-- [x] Tighten settlement templates for major categories
-  - Sports: league, event, scoreboard rule
-  - Crypto: source, timestamp, price rule
-  - Weather: location, source, measurement rule
+Best short framing:
 
-- [ ] Redeploy the updated contract and refresh envs
-  - Local: update `NEXT_PUBLIC_CONTRACT_ADDRESS`
-  - Vercel: update `NEXT_PUBLIC_CONTRACT_ADDRESS`
+**Make a claim. Find a challenger. Let the evidence decide.**
 
-- [ ] Add a simple confidence/dispute policy for ambiguous resolutions
-  - High confidence: settle normally
-  - Medium confidence: flag as contested or dispute-eligible
-  - Low confidence: refund as `unresolvable`
+Primary target user:
 
-## Medium Priority
+- crypto-native, wallet-comfortable users
+- small groups and online communities
+- socially competitive users who already make bold public claims
+- users motivated by status, being right, and direct challenge dynamics
 
-- [ ] Add ratio guardrails for extreme pool optics
-  - Example: max challenger pool relative to creator stake
-  - Example: per-user cap inside the challenger side
-  - Example: minimum opposing liquidity before a claim is considered valid
+Why PROVEN should optimize for claim duels instead of liquidity depth:
 
-- [ ] Improve oracle safety for free-form claims
-  - Whitelist trusted demo-safe sources
-  - Reduce ambiguous `resolution_url` usage where possible
-  - Refund on low-confidence / conflicting-source cases
+- early users need clarity more than market complexity
+- social motivation can compensate for thin liquidity better than trader tooling can
+- head-to-head claims are easier to understand, join, and share
+- trust will come from clean claim design and legible settlement, not from market size
 
-- [ ] Populate meaningful creation timestamps
-  - Onchain if a safe timestamp source exists
-  - Otherwise in the off-chain read model/index
+## Product Principles
 
-- [ ] Add rivalry series metadata
-  - Round number
-  - Series score
-  - "best of 3" style UI
+- **Clarity before stake.** Users should understand exactly what is being claimed, what source decides it, and when it settles before money is committed.
+- **Legibility over magic.** Settlement should feel inspectable and procedural, not like a black-box AI verdict.
+- **Social challenge over passive speculation.** The product should feel like a direct challenge, not a trading terminal.
+- **Narrow, resolvable claims over expressive chaos.** Early quality matters more than maximum flexibility.
+- **Automatic settlement needs a graceful failure path.** If a claim cannot be resolved cleanly, the product should clearly support an unresolvable or refund outcome.
+- **Trust comes from process, not AI branding.** Lead with locked rules, evidence, and explainability rather than model language.
 
-- [ ] Improve public information design for thin pools
-  - Keep exact payout math on detail pages
-  - Prefer qualitative heat or challenger counts in broad discovery views
-  - Consider implied probability as a secondary display, not a source of truth
+## Highest-Leverage Roadmap
 
-## Growth and Marketplace Quality
+### Phase 1: Trust and Discovery
 
-- [ ] Decide on anti-spam economics
-  - 0% fee for demo is fine
-  - Later consider winner-only commission on profit
-  - Or add a creator posting bond to discourage junk claims
+This is the current highest-priority product work.
 
-- [x] Add claim quality nudges in the create flow
-  - "too obvious"
-  - "too vague"
-  - "hard to verify"
+- strengthen claim quality guidance during creation using **Claim Strength**
+- show clearer settlement previews before publish
+- surface challenge-ready opportunities instead of generic browsing
+- use real homepage stats instead of fake traction numbers
+- keep the first-use loop simple and opinionated
+- bias discovery toward claims users can confidently challenge
 
-- [ ] Avoid UI that overstates crowd certainty
-  - Prefer payout multiples and pool terms
-  - De-emphasize raw social counters as "truth"
+Phase 1 defaults:
 
-- [ ] Add lightweight abuse monitoring to the index layer
-  - repeated creator/challenger pairs
-  - unusual win-rate patterns
-  - clusters of private-link activity that look sybil-like
+- **Claim Strength** is the user-facing term
+- popularity is not proof quality
+- challengeability and clarity matter more than volume
+- discovery should help users act, not just browse
 
-## Infrastructure
+### Phase 2: Settlement Explanation
 
-- [ ] Decide whether to keep the current cache-only read model or move to a real DB/indexer
-  - Current demo path: `app/api/vs/*` + `lib/server/vs-cache.ts`
-  - Scale path: Neon/Postgres + worker/indexer
+This is the next trust layer after claim quality.
 
-- [ ] Prewarm the index before demos
-  - `npm run warm:vs-index`
+Resolved claims should show:
 
-- [ ] Validate deploy flow end-to-end with the current Bradbury contract
-  - `scripts/genlayer-deploy.mjs`
-  - receipt recovery path
-  - `.env.local` sync
+- what source was used
+- what evidence was checked
+- why side A or side B won
+- a human-readable verdict summary
+- confidence and consensus context
+- a structured receipt users can inspect and share
 
-## Suggested Build Order
+The goal is to make settlement feel understandable and defendable, not merely automatic.
 
-1. Validate the current deploy flow end-to-end
-2. Redeploy the current contract and update envs
-3. Add lock window and event timing
-4. Add confidence/dispute policy
-5. Add ratio guardrails
-6. Add rivalry series stats
+### Phase 3: Trusted-Source Claim Drafting
 
-## Demo MVP Notes
+Frame this capability as:
 
-- Implemented in this branch:
-  - public and private-link challenge modes
-  - minimum stake enforcement in contract and UI
-  - required verification source on claim creation
-  - category-specific source and settlement guidance in the create flow
-  - stronger default settlement guidance inside the contract prompt
-  - pre-submit claim quality nudges for the demo
+**Turn a trusted source into a verifiable claim**
 
-- Intentionally deferred for now:
-  - onchain event-time / lock-window enforcement
-  - confidence/dispute tiers beyond simple resolution confidence display
-  - ratio caps and deeper economic guardrails
-  - fee or creator-bond mechanics
+Rules for v1:
+
+- input mode is **trusted URL only**
+- AI suggests, users approve
+- use one explicit deadline in v1
+- do not auto-publish
+- do not allow multi-part claims in v1
+- every draft needs one primary resolution source
+- output should be structured, not free-form prose
+
+Expected output shape at the product level:
+
+- source summary
+- 1 to 3 candidate claims
+- side A and side B
+- recommended deadline
+- primary resolution source
+- settlement rule
+- ambiguity or confidence flags
+
+Support first:
+
+- sports and official fixtures
+- company announcements, earnings pages, and investor pages
+- crypto or protocol announcements from official sources
+
+Avoid first:
+
+- opinion content
+- rumor content
+- live blogs
+- unsourced social-only discourse
+- highly interpretive political or culture claims
+
+### Phase 4: Challenge Opportunities
+
+This is **not** a news feed.
+
+It should be a small curated set of high-quality, challenge-ready opportunities.
+
+Principles for the feed:
+
+- do not show raw articles
+- do not create a firehose
+- do not build infinite scroll
+- start with roughly **10 to 20 opportunities per day**
+- operate it as **human-lite curated** early on
+- use trusted-source ingestion, AI filtering, deduplication, then curation
+- bias the primary CTA toward **Challenge this**
+- keep `Create claim from this` as the secondary action
+- prefer canonical shared opportunities over duplicate markets
+
+Scarcity is a product choice here:
+
+- fewer, better opportunities
+- more coordination around the same claims
+- less fragmentation across near-duplicate markets
+
+## What Not to Build Yet
+
+- advanced trading mechanics
+- more market-type expansion
+- broad social-platform features
+- manual arbitration layers
+- enterprise or compliance-heavy tooling
+- localization breadth beyond excellent Spanish and solid English
+- raw article or news browsing as a discovery experience
+
+## Success Metrics
+
+Primary metrics:
+
+- claim-to-challenge rate
+- resolvable claim rate
+- settlement acceptance rate
+- repeat participation rate
+- time to first successful participation
+
+Secondary metrics:
+
+- invite-to-challenge conversion
+- settlement page view and share rate
+- percentage of claims sourced from trusted-source generation
+- feed-to-challenge conversion for Challenge Opportunities
+
+## Defaults Locked for Near-Term Work
+
+- `implementation-checklist.md` is the main repo-level roadmap file
+- `deep-research-report.md` remains background analysis, not the active plan
+- product identity is locked as **Claim Duels**
+- AI-assisted generation comes after settlement explanation, not before it
+- generation v1 uses **trusted URL only** and **one explicit deadline**
+- the feed is a curated **Challenge Opportunities** surface, not a news feed
+- early feed operation is **human-lite curated**, not fully automated
