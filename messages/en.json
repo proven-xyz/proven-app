@@ -127,13 +127,49 @@
     "manifestPillar3Body": "When conditions resolve, settlement executes immediately and payouts are distributed automatically."
   },
   "create": {
+    "challengeSectionTitle": "WHAT WILL HAPPEN?",
+    "challengeQuestionExamples": [
+      {
+        "question": "e.g. BTC hits $100k this week",
+        "creator": "BTC reaches or exceeds $100k this week",
+        "opponent": "BTC stays below $100k this week"
+      },
+      {
+        "question": "e.g. Argentina beats Brazil?",
+        "creator": "Argentina wins the match",
+        "opponent": "Brazil wins or draw"
+      },
+      {
+        "question": "e.g. Will it rain tomorrow in Buenos Aires?",
+        "creator": "Rain in Buenos Aires that day",
+        "opponent": "No rain in Buenos Aires that day"
+      },
+      {
+        "question": "e.g. Will GPT-5 be announced before June?",
+        "creator": "OpenAI announces GPT-5 before June 1",
+        "opponent": "No GPT-5 announcement before June 1"
+      },
+      {
+        "question": "e.g. Will Hozier win a 2027 Grammy?",
+        "creator": "Hozier wins at least one Grammy in 2027",
+        "opponent": "Hozier wins no Grammy in 2027"
+      }
+    ],
     "whatWillHappen": "What will happen?",
     "ibet": "I bet",
     "rivalBets": "Rival bets",
     "challengerSideBets": "Challenger side bets",
     "raiseStake": "Raise the stake",
+    "stakeSectionTitle": "Stake",
+    "stakeCustomAmount": "Custom amount (GEN)",
+    "stakeCustomPlaceholder": "Enter amount",
     "verificationSource": "Verification source",
+    "verificationSourceSectionTitle": "Verification source",
+    "verificationGuidanceTitle": "Guidance",
+    "verificationUrlPlaceholder": "https://bbc.com/sport/football/scores-fixtures/2026-03-20",
     "deadline": "Deadline",
+    "deadlinePickDate": "Pick date and time",
+    "deadlineDatePlaceholder": "dd/mm/yyyy --:--",
     "orChooseExactDate": "Or choose exact date...",
     "createAndFund": "Create & Fund {amount} GEN",
     "createRematchAndFund": "Create Rematch & Fund {amount} GEN",
@@ -176,7 +212,7 @@
     "headToHeadSummary": "1 vs 1",
     "oneToManySummary": "1 vs {count}",
     "maxChallengers": "Max challengers",
-    "slotsHelp": "Set this above 1 to open the claim to several challengers.",
+    "maxChallengersCustomPlaceholder": "–",
     "fixedOddsLabel": "Challenger payout (total return multiple)",
     "fixedOddsHint": "Example: 1.80 means a 1 stake returns 1.8 total if challengers win.",
     "fixedOddsPreview": "Current preview: {amount} GEN returned on a winning challenger bet.",
@@ -201,11 +237,11 @@
       "1h": "1h",
       "24h": "24h",
       "3days": "3 days",
-      "1week": "1 week"
+      "1week": "1 week",
+      "1month": "1 month"
     },
-    "eyebrow": "New Challenge",
-    "pageTitle": "SET THE TERMS.",
-    "pageSubtitle": "Define your claim. Lock your stake. Let the protocol decide.",
+    "pageTitleBefore": "SET THE TERMS AND",
+    "pageTitleAccent": "INITIALIZE CHALLENGE",
     "demoModeHint": "Demo mode uses hosted Bradbury signers so the flow stays reliable even if browser wallets are unstable.",
     "invalidStakeMin": "Stake must be at least {amount} GEN",
     "sourceRequired": "Add a real verification source before publishing",
@@ -213,8 +249,9 @@
     "minimumStakeHint": "Minimum stake for the demo is {amount} GEN.",
     "sourceGuidance": "Verification source guidance",
     "useRecommendedRule": "Use recommended rule",
-    "qualityReview": "Demo safety review",
-    "qualityReady": "This claim looks specific enough for the current demo rules.",
+    "qualityReview": "Demo readiness checklist",
+    "qualityReviewHint": "Quick checks for your question, verification source, and settlement rule. This list is informative only and does not block publishing.",
+    "qualityReady": "Everything here looks aligned with the current demo rules.",
     "qualitySpecificity": "Make the question more specific so the outcome is easy to verify from one source.",
     "qualitySource": "Use a concrete source page instead of leaving the verification source empty or generic.",
     "qualitySettlement": "Advanced and custom markets should include an explicit settlement rule.",
@@ -234,14 +271,19 @@
         "questionHint": "Name the asset, threshold, and deadline explicitly.",
         "settlementTemplate": "Resolve this using the visible spot price on the linked source at the deadline time. Apply any threshold or line exactly as written."
       },
+      "tech": {
+        "sourceHint": "Use an official product blog, press release, or changelog that will still reflect the announced fact at settlement.",
+        "questionHint": "Name the product, company, and the concrete milestone or date window being judged.",
+        "settlementTemplate": "Resolve this only from the linked official source at the deadline. Treat “announced” as a public, attributable statement from the named party."
+      },
       "cultura": {
         "sourceHint": "Prefer the official publication, awards page, or primary entertainment source behind the claim.",
         "questionHint": "Anchor the claim to a concrete release, award, ranking, or publication event.",
         "settlementTemplate": "Resolve this only from the linked official or authoritative source. Do not infer beyond the exact published result."
       },
       "custom": {
-        "sourceHint": "Custom claims need a very specific source and a clear settlement rule to be demo-safe.",
-        "questionHint": "Make the outcome measurable and easy to verify from one source.",
+        "sourceHint": "Use the official match, league, or scoreboard page for the exact event you want to settle.",
+        "questionHint": "",
         "settlementTemplate": "Resolve this exactly as written using the linked source only. If the wording or source is ambiguous, mark it unresolvable."
       }
     }

@@ -1,6 +1,28 @@
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export const MIN_STAKE = 2;
 
+/**
+ * Presets de plazo relativo (segundos) para crear VS.
+ * Las etiquetas viven en `create.presets.*` (messages).
+ */
+export const DEADLINE_PRESET_IDS = [
+  "1h",
+  "24h",
+  "3days",
+  "1week",
+  "1month",
+] as const;
+
+export type DeadlinePresetId = (typeof DEADLINE_PRESET_IDS)[number];
+
+export const DEADLINE_PRESET_SECONDS: Record<DeadlinePresetId, number> = {
+  "1h": 3600,
+  "24h": 86400,
+  "3days": 259200,
+  "1week": 604800,
+  "1month": 2592000,
+};
+
 /** Coincide con `theme.extend.colors.pv.emerald` — acento principal UI (chips, CTAs). */
 export const PV_EMERALD_HEX = "#4edea3";
 
@@ -85,10 +107,11 @@ export const CATEGORY_DEMO_GUIDANCE: Record<CategoryId, CategoryDemoGuidance> = 
       "newsroom or issuer",
       "event results page",
     ],
-    sourceHint: "Custom claims need a very specific source and a clear settlement rule to be demo-safe.",
+    sourceHint:
+      "Use the official match, league, or scoreboard page for the exact event you want to settle.",
     settlementTemplate:
       "Resolve this exactly as written using the linked source only. If the wording or source leaves room for interpretation, mark it unresolvable.",
-    questionHint: "Make the outcome measurable and easy to verify from one source.",
+    questionHint: "",
   },
 };
 

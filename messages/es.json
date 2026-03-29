@@ -127,13 +127,49 @@
     "manifestPillar3Body": "Cuando se cumplen las condiciones, la liquidacion se ejecuta al instante y los pagos se distribuyen automaticamente."
   },
   "create": {
+    "challengeSectionTitle": "¿QUÉ VA A PASAR?",
+    "challengeQuestionExamples": [
+      {
+        "question": "ej.: BTC supera los USD 100k esta semana",
+        "creator": "BTC en o por encima de USD 100k esta semana",
+        "opponent": "BTC por debajo de USD 100k esta semana"
+      },
+      {
+        "question": "ej.: ¿Argentina le gana a Brasil?",
+        "creator": "Argentina gana el partido",
+        "opponent": "Brasil gana o empata"
+      },
+      {
+        "question": "ej.: ¿Llueve mañana en Buenos Aires?",
+        "creator": "Llueve (precipitación medible) en Buenos Aires ese día",
+        "opponent": "No llueve (sin precipitación medible) ese día"
+      },
+      {
+        "question": "ej.: ¿GPT-5 se anuncia antes de junio?",
+        "creator": "OpenAI anuncia GPT-5 antes del 1 de junio",
+        "opponent": "Sin anuncio de GPT-5 antes del 1 de junio"
+      },
+      {
+        "question": "ej.: ¿Hozier gana un Grammy en 2027?",
+        "creator": "Hozier gana al menos un Grammy en 2027",
+        "opponent": "Hozier no gana ningún Grammy en 2027"
+      }
+    ],
     "whatWillHappen": "Que va a pasar?",
     "ibet": "Yo apuesto",
     "rivalBets": "Rival apuesta",
     "challengerSideBets": "El lado retador apuesta",
     "raiseStake": "Subi la apuesta",
+    "stakeSectionTitle": "Apuesta",
+    "stakeCustomAmount": "Monto personalizado (GEN)",
+    "stakeCustomPlaceholder": "Ingresá monto",
     "verificationSource": "Fuente de verificacion",
+    "verificationSourceSectionTitle": "Fuente de verificacion",
+    "verificationGuidanceTitle": "Guía",
+    "verificationUrlPlaceholder": "https://bbc.com/sport/football/scores-fixtures/2026-03-20",
     "deadline": "Deadline",
+    "deadlinePickDate": "Elegir fecha y hora",
+    "deadlineDatePlaceholder": "dd/mm/aaaa --:--",
     "orChooseExactDate": "O elige fecha exacta...",
     "createAndFund": "Crear y fondear {amount} GEN",
     "createRematchAndFund": "Crear revancha y fondear {amount} GEN",
@@ -176,7 +212,7 @@
     "headToHeadSummary": "1 vs 1",
     "oneToManySummary": "1 vs {count}",
     "maxChallengers": "Maximo de retadores",
-    "slotsHelp": "Ponlo arriba de 1 para abrir el claim a varios retadores.",
+    "maxChallengersCustomPlaceholder": "–",
     "fixedOddsLabel": "Pago al retador (retorno total)",
     "fixedOddsHint": "Ejemplo: 1.80 significa que una apuesta de 1 devuelve 1.8 total si gana el lado retador.",
     "fixedOddsPreview": "Preview actual: {amount} GEN devueltos en una apuesta retadora ganadora.",
@@ -201,11 +237,11 @@
       "1h": "1h",
       "24h": "24h",
       "3days": "3 dias",
-      "1week": "1 sem"
+      "1week": "1 sem",
+      "1month": "1 mes"
     },
-    "eyebrow": "Nuevo desafio",
-    "pageTitle": "DEFINE LOS TERMINOS.",
-    "pageSubtitle": "Establece tu posicion. Bloquea tu apuesta. El protocolo decide.",
+    "pageTitleBefore": "DEFINE LOS TÉRMINOS E",
+    "pageTitleAccent": "INICIALIZA EL DESAFÍO",
     "demoModeHint": "El modo demo usa firmantes alojados en Bradbury para que el flujo sea confiable aunque las browser wallets fallen.",
     "invalidStakeMin": "La apuesta debe ser de al menos {amount} GEN",
     "sourceRequired": "Agrega una fuente real de verificacion antes de publicar",
@@ -213,8 +249,9 @@
     "minimumStakeHint": "La apuesta minima para el demo es {amount} GEN.",
     "sourceGuidance": "Guia para la fuente de verificacion",
     "useRecommendedRule": "Usar regla recomendada",
-    "qualityReview": "Revision de seguridad para el demo",
-    "qualityReady": "Este claim ya se ve lo bastante especifico para las reglas actuales del demo.",
+    "qualityReview": "Lista de comprobacion (demo)",
+    "qualityReviewHint": "Comprobaciones rapidas sobre la pregunta, la fuente de verificacion y la regla de settlement. Es orientacion: no bloquea el envio.",
+    "qualityReady": "Todo encaja con las reglas actuales del demo.",
     "qualitySpecificity": "Haz la pregunta mas especifica para que el resultado se pueda verificar desde una sola fuente.",
     "qualitySource": "Usa una pagina fuente concreta en vez de dejar la verificacion vacia o demasiado generica.",
     "qualitySettlement": "Los mercados avanzados o custom deben tener una regla de settlement explicita.",
@@ -234,14 +271,19 @@
         "questionHint": "Nombra el activo, el umbral, y el deadline de forma explicita.",
         "settlementTemplate": "Resuelve esto usando el spot price visible en la fuente enlazada al momento del deadline. Aplica cualquier umbral o linea exactamente como fue escrito."
       },
+      "tech": {
+        "sourceHint": "Usa un blog de producto oficial, comunicado de prensa o changelog que siga reflejando el hecho anunciado al momento del settlement.",
+        "questionHint": "Nombra el producto, la empresa y el hito o ventana de fechas concretos que se juzgan.",
+        "settlementTemplate": "Resuelve esto solo desde la fuente oficial enlazada al deadline. Trata \"anunciado\" como una declaracion publica y atribuible de la parte nombrada."
+      },
       "cultura": {
         "sourceHint": "Prefiere la publicacion oficial, la pagina del premio, o la fuente primaria de entretenimiento detras del claim.",
         "questionHint": "Ancla el claim a un lanzamiento, premio, ranking, o publicacion concretos.",
         "settlementTemplate": "Resuelve esto solo con la fuente oficial o autoritativa enlazada. No infieras mas alla del resultado publicado exacto."
       },
       "custom": {
-        "sourceHint": "Los claims custom necesitan una fuente muy especifica y una regla de settlement clara para ser seguros en el demo.",
-        "questionHint": "Haz que el resultado sea medible y facil de verificar desde una sola fuente.",
+        "sourceHint": "Usa la pagina oficial del partido, liga, o scoreboard del evento exacto que quieres resolver.",
+        "questionHint": "",
         "settlementTemplate": "Resuelve esto exactamente como esta escrito usando solo la fuente enlazada. Si el wording o la fuente son ambiguos, marcala como unresolvable."
       }
     }
