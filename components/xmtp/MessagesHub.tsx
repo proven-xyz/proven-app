@@ -16,9 +16,9 @@ import {
   isSampleVsIdForXmtp,
 } from "@/lib/xmtp/vs-chat-eligibility";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import EmptyState from "@/components/EmptyState";
 import { Button, GlassCard, VSCardSkeleton } from "@/components/ui";
-import { ArrowRight, MessageCircle, Radio, Lock } from "lucide-react";
+import MessagesWalletGate from "@/components/xmtp/MessagesWalletGate";
+import { ArrowRight, Radio, Lock } from "lucide-react";
 
 function truncateQuestion(q: string, max = 72): string {
   const t = q.trim();
@@ -27,7 +27,7 @@ function truncateQuestion(q: string, max = 72): string {
 }
 
 export default function MessagesHub() {
-  const { address, isConnected, connect } = useWallet();
+  const { address, isConnected, isConnecting, connect } = useWallet();
   const t = useTranslations("messagesHub");
   const featureOn = useMemo(() => isXmtpFeatureEnabled(), []);
 
@@ -108,14 +108,7 @@ export default function MessagesHub() {
 
   if (!isConnected) {
     return (
-      <PageTransition>
-        <EmptyState
-          title={t("connectTitle")}
-          description={t("connectDesc")}
-          actionLabel={t("connect")}
-          onAction={connect}
-        />
-      </PageTransition>
+      <MessagesWalletGate onConnect={connect} isConnecting={isConnecting} />
     );
   }
 
@@ -124,27 +117,23 @@ export default function MessagesHub() {
       <div className="max-w-[720px] mx-auto px-4 sm:px-0 pb-16">
         <AnimatedItem>
           <header className="mb-8 pt-2">
-            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald/80 mb-2">
-              {t("eyebrow")}
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-              <div>
-                <h1 className="font-display text-[clamp(1.5rem,4vw,2rem)] font-bold tracking-tight flex items-center gap-2.5">
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-pv-emerald/25 bg-pv-emerald/[0.08]">
-                    <MessageCircle
-                      className="text-pv-emerald"
-                      size={20}
-                      strokeWidth={2}
-                      aria-hidden
-                    />
-                  </span>
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-4 sm:gap-6">
+              <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-6">
+                <h1 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
                   {t("title")}
                 </h1>
-                <p className="font-mono text-xs text-pv-muted mt-2 tracking-wide max-w-md">
-                  {t("subtitle")}
-                </p>
+                <div
+                  className="h-px min-w-[2rem] flex-1 bg-white/[0.12]"
+                  aria-hidden
+                />
               </div>
             </div>
+            <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
+              {t("eyebrow")}
+            </span>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+              {t("subtitle")}
+            </p>
           </header>
         </AnimatedItem>
 

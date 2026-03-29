@@ -121,13 +121,49 @@
     "manifestPillar3Body": "When conditions resolve, settlement executes immediately and payouts are distributed automatically."
   },
   "create": {
+    "challengeSectionTitle": "WHAT WILL HAPPEN?",
+    "challengeQuestionExamples": [
+      {
+        "question": "e.g. BTC hits $100k this week",
+        "creator": "BTC reaches or exceeds $100k this week",
+        "opponent": "BTC stays below $100k this week"
+      },
+      {
+        "question": "e.g. Argentina beats Brazil?",
+        "creator": "Argentina wins the match",
+        "opponent": "Brazil wins or draw"
+      },
+      {
+        "question": "e.g. Will it rain tomorrow in Buenos Aires?",
+        "creator": "Rain in Buenos Aires that day",
+        "opponent": "No rain in Buenos Aires that day"
+      },
+      {
+        "question": "e.g. Will GPT-5 be announced before June?",
+        "creator": "OpenAI announces GPT-5 before June 1",
+        "opponent": "No GPT-5 announcement before June 1"
+      },
+      {
+        "question": "e.g. Will Hozier win a 2027 Grammy?",
+        "creator": "Hozier wins at least one Grammy in 2027",
+        "opponent": "Hozier wins no Grammy in 2027"
+      }
+    ],
     "whatWillHappen": "What will happen?",
     "ibet": "I bet",
     "rivalBets": "Rival bets",
     "challengerSideBets": "Challenger side bets",
     "raiseStake": "Raise the stake",
+    "stakeSectionTitle": "Stake",
+    "stakeCustomAmount": "Custom amount (GEN)",
+    "stakeCustomPlaceholder": "Enter amount",
     "verificationSource": "Verification source",
+    "verificationSourceSectionTitle": "Verification source",
+    "verificationGuidanceTitle": "Guidance",
+    "verificationUrlPlaceholder": "https://bbc.com/sport/football/scores-fixtures/2026-03-20",
     "deadline": "Deadline",
+    "deadlinePickDate": "Pick date and time",
+    "deadlineDatePlaceholder": "dd/mm/yyyy --:--",
     "orChooseExactDate": "Or choose exact date...",
     "createAndFund": "Create & Fund {amount} GEN",
     "createRematchAndFund": "Create Rematch & Fund {amount} GEN",
@@ -167,7 +203,7 @@
     "headToHeadSummary": "1 vs 1",
     "oneToManySummary": "1 vs {count}",
     "maxChallengers": "Max challengers",
-    "slotsHelp": "Set this above 1 to open the claim to several challengers.",
+    "maxChallengersCustomPlaceholder": "–",
     "fixedOddsLabel": "Challenger payout (total return multiple)",
     "fixedOddsHint": "Example: 1.80 means a 1 stake returns 1.8 total if challengers win.",
     "fixedOddsPreview": "Current preview: {amount} GEN returned on a winning challenger bet.",
@@ -192,22 +228,30 @@
       "1h": "1h",
       "24h": "24h",
       "3days": "3 days",
-      "1week": "1 week"
+      "1week": "1 week",
+      "1month": "1 month"
     },
-    "eyebrow": "New Challenge",
-    "pageTitle": "SET THE TERMS.",
-    "pageSubtitle": "Define your claim. Lock your stake. Let the protocol decide.",
+    "pageTitleBefore": "SET THE TERMS AND",
+    "pageTitleAccent": "INITIALIZE CHALLENGE",
+    "demoModeHint": "Demo mode uses hosted Bradbury signers so the flow stays reliable even if browser wallets are unstable.",
     "invalidStakeMin": "Stake must be at least {amount} GEN",
     "sourceRequired": "Add a real verification source before publishing",
     "settlementRuleRequired": "Add a settlement rule for custom or advanced markets",
     "minimumStakeHint": "Minimum stake is {amount} GEN.",
     "sourceGuidance": "Verification source guidance",
     "useRecommendedRule": "Use recommended rule",
-    "qualityReview": "Claim quality review",
-    "qualityReady": "This claim looks specific enough for the current rules.",
+    "qualityReview": "Demo readiness checklist",
+    "qualityReviewHint": "Quick checks for your question, verification source, and settlement rule. This list is informative only and does not block publishing.",
+    "qualityReady": "Everything here looks aligned with the current demo rules.",
     "qualitySpecificity": "Make the question more specific so the outcome is easy to verify from one source.",
     "qualitySource": "Use a concrete source page instead of leaving the verification source empty or generic.",
     "qualitySettlement": "Advanced and custom markets should include an explicit settlement rule.",
+    "challengeTicketTitle": "YOUR TICKET",
+    "ticketIdLabel": "ID:",
+    "ticketYourCommitment": "YOUR COMMITMENT",
+    "ticketAuthSig": "AUTH_SIG",
+    "ticketSignatureNote": "Initialization requires smart contract signature",
+    "ticketSettlementFallback": "Add a settlement rule or use the category default from the Advanced section.",
     "guidance": {
       "deportes": {
         "sourceHint": "Use the official match, league, or scoreboard page for the exact event you want to settle.",
@@ -227,7 +271,7 @@
       "tech": {
         "sourceHint": "Use an official product blog, press release, or changelog that will still reflect the announced fact at settlement.",
         "questionHint": "Name the product, company, and the concrete milestone or date window being judged.",
-        "settlementTemplate": "Resolve this only from the linked official source at the deadline. Treat 'announced' as a public, attributable statement from the named party."
+        "settlementTemplate": "Resolve this only from the linked official source at the deadline. Treat “announced” as a public, attributable statement from the named party."
       },
       "cultura": {
         "sourceHint": "Prefer the official publication, awards page, or primary entertainment source behind the claim.",
@@ -235,8 +279,8 @@
         "settlementTemplate": "Resolve this only from the linked official or authoritative source. Do not infer beyond the exact published result."
       },
       "custom": {
-        "sourceHint": "Custom claims need a very specific source and a clear settlement rule so the outcome stays unambiguous.",
-        "questionHint": "Make the outcome measurable and easy to verify from one source.",
+        "sourceHint": "Use the official match, league, or scoreboard page for the exact event you want to settle.",
+        "questionHint": "",
         "settlementTemplate": "Resolve this exactly as written using the linked source only. If the wording or source is ambiguous, mark it unresolvable."
       }
     }
@@ -333,9 +377,10 @@
     "challengeSomeone": "Challenge someone",
     "privateBadge": "Private",
     "pendingSync": "Pending…",
-    "connectTitle": "PROVEN.",
-    "connectDesc": "Connect your wallet to see your VS.",
+    "connectTitle": "Connect your wallet",
+    "connectDesc": "Link your wallet to view your challenges, record, and holdings. Your dashboard is scoped to your address only.",
     "connect": "Connect",
+    "connectExploreLink": "Browse public challenges in Explorer",
     "eyebrow": "All your bets in one place",
     "overviewSectionAria": "Wallet overview",
     "overviewActiveTitle": "Total active stakes",
@@ -577,15 +622,16 @@
     "disclaimer": "Messages are delivered over XMTP (E2E encrypted). They are not stored on PROVEN servers."
   },
   "messagesHub": {
-    "eyebrow": "XMTP inbox",
-    "title": "Messages",
-    "subtitle": "Encrypted 1v1 threads tied to your accepted duels. No global inbox — only rivals you’re matched with.",
-    "connectTitle": "Connect to see messages",
-    "connectDesc": "Your duel list and XMTP threads load from your wallet address.",
+    "eyebrow": "Private lane // XMTP — wallet-bound keys",
+    "title": "MESSAGES",
+    "subtitle": "End-to-end threads with your rival once the duel is accepted. No public feed—only address-scoped, duel-bound DMs.",
+    "connectTitle": "Connect your wallet",
+    "connectDesc": "Your duel list and encrypted XMTP threads are scoped to your address. Connect to load your inbox.",
     "connect": "Connect wallet",
+    "connectExploreLink": "Browse public challenges in Explorer",
     "featureOffTitle": "Messaging is off in this build",
     "featureOffDesc": "Enable NEXT_PUBLIC_FEATURE_XMTP in .env.local and restart the dev server. See docs/xmtp-integration.md.",
-    "loadError": "Could not load your VS list. Check your connection and try again.",
+    "loadError": "Could not load your list. Check your connection and try again.",
     "retry": "Retry",
     "noParticipationTitle": "No active duels yet",
     "noParticipationDesc": "Join or create a VS to appear here. Private XMTP chat unlocks once a duel is accepted 1v1.",

@@ -154,6 +154,46 @@
            transition-colors duration-150 outline-none;
   }
 
+  /**
+   * Select nativo: flecha gris (pv-muted), centrada en altura; evita el chevron del SO en blanco / descolocado.
+   * Usar junto a `.form-field-pv` o preferir `.select-field-pv` en /vs/create.
+   */
+  .select-pv {
+    @apply cursor-pointer appearance-none bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none'%3E%3Cpath stroke='%239391A0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.875rem center;
+    background-size: 1rem 1rem;
+  }
+
+  /**
+   * Selects de Market type / Odds mode: mismo sistema que `.form-field-pv` + chevron + altura táctil y hover suave.
+   */
+  .select-field-pv {
+    @apply w-full min-h-[3.25rem] cursor-pointer appearance-none rounded-xl border border-white/[0.12]
+           bg-pv-bg/90 bg-no-repeat px-4 py-3 pr-11 font-body text-sm font-medium tracking-tight
+           text-pv-text antialiased outline-none transition-[border-color,box-shadow,background-color]
+           duration-200 hover:border-white/[0.22] hover:bg-pv-surface/[0.4]
+           focus-visible:border-pv-emerald/50 focus-visible:ring-1 focus-visible:ring-pv-emerald/25
+           focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+    color-scheme: dark;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none'%3E%3Cpath stroke='%23A8A4B8' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+    background-size: 1.125rem 1.125rem;
+  }
+
+  /**
+   * Campos de texto/select/textarea alineados con la URL de verificación en /vs/create:
+   * `rounded-xl`, borde blanco suave, foco con anillo fino (sin duplicar borde verde grueso de `.input`).
+   */
+  .form-field-pv {
+    @apply w-full rounded-xl border border-white/[0.12] bg-pv-bg/90 px-4 py-3.5
+           font-body text-sm text-pv-text
+           placeholder:text-pv-muted/50
+           outline-none transition-[border-color,box-shadow]
+           focus-visible:border-pv-emerald/50 focus-visible:ring-1 focus-visible:ring-pv-emerald/25
+           focus-visible:outline-none;
+  }
+
   .label {
     @apply block text-[11px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-2;
   }

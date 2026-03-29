@@ -7,8 +7,19 @@ import { useTranslations } from "next-intl";
 import {
   EXPLORE_FEATURED_SLIDE_IDS,
   exploreFeaturedSlideMedia,
+  type FeaturedImageObjectPosition,
 } from "@/lib/exploreFeaturedSlides";
+import { EXPLORE_FEATURED_STATIC_IMAGES } from "@/lib/exploreFeaturedImageAssets";
 import { Button } from "@/components/ui";
+
+function featuredImageObjectClass(
+  pos: FeaturedImageObjectPosition | undefined
+): string {
+  if (pos === "top") return "object-top";
+  if (pos === "bottom") return "object-bottom";
+  if (pos === "bottomLifted") return "object-[center_84%]";
+  return "object-center";
+}
 
 const AUTO_ADVANCE_MS = 9000;
 
@@ -61,6 +72,23 @@ export default function ExploreFeaturedCarousel() {
     return () => window.clearInterval(id);
   }, [paused, slideCount]);
 
+  /** Precarga las tres imágenes en red (Vercel/CDN) para reducir flash al cambiar de slide. */
+  useEffect(() => {
+    const links: HTMLLinkElement[] = [];
+    for (const id of slides) {
+      const href = EXPLORE_FEATURED_STATIC_IMAGES[id].src;
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = href;
+      document.head.appendChild(link);
+      links.push(link);
+    }
+    return () => {
+      links.forEach((el) => el.remove());
+    };
+  }, [slides]);
+
   const titleId = `explore-featured-title-${activeId}-${regionId}`;
 
   type SlideField = "imageAlt" | "pill" | "titleLine1" | "titleLine2" | "body";
@@ -81,7 +109,9 @@ export default function ExploreFeaturedCarousel() {
         setPaused(false);
       }}
     >
-      <div className="group/card relative min-h-[280px] overflow-hidden rounded-lg border border-white/[0.12] bg-pv-bg shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] sm:min-h-[300px]">
+      <div
+        className="group/card relative w-full overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] max-sm:aspect-[3/4] sm:min-h-[320px]"
+      >
         <AnimatePresence initial={false} mode="wait">
           <motion.div
             key={activeId}
@@ -92,34 +122,20 @@ export default function ExploreFeaturedCarousel() {
             className="absolute inset-0"
             aria-hidden
           >
-            {exploreFeaturedSlideMedia[activeId].imageSrc ? (
-              <div className="absolute inset-0 overflow-hidden">
-                <Image
-                  src={exploreFeaturedSlideMedia[activeId].imageSrc!}
-                  alt={slideT("imageAlt")}
-                  fill
-                  className={`object-cover transition-[transform] duration-[750ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-transform group-hover/card:scale-[1.045] ${
-                    exploreFeaturedSlideMedia[activeId].imageObjectPosition ===
-                    "top"
-                      ? "object-top"
-                      : exploreFeaturedSlideMedia[activeId].imageObjectPosition ===
-                          "bottom"
-                        ? "object-bottom"
-                        : exploreFeaturedSlideMedia[activeId].imageObjectPosition ===
-                            "bottomLifted"
-                          ? "object-[center_84%]"
-                          : "object-center"
-                  }`}
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 100vw, 1200px"
-                  priority={index === 0}
-                />
-              </div>
-            ) : (
-              <div
-                className="absolute inset-0 bg-gradient-to-br from-[#0f1729] via-pv-surface to-red-950/45"
-                aria-hidden
+            <div className="absolute inset-0 overflow-hidden bg-pv-surface">
+              <Image
+                src={EXPLORE_FEATURED_STATIC_IMAGES[activeId]}
+                alt={slideT("imageAlt")}
+                fill
+                placeholder="blur"
+                className={`object-cover transition-[transform] duration-[750ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] will-change-transform group-hover/card:scale-[1.045] ${featuredImageObjectClass(
+                  exploreFeaturedSlideMedia[activeId].imageObjectPosition
+                )}`}
+                sizes="(max-width: 640px) 100vw, (max-width: 1280px) 92vw, 1200px"
+                priority={index === 0}
+                fetchPriority={index === 0 ? "high" : "auto"}
               />
-            )}
+            </div>
           </motion.div>
         </AnimatePresence>
 
@@ -136,7 +152,7 @@ export default function ExploreFeaturedCarousel() {
           aria-hidden
         />
 
-        <div className="relative z-10 flex min-h-[280px] flex-col p-6 sm:min-h-[300px] sm:p-8">
+        <div className="relative z-10 flex h-full min-h-0 flex-col p-6 sm:min-h-[320px] sm:p-8">
           <AnimatePresence initial={false} mode="wait">
             <motion.div
               key={activeId}
@@ -144,7 +160,7 @@ export default function ExploreFeaturedCarousel() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.32, ease: [0.25, 0.1, 0.25, 1] }}
-              className="flex flex-1 flex-col"
+              className="flex min-h-0 flex-1 flex-col"
               aria-labelledby={titleId}
             >
               <p className="mb-6 sm:mb-7">
@@ -161,7 +177,7 @@ export default function ExploreFeaturedCarousel() {
                   {slideT("titleLine2")}
                 </span>
               </h2>
-              <p className="mt-4 max-w-3xl whitespace-pre-line text-left text-sm leading-relaxed text-pv-muted sm:mt-5 sm:text-[15px]">
+              <p className="mt-4 max-w-3xl whitespace-pre-line text-left text-sm leading-relaxed text-pv-muted max-sm:line-clamp-5 sm:mt-5 sm:text-[15px] sm:line-clamp-none">
                 {slideT("body")}
               </p>
 
