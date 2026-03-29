@@ -24,6 +24,7 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Badge, VSStrip } from "@/components/ui";
 import EmptyState from "@/components/EmptyState";
 import DashboardPortfolioSection from "@/components/dashboard/DashboardPortfolioSection";
+import DashboardWalletGate from "@/components/dashboard/DashboardWalletGate";
 import DashboardVSFilterBar from "@/components/dashboard/DashboardVSFilterBar";
 import { Trophy, Flame, TrendingUp } from "lucide-react";
 
@@ -35,7 +36,7 @@ const filterPillActive = "border-pv-emerald/50 bg-pv-emerald text-pv-bg";
 const listItemEase = [0.25, 0.1, 0.25, 1] as const;
 
 export default function DashboardPage() {
-  const { address, isConnected, connect } = useWallet();
+  const { address, isConnected, isConnecting, connect } = useWallet();
   const [duels, setDuels] = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"all" | "active" | "done">("all");
@@ -93,12 +94,7 @@ export default function DashboardPage() {
 
   if (!isConnected) {
     return (
-      <EmptyState
-        title={t("connectTitle")}
-        description={t("connectDesc")}
-        actionLabel={t("connect")}
-        onAction={connect}
-      />
+      <DashboardWalletGate onConnect={connect} isConnecting={isConnecting} />
     );
   }
 

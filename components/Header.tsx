@@ -79,7 +79,10 @@ export default function Header() {
   const t = useTranslations("header");
   const tc = useTranslations("common");
 
-  /** Landing: presentación del proyecto; nav mínimo (solo Explore). */
+  /**
+   * Solo en la landing del producto: nav derecho mínimo (Explorer + idioma).
+   * En el resto de rutas (p. ej. /explorer) se muestran todos los enlaces de app.
+   */
   const isPresentationHome = pathname === "/";
 
   const xmtpNavEnabled = useMemo(() => isXmtpFeatureEnabled(), []);
@@ -184,25 +187,24 @@ export default function Header() {
           <>
             {/* Desktop nav */}
             <div className="hidden items-center gap-2 md:flex lg:gap-3">
-              {isConnected &&
-                NAV_ITEMS.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`chip relative text-[13px] transition-all ${
-                        item.accent
-                          ? "border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-pv-emerald"
-                          : isActive
-                          ? "border-white/[0.32] bg-white/[0.06] text-pv-text"
-                          : "text-pv-muted hover:border-white/[0.22] hover:text-pv-text"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
+              {NAV_ITEMS.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`chip relative text-[13px] transition-all ${
+                      item.accent
+                        ? "border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-pv-emerald"
+                        : isActive
+                        ? "border-white/[0.32] bg-white/[0.06] text-pv-text"
+                        : "text-pv-muted hover:border-white/[0.22] hover:text-pv-text"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
 
               {/* Language switcher */}
               <div className="flex items-center gap-1 font-mono text-xs">
@@ -291,16 +293,15 @@ export default function Header() {
                   {isConnecting ? "..." : tc("connect")}
                 </button>
               )}
-              {isConnected && (
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(!mobileOpen)}
-                  className="rounded p-1.5 text-pv-muted transition-colors hover:text-pv-text"
-                  aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
-                >
-                  {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className="rounded p-1.5 text-pv-muted transition-colors hover:text-pv-text"
+                aria-expanded={mobileOpen}
+                aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
+              >
+                {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
             </div>
           </>
         )}
@@ -308,7 +309,7 @@ export default function Header() {
 
       {/* Mobile sheet */}
       <AnimatePresence>
-        {!isPresentationHome && mobileOpen && isConnected && (
+        {!isPresentationHome && mobileOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}

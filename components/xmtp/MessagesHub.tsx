@@ -16,8 +16,8 @@ import {
   isSampleVsIdForXmtp,
 } from "@/lib/xmtp/vs-chat-eligibility";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import EmptyState from "@/components/EmptyState";
 import { Button, GlassCard, VSCardSkeleton } from "@/components/ui";
+import MessagesWalletGate from "@/components/xmtp/MessagesWalletGate";
 import { ArrowRight, MessageCircle, Radio, Lock } from "lucide-react";
 
 function truncateQuestion(q: string, max = 72): string {
@@ -27,7 +27,7 @@ function truncateQuestion(q: string, max = 72): string {
 }
 
 export default function MessagesHub() {
-  const { address, isConnected, connect } = useWallet();
+  const { address, isConnected, isConnecting, connect } = useWallet();
   const t = useTranslations("messagesHub");
   const featureOn = useMemo(() => isXmtpFeatureEnabled(), []);
 
@@ -108,14 +108,7 @@ export default function MessagesHub() {
 
   if (!isConnected) {
     return (
-      <PageTransition>
-        <EmptyState
-          title={t("connectTitle")}
-          description={t("connectDesc")}
-          actionLabel={t("connect")}
-          onAction={connect}
-        />
-      </PageTransition>
+      <MessagesWalletGate onConnect={connect} isConnecting={isConnecting} />
     );
   }
 
