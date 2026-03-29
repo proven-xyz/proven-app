@@ -1,6 +1,7 @@
 /**
  * Slides del carrusel “featured” en Market Explorer.
- * Copy bajo messages (explore.featuredSlides.<id>). imageSrc null = fondo degradado.
+ * Copy bajo messages (explore.featuredSlides.<id>).
+ * Las imágenes se importan en `exploreFeaturedImageAssets.ts` (blur + LCP).
  */
 export const EXPLORE_FEATURED_SLIDE_IDS = ["boxing", "f1", "alvarez"] as const;
 
@@ -16,12 +17,11 @@ export type FeaturedImageObjectPosition =
 export const exploreFeaturedSlideMedia: Record<
   ExploreFeaturedSlideId,
   {
-    imageSrc: string | null;
     /** Ancla de `object-fit` para encuadrar el sujeto (p. ej. auto anclado abajo). */
     imageObjectPosition?: FeaturedImageObjectPosition;
   }
 > = {
-  boxing: { imageSrc: "/images/fight-11.png" },
-  f1: { imageSrc: "/images/F1.png", imageObjectPosition: "bottomLifted" },
-  alvarez: { imageSrc: "/images/arg.png", imageObjectPosition: "top" },
+  boxing: {},
+  f1: { imageObjectPosition: "bottomLifted" },
+  alvarez: { imageObjectPosition: "top" },
 };
