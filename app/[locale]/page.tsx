@@ -332,24 +332,38 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      {/* Hero — altura reservada siempre desde el primer render para evitar CLS */}
+      {/* Hero — altura reservada siempre desde el primer render para evitar CLS.
+          Ancho: móvil usa todo el ancho útil del layout (título puede partirse); desde md
+          centramos y ampliamos el tope para que las dos líneas del h1 quepan en un renglón cada una.
+          Móvil (<md): min-height acotada (viewport − layout pt − safe areas − reserva inferior) para
+          centrar el bloque sin empujar la franja de stats demasiado abajo. */}
       <AnimatedItem>
-        <div className="relative lg:max-w-[800px] lg:mx-auto mb-6">
+        <div
+          className="relative mb-4 flex w-full flex-col justify-center max-md:min-h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem)] md:mx-auto md:mb-6 md:block md:min-h-0 md:max-w-4xl lg:max-w-5xl 2xl:max-w-6xl"
+        >
 
           {/* Hero vacío: siempre visible, se oculta con fade cuando carga un VS destacado */}
           <motion.div
-            className="px-5 py-14 sm:px-8 sm:py-20 lg:py-28 xl:py-32 text-center"
+            className="px-5 py-5 text-center sm:px-8 sm:py-7 lg:py-9 xl:py-11"
             animate={{ opacity: featuredVS ? 0 : 1, pointerEvents: featuredVS ? "none" : "auto" }}
             transition={{ duration: 0.3 }}
             style={{ position: featuredVS ? "absolute" : "relative", inset: 0 }}
           >
-            <h1 className="font-display text-[clamp(3rem,11vw,5.5rem)] lg:text-[clamp(3.7rem,9vw,8rem)] font-bold leading-[0.92] tracking-tight text-pv-text mb-6">
-              {t("emptyHeroTitlePrefix")}{" "}
-              <span className="italic text-pv-emerald drop-shadow-[0_0_22px_rgba(78,222,163,0.6)]">
-                PROVEN.
+            <h1 className="mb-3 flex flex-col items-center gap-1 text-center font-display text-[clamp(3.4rem,12.5vw,6rem)] font-bold leading-[0.92] tracking-tight text-pv-text sm:mb-3.5 md:text-[clamp(3rem,11vw,5.5rem)] lg:gap-1.5 lg:text-[clamp(3.7rem,9vw,8rem)]">
+              <span className="block">
+                {t("emptyHeroTitleLine1Lead")}{" "}
+                <span className="whitespace-nowrap">
+                  {t("emptyHeroTitleOnChainSegment")}
+                </span>
+              </span>
+              <span className="block">
+                {t("emptyHeroTitleLine2Lead")}{" "}
+                <span className="italic text-pv-emerald drop-shadow-[0_0_22px_rgba(78,222,163,0.6)]">
+                  PROVEN.
+                </span>
               </span>
             </h1>
-            <p className="text-pv-muted text-sm sm:text-base lg:text-[19px] lg:max-w-[26rem] max-w-xl mx-auto leading-relaxed mb-8">
+            <p className="mx-auto mb-4 max-w-xl text-sm leading-relaxed text-pv-muted sm:mb-5 sm:text-base lg:max-w-[26rem] lg:text-[19px]">
               {t("emptyHeroSubtitle")}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
@@ -368,7 +382,7 @@ export default function HomePage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.4 }}
-              className="lg:py-28 xl:py-32"
+              className="py-5 sm:py-7 lg:py-9 xl:py-11"
             >
               <GlassCard glow="both">
                 <div className="p-2 text-center">
@@ -402,10 +416,17 @@ export default function HomePage() {
         </div>
       </AnimatedItem>
 
-      {/* Differentiator */}
+      {/* Differentiator — stats strip (total / resolved / GEN staked); mismo patrón que THE PROTOCOL / LIVE ARENA */}
       <AnimatedItem>
         <div className="mb-12">
-            <div className="max-w-[900px] mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+          <div className="mb-10 flex items-center gap-4 sm:gap-6">
+            <h2 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
+              {t("statsSectionTitle")}
+            </h2>
+            <div className="h-px flex-1 bg-white/[0.12]" aria-hidden />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             {[
               { value: String(allVS.length), label: t("totalClaims") },
               { value: String(resolvedVS.length), label: t("resolvedClaims") },
