@@ -569,24 +569,19 @@ For full details, see the [implementation checklist](implementation-checklist.md
 
 1. Open [studio.genlayer.com](https://studio.genlayer.com)
 2. Paste the contents of `contracts/proven.py`
-3. Deploy — copy the resulting contract address
-4. Set the address in `.env.local`:
-
-```bash
-echo "NEXT_PUBLIC_CONTRACT_ADDRESS=0xYOUR_ADDRESS" > .env.local
-```
+3. Deploy. The default wrapper updates `.env.local` automatically with the new contract address.
 
 #### Option B: GenLayer CLI
 
 ```bash
-# Deploy to default network (Bradbury)
+# Deploy to Bradbury and auto-update .env.local
 npm run deploy:contract
 
-# Force Bradbury network
+# Explicit Bradbury alias (also auto-updates .env.local)
 npm run deploy:contract:bradbury
 
-# Deploy and auto-update .env.local
-npm run deploy:contract:env
+# Deploy to localnet without rewriting your app env
+npm run deploy:contract:localnet
 ```
 
 ### Staged contract workflow
@@ -597,7 +592,7 @@ Use the staged workflow when you want to gate Bradbury behind faster checks firs
 # 1. Lint -> direct tests -> localnet -> studionet
 npm run contract:stage
 
-# 2. Same flow, then deploy to Bradbury
+# 2. Same flow, then deploy to Bradbury and update .env.local
 npm run contract:stage:deploy
 ```
 
