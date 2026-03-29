@@ -13,8 +13,8 @@ import {
   type CreateClaimParams,
   type VSData,
 } from "@/lib/contract";
-import { getExplorerTxUrl } from "@/lib/genlayer";
-import { savePendingVS, type PendingVS } from "@/lib/pending-vs";
+import { getExplorerTxUrl, getExplorerUrl } from "@/lib/genlayer";
+import { removePendingVS, savePendingVS, type PendingVS } from "@/lib/pending-vs";
 import {
   CATEGORY_GUIDANCE,
   CATEGORIES,
@@ -54,6 +54,16 @@ const MARKET_TYPES = [
 
 const ODDS_MODES = ["pool", "fixed"] as const;
 
+function formatLocalDateInputValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function formatLocalTimeInputValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(11, 16);
+}
+
 export default function CreatePage() {
   const router = useRouter();
   const { address, isConnected, connect } = useWallet();
@@ -72,8 +82,9 @@ export default function CreatePage() {
   const [creatorPos, setCreatorPos] = useState("");
   const [opponentPos, setOpponentPos] = useState("");
   const [url, setUrl] = useState("");
-  const [deadlinePreset, setDeadlinePreset] = useState(7200);
-  const [customDeadline, setCustomDeadline] = useState("");
+  const [deadlinePreset, setDeadlinePreset] = useState<number | null>(null);
+  const [customDeadlineDate, setCustomDeadlineDate] = useState("");
+  const [customDeadlineTime, setCustomDeadlineTime] = useState("");
   const [stake, setStake] = useState(5);
   const [category, setCategory] = useState("custom");
   const [marketType, setMarketType] =
@@ -89,7 +100,9 @@ export default function CreatePage() {
   const [loading, setLoading] = useState(false);
   const [loadingParent, setLoadingParent] = useState(false);
   const [created, setCreated] = useState<number | null>(null);
+  const [createdPending, setCreatedPending] = useState(false);
   const [createdTxHash, setCreatedTxHash] = useState("");
+  const [createdExplorerTxHash, setCreatedExplorerTxHash] = useState("");
   const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -109,6 +122,20 @@ export default function CreatePage() {
     isOneToMany ||
     handicapLine.trim().length > 0 ||
     settlementRule.trim().length > 0;
+  const customDeadline = useMemo(() => {
+    if (!customDeadlineDate || !customDeadlineTime) {
+      return "";
+    }
+    return `${customDeadlineDate}T${customDeadlineTime}`;
+  }, [customDeadlineDate, customDeadlineTime]);
+  const minCustomDeadlineDate = formatLocalDateInputValue(new Date());
+
+  function applyDeadlinePreset(seconds: number) {
+    const presetDate = new Date(Date.now() + seconds * 1000);
+    setDeadlinePreset(seconds);
+    setCustomDeadlineDate(formatLocalDateInputValue(presetDate));
+    setCustomDeadlineTime(formatLocalTimeInputValue(presetDate));
+  }
 
   const payoutPreview = useMemo(() => {
     const multiple = Number(fixedOddsMultiple);
@@ -207,6 +234,40 @@ export default function CreatePage() {
     };
   }, [hydratedFromRematch, rematchId, t]);
 
+  useEffect(() => {
+    if (!created || !createdPending) {
+      return;
+    }
+
+    const createdId = created;
+    let cancelled = false;
+
+    async function syncCreatedClaim() {
+      const liveClaim = await getVS(createdId, {
+        inviteKey: createdInviteKey,
+        viewerAddress: address ?? undefined,
+      }).catch(() => null);
+
+      if (cancelled || !liveClaim) {
+        return;
+      }
+
+      removePendingVS(createdId);
+      setCreatedPending(false);
+      setShowConfetti(true);
+      toast.success(rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded"));
+      setTimeout(() => setShowConfetti(false), 4000);
+    }
+
+    void syncCreatedClaim();
+    const intervalId = setInterval(syncCreatedClaim, 8000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [address, created, createdInviteKey, createdPending, rematchId, t]);
+
   function prefill(catId: string) {
     setCategory(catId);
     const prefillValues = PREFILLS[catId];
@@ -236,9 +297,12 @@ export default function CreatePage() {
       return;
     }
 
-    const deadlineTimestamp = customDeadline
-      ? Math.floor(new Date(customDeadline).getTime() / 1000)
-      : Math.floor(Date.now() / 1000) + deadlinePreset;
+    if (!customDeadline) {
+      toast.error(t("completeExactDeadline"));
+      return;
+    }
+
+    const deadlineTimestamp = Math.floor(new Date(customDeadline).getTime() / 1000);
 
     if (!Number.isFinite(deadlineTimestamp) || deadlineTimestamp <= Math.floor(Date.now() / 1000)) {
       toast.error(t("invalidDeadline"));
@@ -299,7 +363,9 @@ export default function CreatePage() {
       );
       if (result.claimId) {
         setCreated(result.claimId);
+        setCreatedPending(Boolean(result.pending));
         setCreatedTxHash(result.txHash || "");
+        setCreatedExplorerTxHash(result.explorerTxHash || "");
         setCreatedInviteKey(inviteKey);
         if (inviteKey) {
           rememberPrivateInviteKey(result.claimId, inviteKey);
@@ -328,8 +394,10 @@ export default function CreatePage() {
       } else {
         router.push("/dashboard");
       }
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 4000);
+      if (!result.pending) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 4000);
+      }
     } catch (err: any) {
       toast.error(err.message || t("errorCreating"));
     } finally {
@@ -363,10 +431,18 @@ export default function CreatePage() {
                 PROVEN.
               </motion.div>
               <h2 className="font-display text-2xl font-bold mb-2 tracking-tight">
-                {rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded")}
+                {createdPending
+                  ? t("pendingTitle")
+                  : rematchId
+                  ? t("rematchCreatedAndFunded")
+                  : t("vsCreatedAndFunded")}
               </h2>
               <p className="text-pv-muted mb-7">
-                {createdInviteKey ? t("sendThisPrivateLink") : t("sendThisLink")}
+                {createdPending
+                  ? t("pendingHint")
+                  : createdInviteKey
+                  ? t("sendThisPrivateLink")
+                  : t("sendThisLink")}
               </p>
 
               <GlassCard className="mb-5">
@@ -405,19 +481,37 @@ export default function CreatePage() {
                 </a>
               </div>
 
-              {createdTxHash && (
-                <p className="text-pv-muted text-xs mb-5 font-mono">
-                  Tx:{" "}
+              <div className="space-y-2 mb-5">
+                {createdPending && createdTxHash && (
+                  <p className="text-pv-muted text-xs font-mono">
+                    {t("walletTx")}: {createdTxHash.slice(0, 10)}...{createdTxHash.slice(-8)}
+                  </p>
+                )}
+                {createdExplorerTxHash &&
+                  (!createdPending || createdExplorerTxHash !== createdTxHash) && (
+                  <p className="text-pv-muted text-xs font-mono">
+                    {createdPending ? t("consensusTx") : "Tx"}:{" "}
+                    <a
+                      href={getExplorerTxUrl(createdExplorerTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-pv-emerald hover:underline"
+                    >
+                      {createdExplorerTxHash.slice(0, 10)}...{createdExplorerTxHash.slice(-8)}
+                    </a>
+                  </p>
+                )}
+                <p className="text-pv-muted text-xs">
                   <a
-                    href={getExplorerTxUrl(createdTxHash)}
+                    href={getExplorerUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-pv-emerald hover:underline"
                   >
-                    {createdTxHash.slice(0, 10)}...{createdTxHash.slice(-8)}
+                    {t("openExplorer")}
                   </a>
                 </p>
-              )}
+              </div>
 
               <div className="flex gap-3 justify-center">
                 <Link href={`/vs/${created}`}>
@@ -432,6 +526,8 @@ export default function CreatePage() {
                   size="sm"
                   onClick={() => {
                     setCreated(null);
+                    setCreatedPending(false);
+                    setCreatedTxHash("");
                     setQuestion("");
                     setCreatorPos("");
                     setOpponentPos("");
@@ -439,6 +535,7 @@ export default function CreatePage() {
                     setHandicapLine("");
                     setSettlementRule("");
                     setVisibility("public");
+                    setCreatedExplorerTxHash("");
                     setCreatedInviteKey("");
                   }}
                 >
@@ -693,12 +790,9 @@ export default function CreatePage() {
                 <motion.button
                   key={preset.seconds}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setDeadlinePreset(preset.seconds);
-                    setCustomDeadline("");
-                  }}
+                  onClick={() => applyDeadlinePreset(preset.seconds)}
                   className={`py-2.5 rounded text-sm font-semibold cursor-pointer transition-all border focus-ring ${
-                    deadlinePreset === preset.seconds && !customDeadline
+                    deadlinePreset === preset.seconds
                       ? "border-pv-fuch/[0.35] bg-pv-fuch/[0.1] text-pv-fuch"
                       : "border-white/[0.12] bg-pv-surface text-pv-muted hover:border-white/[0.22]"
                   }`}
@@ -707,13 +801,33 @@ export default function CreatePage() {
                 </motion.button>
               ))}
             </div>
-            <input
-              type="datetime-local"
-              className="input text-sm"
-              value={customDeadline}
-              onChange={(event) => setCustomDeadline(event.target.value)}
-              placeholder={t("orChooseExactDate")}
-            />
+            <GlassCard className="p-4 sm:p-5">
+              <p className="label mb-3">{t("orChooseExactDate")}</p>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <Input
+                  type="date"
+                  label={`${t("exactDate")} *`}
+                  min={minCustomDeadlineDate}
+                  value={customDeadlineDate}
+                  onChange={(event) => {
+                    setDeadlinePreset(null);
+                    setCustomDeadlineDate(event.target.value);
+                  }}
+                  className="text-sm [color-scheme:dark]"
+                />
+                <Input
+                  type="time"
+                  label={`${t("exactTime")} *`}
+                  value={customDeadlineTime}
+                  onChange={(event) => {
+                    setDeadlinePreset(null);
+                    setCustomDeadlineTime(event.target.value);
+                  }}
+                  disabled={!customDeadlineDate}
+                  className="text-sm [color-scheme:dark] disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
+            </GlassCard>
           </div>
         </AnimatedItem>
 

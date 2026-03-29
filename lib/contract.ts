@@ -1,10 +1,7 @@
-import { abi as genlayerAbi } from "genlayer-js";
-import { encodeFunctionData, toHex, parseEventLogs, createPublicClient, http } from "viem";
+import { parseEventLogs, createPublicClient, http } from "viem";
 
 import {
   createGenlayerClient,
-  ensureGenlayerWalletChain,
-  GENLAYER_CONSENSUS_MAIN_ABI,
   getEndpoint,
   getConsensusMainContractAddress,
 } from "./genlayer";
@@ -13,6 +10,17 @@ export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x0000000000000000000000000000000000000000") as any;
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const GEN_UNIT = BigInt("1000000000000000000");
+
+function genToWei(gen: number): bigint {
+  if (!Number.isFinite(gen) || gen < 0) {
+    throw new Error("Invalid GEN amount");
+  }
+  if (!Number.isInteger(gen)) {
+    throw new Error("GEN amounts must be whole numbers");
+  }
+  return BigInt(gen) * GEN_UNIT;
+}
 
 export interface ClaimChallenger {
   address: string;
@@ -112,6 +120,7 @@ export interface CreateClaimParams {
 
 export interface ContractWriteResult {
   txHash: string;
+  explorerTxHash?: string;
   receipt: unknown;
 }
 
@@ -305,22 +314,7 @@ export function mapClaimToVS(rawClaim: ClaimData): VSData {
   };
 }
 
-async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
-  const endpoint = getEndpoint();
-  const rpcUrl = endpoint || "https://rpc-bradbury.genlayer.com";
-
-  const viemClient = createPublicClient({
-    transport: http(rpcUrl),
-  });
-
-  const evmReceipt = await viemClient.waitForTransactionReceipt({
-    hash: evmTxHash as `0x${string}`,
-  });
-
-  if (evmReceipt.status === "reverted") {
-    throw new Error("Transaction reverted on-chain");
-  }
-
+function extractGenlayerTxIdFromLogs(logs: unknown[]): string | null {
   // Bradbury emits CreatedTransaction(bytes32,uint256), not NewTransaction
   const CREATED_TX_ABI = [
     {
@@ -337,11 +331,81 @@ async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
   const events = parseEventLogs({
     abi: CREATED_TX_ABI,
     eventName: "CreatedTransaction",
-    logs: evmReceipt.logs,
+    logs: logs as any,
   });
 
   if (events.length > 0 && (events[0] as any).args?.txId) {
     return (events[0] as any).args.txId as string;
+  }
+
+  const consensusMain = getConsensusMainContractAddress().toLowerCase();
+  const isHex32 = (value: string) => /^0x[0-9a-fA-F]{64}$/.test(value);
+  const isZero = (value: string) => /^0x0{64}$/i.test(value);
+  const isPaddedAddress = (value: string) =>
+    /^0x0{24}[0-9a-fA-F]{40}$/i.test(value);
+  const isTxIdCandidate = (value: string) =>
+    isHex32(value) && !isZero(value) && !isPaddedAddress(value);
+
+  for (const rawLog of logs as any[]) {
+    const logAddress = String(rawLog?.address ?? "").toLowerCase();
+    const topics = Array.isArray(rawLog?.topics) ? rawLog.topics : [];
+    if (logAddress !== consensusMain || topics.length < 2) {
+      continue;
+    }
+
+    const candidate = String(topics[1] ?? "");
+    if (isTxIdCandidate(candidate)) {
+      return candidate;
+    }
+  }
+
+  const counts = new Map<string, number>();
+  for (const rawLog of logs as any[]) {
+    const topics = Array.isArray(rawLog?.topics) ? rawLog.topics : [];
+    for (const topic of topics.slice(1)) {
+      const candidate = String(topic ?? "");
+      if (!isTxIdCandidate(candidate)) {
+        continue;
+      }
+      counts.set(candidate, (counts.get(candidate) ?? 0) + 1);
+    }
+  }
+
+  let bestCandidate: string | null = null;
+  let bestCount = 1;
+  counts.forEach((count, candidate) => {
+    if (count > bestCount) {
+      bestCandidate = candidate;
+      bestCount = count;
+    }
+  });
+
+  if (bestCandidate) {
+    return bestCandidate;
+  }
+
+  return null;
+}
+
+async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
+  const endpoint = getEndpoint();
+  const rpcUrl = endpoint || "https://rpc-bradbury.genlayer.com";
+
+  const viemClient = createPublicClient({
+    transport: http(rpcUrl),
+  });
+
+  const evmReceipt = await viemClient.waitForTransactionReceipt({
+    hash: evmTxHash as `0x${string}`,
+  });
+
+  if (evmReceipt.status === "reverted") {
+    throw new Error("Transaction reverted on-chain");
+  }
+
+  const txId = extractGenlayerTxIdFromLogs(evmReceipt.logs);
+  if (txId) {
+    return txId;
   }
 
   return evmTxHash;
@@ -351,14 +415,12 @@ async function writeAndWait(
   functionName: string,
   wallet: string,
   args: unknown[],
-  value: number
+  value: bigint
 ): Promise<ContractWriteResult & { pending?: boolean }> {
   const isBrowser =
     typeof window !== "undefined" && !!(window as any).ethereum;
 
-  const evmTxHash = isBrowser
-    ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
-    : await sendRpcWriteTransaction(wallet, functionName, args, value);
+  const evmTxHash = await sendRpcWriteTransaction(wallet, functionName, args, value);
 
   // --- browser (MetaMask) path: confirm at EVM level, skip consensus poll ---
   if (isBrowser) {
@@ -378,12 +440,15 @@ async function writeAndWait(
       if (evmReceipt?.status === "reverted") {
         throw new Error("Transaction reverted on-chain");
       }
+      const explorerTxHash =
+        extractGenlayerTxIdFromLogs(evmReceipt?.logs ?? []) || evmTxHash;
+      return { txHash: evmTxHash, explorerTxHash, receipt: null, pending: true };
     } catch (err: any) {
       if (err?.message === "Transaction reverted on-chain") throw err;
       // timeout / RPC hiccup – tx was already submitted via MetaMask
     }
 
-    return { txHash: evmTxHash, receipt: null, pending: true };
+    return { txHash: evmTxHash, explorerTxHash: evmTxHash, receipt: null, pending: true };
   }
 
   // --- SDK / server-key path: try the full consensus wait with a safety cap ---
@@ -401,115 +466,26 @@ async function writeAndWait(
         setTimeout(() => reject(new Error("consensus-timeout")), 60_000)
       ),
     ]);
-    return { txHash: evmTxHash, receipt };
+    return { txHash: evmTxHash, explorerTxHash: genlayerTxId, receipt };
   } catch {
-    return { txHash: evmTxHash, receipt: null, pending: true };
+    const explorerTxHash = await extractGenlayerTxId(evmTxHash).catch(() => evmTxHash);
+    return { txHash: evmTxHash, explorerTxHash, receipt: null, pending: true };
   }
-}
-
-function makeCalldataObject(functionName: string, args: unknown[]) {
-  const payload: Record<string, unknown> = { method: functionName };
-  if (args.length > 0) {
-    payload.args = args;
-  }
-  return payload;
-}
-
-function encodeGenlayerWrite(functionName: string, args: unknown[]) {
-  const encodedCall = genlayerAbi.calldata.encode(
-    makeCalldataObject(functionName, args) as any
-  );
-  return genlayerAbi.transactions.serialize([encodedCall, false]);
-}
-
-async function requestGenlayerRpc<T>(method: string, params: unknown[]) {
-  const endpoint = getEndpoint();
-  if (!endpoint) {
-    throw new Error("GenLayer RPC endpoint is not configured");
-  }
-
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: Date.now(),
-      method,
-      params,
-    }),
-  });
-
-  const payload = await response.json();
-  if (payload?.error) {
-    throw new Error(payload.error.message || `GenLayer RPC ${method} failed`);
-  }
-
-  return payload.result as T;
 }
 
 async function sendRpcWriteTransaction(
   wallet: string,
   functionName: string,
   args: unknown[],
-  value: number
+  value: bigint
 ) {
   const client = createGenlayerClient(wallet);
   return client.writeContract({
     address: CONTRACT_ADDRESS,
     functionName,
     args: args as any,
-    value: BigInt(value),
+    value,
   });
-}
-
-async function sendBrowserWriteTransaction(
-  wallet: string,
-  functionName: string,
-  args: unknown[],
-  value: number
-) {
-  const ethereum = (window as any).ethereum;
-  if (!ethereum) {
-    throw new Error("Browser wallet not available");
-  }
-
-  await ensureGenlayerWalletChain(ethereum);
-
-  const encodedTx = encodeGenlayerWrite(functionName, args);
-  const [nonce, gasPrice] = await Promise.all([
-    requestGenlayerRpc<string>("eth_getTransactionCount", [wallet, "pending"]),
-    requestGenlayerRpc<string>("eth_gasPrice", []),
-  ]);
-
-  const data = encodeFunctionData({
-    abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
-    functionName: "addTransaction",
-    args: [
-      wallet,
-      CONTRACT_ADDRESS,
-      BigInt(3),
-      BigInt(3),
-      encodedTx,
-      BigInt(0),
-    ],
-  });
-
-  return (await ethereum.request({
-    method: "eth_sendTransaction",
-    params: [
-      {
-        from: wallet,
-        to: getConsensusMainContractAddress(),
-        data,
-        type: "0x0",
-        nonce,
-        gasPrice,
-        value: toHex(BigInt(value)),
-      },
-    ],
-  })) as string;
 }
 
 async function inferCreatedClaimId(wallet: string) {
@@ -702,6 +678,7 @@ export async function createClaim(wallet: string, params: CreateClaimParams): Pr
   // Capture current count before submitting so we can predict the new ID
   // even when consensus hasn't finalised yet (pending writes).
   const countBefore = await getClaimCount();
+  const stakeWei = genToWei(params.stake_amount);
 
   const writeResult = await writeAndWait(
     "create_claim",
@@ -724,7 +701,7 @@ export async function createClaim(wallet: string, params: CreateClaimParams): Pr
       params.visibility ?? "public",
       params.invite_key ?? "",
     ],
-    params.stake_amount
+    stakeWei
   );
 
   // For pending writes the contract state hasn't updated yet,
@@ -749,6 +726,7 @@ export async function createRematch(
   params: Omit<CreateClaimParams, "parent_id">
 ): Promise<ClaimWriteResult> {
   const countBefore = await getClaimCount();
+  const stakeWei = genToWei(params.stake_amount);
 
   const writeResult = await writeAndWait(
     "create_rematch",
@@ -771,7 +749,7 @@ export async function createRematch(
       params.visibility ?? "public",
       params.invite_key ?? "",
     ],
-    params.stake_amount
+    stakeWei
   );
 
   const claimId = (writeResult as any).pending
@@ -794,11 +772,12 @@ export async function challengeClaim(
   stakeAmount: number,
   inviteKey = ""
 ) {
+  const stakeWei = genToWei(stakeAmount);
   const result = await writeAndWait(
     "challenge_claim",
     wallet,
     [claimId, stakeAmount, inviteKey],
-    stakeAmount
+    stakeWei
   );
 
   void requestIndexedClaimRefresh(claimId, inviteKey);
@@ -811,7 +790,7 @@ export async function resolveClaim(
   claimId: number,
   inviteKey = ""
 ) {
-  const result = await writeAndWait("resolve_claim", wallet, [claimId], 0);
+  const result = await writeAndWait("resolve_claim", wallet, [claimId], BigInt(0));
   void requestIndexedClaimRefresh(claimId, inviteKey);
   return result;
 }
@@ -821,7 +800,7 @@ export async function cancelClaim(
   claimId: number,
   inviteKey = ""
 ) {
-  const result = await writeAndWait("cancel_claim", wallet, [claimId], 0);
+  const result = await writeAndWait("cancel_claim", wallet, [claimId], BigInt(0));
   void requestIndexedClaimRefresh(claimId, inviteKey);
   return result;
 }

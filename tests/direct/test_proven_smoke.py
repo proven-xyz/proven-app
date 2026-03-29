@@ -1,3 +1,6 @@
+WEI = 10**18
+
+
 def _create_claim(
     contract,
     direct_vm,
@@ -47,6 +50,40 @@ def test_create_claim_smoke(direct_vm, direct_deploy, direct_alice):
     assert claim["creator_stake"] == 5
     assert claim["state"] == "open"
     assert claim["challenger_count"] == 0
+    assert claim["total_pot"] == 5
+
+
+def test_create_claim_accepts_browser_scaled_value(
+    direct_vm,
+    direct_deploy,
+    direct_alice,
+):
+    contract = direct_deploy("contracts/proven.py")
+
+    direct_vm.sender = direct_alice
+    direct_vm.value = 5 * WEI
+    claim_id = contract.create_claim(
+        "Will BTC close above 100k by the deadline?",
+        "Yes",
+        "No",
+        "https://example.com/market",
+        1_700_000_000,
+        5,
+        "crypto",
+        0,
+        "binary",
+        "pool",
+        0,
+        "",
+        "",
+        2,
+        "public",
+        "",
+    )
+
+    direct_vm.value = 0
+    claim = contract.get_claim(claim_id)
+    assert claim["creator_stake"] == 5
     assert claim["total_pot"] == 5
 
 
