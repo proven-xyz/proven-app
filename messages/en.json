@@ -183,6 +183,11 @@
         "questionHint": "Name the asset, threshold, and deadline explicitly.",
         "settlementTemplate": "Resolve this using the visible spot price on the linked source at the deadline time. Apply any threshold or line exactly as written."
       },
+      "tech": {
+        "sourceHint": "Use an official product blog, press release, or changelog that will still reflect the announced fact at settlement.",
+        "questionHint": "Name the product, company, and the concrete milestone or date window being judged.",
+        "settlementTemplate": "Resolve this only from the linked official source at the deadline. Treat 'announced' as a public, attributable statement from the named party."
+      },
       "cultura": {
         "sourceHint": "Prefer the official publication, awards page, or primary entertainment source behind the claim.",
         "questionHint": "Anchor the claim to a concrete release, award, ranking, or publication event.",

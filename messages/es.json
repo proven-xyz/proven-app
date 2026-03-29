@@ -183,6 +183,11 @@
         "questionHint": "Nombra el activo, el umbral, y el deadline de forma explicita.",
         "settlementTemplate": "Resuelve esto usando el spot price visible en la fuente enlazada al momento del deadline. Aplica cualquier umbral o linea exactamente como fue escrito."
       },
+      "tech": {
+        "sourceHint": "Usa un blog oficial del producto, comunicado de prensa, o changelog que siga reflejando el hecho anunciado al momento del settlement.",
+        "questionHint": "Nombra el producto, la empresa, y el hito concreto o ventana de fechas que se va a juzgar.",
+        "settlementTemplate": "Resuelve esto solo con la fuente oficial enlazada al momento del deadline. Trata 'anunciado' como una declaracion publica y atribuible de la parte nombrada."
+      },
       "cultura": {
         "sourceHint": "Prefiere la publicacion oficial, la pagina del premio, o la fuente primaria de entretenimiento detras del claim.",
         "questionHint": "Ancla el claim a un lanzamiento, premio, ranking, o publicacion concretos.",

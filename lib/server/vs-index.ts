@@ -423,6 +423,22 @@ export async function getVsDetail(vsId: number) {
       return claimRowToVSData(row, challengerRows);
     }
 
+    if (!row) {
+      const [lastSyncAtValue, lastClaimCountValue] = await Promise.all([
+        getSyncMeta("last_sync_at"),
+        getSyncMeta("last_claim_count"),
+      ]);
+
+      const lastSyncAt = Number(lastSyncAtValue ?? "0");
+      const lastClaimCount = Number(lastClaimCountValue ?? "0");
+      const hasFreshIndex =
+        lastSyncAt > 0 && isFresh(lastSyncAt, LIST_FRESHNESS_MS);
+
+      if (hasFreshIndex && (lastClaimCount === 0 || vsId > lastClaimCount)) {
+        return null;
+      }
+    }
+
     const freshClaim = await refreshIndexedClaim({ claimId: vsId });
     if (freshClaim) {
       return mapClaimToVS(freshClaim);
