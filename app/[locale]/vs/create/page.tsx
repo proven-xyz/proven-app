@@ -5,7 +5,6 @@ import {
   useId,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { motion } from "framer-motion";
@@ -20,13 +19,14 @@ import {
   type CreateClaimParams,
   type VSData,
 } from "@/lib/contract";
-import { getExplorerTxUrl } from "@/lib/genlayer";
-import { savePendingVS, type PendingVS } from "@/lib/pending-vs";
+import { getExplorerTxUrl, getExplorerUrl } from "@/lib/genlayer";
+import { removePendingVS, savePendingVS, type PendingVS } from "@/lib/pending-vs";
 import {
   CATEGORY_GUIDANCE,
   DEADLINE_PRESET_IDS,
   DEADLINE_PRESET_SECONDS,
   MIN_STAKE,
+  PREFILLS,
   getShareUrl,
   normalizeResolutionSource,
 } from "@/lib/constants";
@@ -36,11 +36,10 @@ import {
 } from "@/lib/private-links";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { GlassCard, Button, ListboxField } from "@/components/ui";
+import { GlassCard, Button, Input, ListboxField } from "@/components/ui";
 import CreateChallengeTicket from "@/components/vs/CreateChallengeTicket";
 import Confetti from "@/components/Confetti";
 import {
-  Calendar,
   Check,
   ChevronDown,
   Clock,
@@ -117,9 +116,14 @@ function parseChallengeExamples(raw: unknown): ChallengeExampleRow[] {
   return out;
 }
 
-function toDatetimeLocalValue(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function formatLocalDateInputValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function formatLocalTimeInputValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(11, 16);
 }
 
 export default function CreatePage() {
@@ -149,8 +153,9 @@ export default function CreatePage() {
   const [creatorPos, setCreatorPos] = useState("");
   const [opponentPos, setOpponentPos] = useState("");
   const [url, setUrl] = useState("");
-  const [deadlinePreset, setDeadlinePreset] = useState(7200);
-  const [customDeadline, setCustomDeadline] = useState("");
+  const [deadlinePreset, setDeadlinePreset] = useState<number | null>(null);
+  const [customDeadlineDate, setCustomDeadlineDate] = useState("");
+  const [customDeadlineTime, setCustomDeadlineTime] = useState("");
   const [stake, setStake] = useState(5);
   const [customStakeDraft, setCustomStakeDraft] = useState("");
   const [customStakeFocused, setCustomStakeFocused] = useState(false);
@@ -169,7 +174,9 @@ export default function CreatePage() {
   const [loading, setLoading] = useState(false);
   const [loadingParent, setLoadingParent] = useState(false);
   const [created, setCreated] = useState<number | null>(null);
+  const [createdPending, setCreatedPending] = useState(false);
   const [createdTxHash, setCreatedTxHash] = useState("");
+  const [createdExplorerTxHash, setCreatedExplorerTxHash] = useState("");
   const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -177,57 +184,6 @@ export default function CreatePage() {
   const [hydratedFromRematch, setHydratedFromRematch] = useState(false);
   const [rematchId, setRematchId] = useState<number | null>(null);
   /** Evita mismatch de hidratación: fechas relativas y `min` del input dependen de zona horaria y del reloj del cliente. */
-  const [deadlineClientReady, setDeadlineClientReady] = useState(false);
-
-  const deadlineDatetimeInputRef = useRef<HTMLInputElement>(null);
-
-  useLayoutEffect(() => {
-    setDeadlineClientReady(true);
-  }, []);
-
-  const deadlineRowLabel = useMemo(() => {
-    if (customDeadline.trim()) {
-      const d = new Date(customDeadline);
-      if (Number.isNaN(d.getTime())) {
-        return { text: t("deadlineDatePlaceholder"), isPlaceholder: true };
-      }
-      return {
-        text: new Intl.DateTimeFormat(locale, {
-          dateStyle: "short",
-          timeStyle: "short",
-        }).format(d),
-        isPlaceholder: false,
-      };
-    }
-    if (!deadlineClientReady) {
-      return { text: t("deadlineDatePlaceholder"), isPlaceholder: true };
-    }
-    const d = new Date(Date.now() + deadlinePreset * 1000);
-    return {
-      text: new Intl.DateTimeFormat(locale, {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(d),
-      isPlaceholder: false,
-    };
-  }, [customDeadline, deadlinePreset, locale, t, deadlineClientReady]);
-
-  const minDatetimeLocal = useMemo(
-    () =>
-      deadlineClientReady ? toDatetimeLocalValue(new Date()) : undefined,
-    [deadlineClientReady],
-  );
-
-  const openDeadlinePicker = () => {
-    const el = deadlineDatetimeInputRef.current;
-    if (!el) return;
-    try {
-      (el as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-    } catch {
-      el.click();
-    }
-  };
-
   const categoryGuidance =
     CATEGORY_GUIDANCE[category as keyof typeof CATEGORY_GUIDANCE] ??
     CATEGORY_GUIDANCE.custom;
@@ -267,6 +223,20 @@ export default function CreatePage() {
     isOneToMany ||
     handicapLine.trim().length > 0 ||
     settlementRule.trim().length > 0;
+  const customDeadline = useMemo(() => {
+    if (!customDeadlineDate || !customDeadlineTime) {
+      return "";
+    }
+    return `${customDeadlineDate}T${customDeadlineTime}`;
+  }, [customDeadlineDate, customDeadlineTime]);
+  const minCustomDeadlineDate = formatLocalDateInputValue(new Date());
+
+  function applyDeadlinePreset(seconds: number) {
+    const presetDate = new Date(Date.now() + seconds * 1000);
+    setDeadlinePreset(seconds);
+    setCustomDeadlineDate(formatLocalDateInputValue(presetDate));
+    setCustomDeadlineTime(formatLocalTimeInputValue(presetDate));
+  }
 
   const payoutPreview = useMemo(() => {
     const multiple = Number(fixedOddsMultiple);
@@ -391,6 +361,53 @@ export default function CreatePage() {
     };
   }, [hydratedFromRematch, rematchId, t]);
 
+  useEffect(() => {
+    if (!created || !createdPending) {
+      return;
+    }
+
+    const createdId = created;
+    let cancelled = false;
+
+    async function syncCreatedClaim() {
+      const liveClaim = await getVS(createdId, {
+        inviteKey: createdInviteKey,
+        viewerAddress: address ?? undefined,
+      }).catch(() => null);
+
+      if (cancelled || !liveClaim) {
+        return;
+      }
+
+      removePendingVS(createdId);
+      setCreatedPending(false);
+      setShowConfetti(true);
+      toast.success(rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded"));
+      setTimeout(() => setShowConfetti(false), 4000);
+    }
+
+    void syncCreatedClaim();
+    const intervalId = setInterval(syncCreatedClaim, 8000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [address, created, createdInviteKey, createdPending, rematchId, t]);
+
+  function prefill(catId: string) {
+    setCategory(catId);
+    const prefillValues = PREFILLS[catId];
+    if (prefillValues) {
+      setQuestion(prefillValues.q);
+      setCreatorPos(prefillValues.a);
+      setOpponentPos(prefillValues.b);
+      setUrl(prefillValues.u);
+      if (!settlementRule.trim()) {
+        setSettlementRule(t(`guidance.${catId}.settlementTemplate`));
+      }
+    }
+  }
   async function handleSubmit() {
     if (!question || !creatorPos || !opponentPos) {
       toast.error(t("fillAllFields"));
@@ -406,9 +423,12 @@ export default function CreatePage() {
       return;
     }
 
-    const deadlineTimestamp = customDeadline
-      ? Math.floor(new Date(customDeadline).getTime() / 1000)
-      : Math.floor(Date.now() / 1000) + deadlinePreset;
+    if (!customDeadline) {
+      toast.error(t("completeExactDeadline"));
+      return;
+    }
+
+    const deadlineTimestamp = Math.floor(new Date(customDeadline).getTime() / 1000);
 
     if (!Number.isFinite(deadlineTimestamp) || deadlineTimestamp <= Math.floor(Date.now() / 1000)) {
       toast.error(t("invalidDeadline"));
@@ -469,7 +489,9 @@ export default function CreatePage() {
       );
       if (result.claimId) {
         setCreated(result.claimId);
+        setCreatedPending(Boolean(result.pending));
         setCreatedTxHash(result.txHash || "");
+        setCreatedExplorerTxHash(result.explorerTxHash || "");
         setCreatedInviteKey(inviteKey);
         if (inviteKey) {
           rememberPrivateInviteKey(result.claimId, inviteKey);
@@ -498,8 +520,10 @@ export default function CreatePage() {
       } else {
         router.push("/dashboard");
       }
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 4000);
+      if (!result.pending) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 4000);
+      }
     } catch (err: any) {
       toast.error(err.message || t("errorCreating"));
     } finally {
@@ -533,10 +557,18 @@ export default function CreatePage() {
                 PROVEN.
               </motion.div>
               <h2 className="font-display text-2xl font-bold mb-2 tracking-tight">
-                {rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded")}
+                {createdPending
+                  ? t("pendingTitle")
+                  : rematchId
+                  ? t("rematchCreatedAndFunded")
+                  : t("vsCreatedAndFunded")}
               </h2>
               <p className="text-pv-muted mb-7">
-                {createdInviteKey ? t("sendThisPrivateLink") : t("sendThisLink")}
+                {createdPending
+                  ? t("pendingHint")
+                  : createdInviteKey
+                  ? t("sendThisPrivateLink")
+                  : t("sendThisLink")}
               </p>
 
               <GlassCard className="mb-5">
@@ -575,19 +607,37 @@ export default function CreatePage() {
                 </a>
               </div>
 
-              {createdTxHash && (
-                <p className="text-pv-muted text-xs mb-5 font-mono">
-                  Tx:{" "}
+              <div className="space-y-2 mb-5">
+                {createdPending && createdTxHash && (
+                  <p className="text-pv-muted text-xs font-mono">
+                    {t("walletTx")}: {createdTxHash.slice(0, 10)}...{createdTxHash.slice(-8)}
+                  </p>
+                )}
+                {createdExplorerTxHash &&
+                  (!createdPending || createdExplorerTxHash !== createdTxHash) && (
+                  <p className="text-pv-muted text-xs font-mono">
+                    {createdPending ? t("consensusTx") : "Tx"}:{" "}
+                    <a
+                      href={getExplorerTxUrl(createdExplorerTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-pv-emerald hover:underline"
+                    >
+                      {createdExplorerTxHash.slice(0, 10)}...{createdExplorerTxHash.slice(-8)}
+                    </a>
+                  </p>
+                )}
+                <p className="text-pv-muted text-xs">
                   <a
-                    href={getExplorerTxUrl(createdTxHash)}
+                    href={getExplorerUrl()}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-pv-emerald hover:underline"
                   >
-                    {createdTxHash.slice(0, 10)}...{createdTxHash.slice(-8)}
+                    {t("openExplorer")}
                   </a>
                 </p>
-              )}
+              </div>
 
               <div className="flex gap-3 justify-center">
                 <Link href={`/vs/${created}`}>
@@ -602,6 +652,8 @@ export default function CreatePage() {
                   size="sm"
                   onClick={() => {
                     setCreated(null);
+                    setCreatedPending(false);
+                    setCreatedTxHash("");
                     setQuestion("");
                     setCreatorPos("");
                     setOpponentPos("");
@@ -609,6 +661,7 @@ export default function CreatePage() {
                     setHandicapLine("");
                     setSettlementRule("");
                     setVisibility("public");
+                    setCreatedExplorerTxHash("");
                     setCreatedInviteKey("");
                   }}
                 >
@@ -925,18 +978,13 @@ export default function CreatePage() {
 
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                 {DEADLINE_PRESETS.map((preset) => {
-                  const selected =
-                    deadlinePreset === preset.seconds &&
-                    !customDeadline.trim();
+                  const selected = deadlinePreset === preset.seconds;
                   return (
                     <motion.button
                       key={preset.id}
                       type="button"
                       whileTap={{ scale: 0.97 }}
-                      onClick={() => {
-                        setDeadlinePreset(preset.seconds);
-                        setCustomDeadline("");
-                      }}
+                      onClick={() => applyDeadlinePreset(preset.seconds)}
                       aria-pressed={selected}
                       className={`min-w-0 rounded-lg border px-1.5 py-2 font-display text-[11px] font-bold leading-tight transition-[border-color,background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg sm:px-2 sm:py-2.5 sm:text-xs ${
                         selected
@@ -950,42 +998,33 @@ export default function CreatePage() {
                 })}
               </div>
 
-              <div className="flex gap-2">
-                <input
-                  ref={deadlineDatetimeInputRef}
-                  type="datetime-local"
-                  className="sr-only"
-                  aria-label={t("orChooseExactDate")}
-                  min={minDatetimeLocal ?? undefined}
-                  value={customDeadline}
-                  onChange={(event) => setCustomDeadline(event.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={openDeadlinePicker}
-                  className="flex min-h-[3.25rem] min-w-0 flex-1 items-center rounded-lg border border-white/[0.12] bg-pv-surface px-4 text-left font-display text-sm tabular-nums transition-[border-color,background-color,color] hover:border-pv-emerald/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg"
-                  aria-label={t("deadlinePickDate")}
-                >
-                  <span
-                    className={
-                      deadlineRowLabel.isPlaceholder
-                        ? "text-pv-muted"
-                        : "text-pv-text"
-                    }
-                  >
-                    {deadlineRowLabel.text}
-                  </span>
-                </button>
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.97 }}
-                  onClick={openDeadlinePicker}
-                  aria-label={t("deadlinePickDate")}
-                  className="flex min-h-[3.25rem] min-w-[3.25rem] shrink-0 items-center justify-center rounded-lg border border-white/[0.12] bg-pv-surface text-pv-emerald transition-[border-color,background-color,box-shadow] hover:border-pv-emerald/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg"
-                >
-                  <Calendar className="h-5 w-5" aria-hidden />
-                </motion.button>
-              </div>
+              <GlassCard className="p-4 sm:p-5">
+                <p className="label mb-3">{t("orChooseExactDate")}</p>
+                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                  <Input
+                    type="date"
+                    label={`${t("exactDate")} *`}
+                    min={minCustomDeadlineDate}
+                    value={customDeadlineDate}
+                    onChange={(event) => {
+                      setDeadlinePreset(null);
+                      setCustomDeadlineDate(event.target.value);
+                    }}
+                    className="text-sm [color-scheme:dark]"
+                  />
+                  <Input
+                    type="time"
+                    label={`${t("exactTime")} *`}
+                    value={customDeadlineTime}
+                    onChange={(event) => {
+                      setDeadlinePreset(null);
+                      setCustomDeadlineTime(event.target.value);
+                    }}
+                    disabled={!customDeadlineDate}
+                    className="text-sm [color-scheme:dark] disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              </GlassCard>
             </div>
           </GlassCard>
         </AnimatedItem>

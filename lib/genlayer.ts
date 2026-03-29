@@ -169,8 +169,12 @@ export function createGenlayerClientWithKey(privateKey: string) {
   );
 }
 
+export function getExplorerUrl() {
+  return `${DEFAULT_EXPLORER_URL}/txs`;
+}
+
 export function getExplorerTxUrl(txHash: string) {
-  return `${DEFAULT_EXPLORER_URL}/transactions/${txHash}`;
+  return `${DEFAULT_EXPLORER_URL}/tx/${txHash}`;
 }
 
 export { createAccount };

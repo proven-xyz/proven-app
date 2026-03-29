@@ -29,6 +29,7 @@ VISIBILITY_PRIVATE = "private"
 
 MAX_CHALLENGERS = 100
 DEFAULT_FIXED_PAYOUT_BPS = 20000
+GEN_DECIMALS = 10**18
 MIN_STAKE = 2
 
 
@@ -165,11 +166,13 @@ class ProvenContract(gl.Contract):
             return "Prefer the official publication, awards page, or primary entertainment source behind the claim."
         return "Prefer the linked primary source over general knowledge."
 
-    def _require_stake_value(self, stake_amount: u256):
-        if stake_amount < u256(MIN_STAKE):
+    def _require_stake_value(self, stake_amount) -> u256:
+        normalized_stake = u256(stake_amount)
+
+        if normalized_stake < u256(MIN_STAKE):
             raise gl.vm.UserError(f"Stake must be at least {MIN_STAKE}")
-        if gl.message.value != stake_amount:
-            raise gl.vm.UserError("Sent value must equal stake amount")
+
+        return normalized_stake
 
     def _gross_payout(self, stake_amount: u256, payout_bps: u256) -> u256:
         return u256((stake_amount * payout_bps) // u256(10000))
@@ -307,7 +310,7 @@ class ProvenContract(gl.Contract):
             raise gl.vm.UserError("Verification source is required")
         if visibility == VISIBILITY_PRIVATE and not invite_key:
             raise gl.vm.UserError("Private claims require an invite key")
-        self._require_stake_value(stake_amount)
+        stake_amount = self._require_stake_value(stake_amount)
 
         if parent_id > u256(0) and parent_id not in self.claims:
             raise gl.vm.UserError("Parent claim not found")
@@ -462,7 +465,7 @@ class ProvenContract(gl.Contract):
             normalized_invite_key = self._normalize_invite_key(invite_key)
             if not normalized_invite_key or normalized_invite_key != claim.invite_key:
                 raise gl.vm.UserError("Valid private invite link required")
-        self._require_stake_value(stake_amount)
+        stake_amount = self._require_stake_value(stake_amount)
 
         count = int(claim.challenger_count)
         if count >= int(claim.max_challengers):
