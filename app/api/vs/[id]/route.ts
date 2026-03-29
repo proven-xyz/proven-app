@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import {
   createApiError,
@@ -10,15 +10,13 @@ import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
 
-type Props = {
-  params: {
-    id: string;
-  };
-};
-
-export async function GET(request: Request, { params }: Props) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const vsId = parsePositiveIntegerParam(params.id);
+    const { id } = await params;
+    const vsId = parsePositiveIntegerParam(id);
     if (!vsId) {
       return NextResponse.json(
         createApiError("invalid_parameter", "Invalid VS id"),

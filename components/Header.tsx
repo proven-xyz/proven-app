@@ -79,17 +79,20 @@ export default function Header() {
   const t = useTranslations("header");
   const tc = useTranslations("common");
 
+  /** Landing: presentación del proyecto; nav mínimo (solo Explore). */
+  const isPresentationHome = pathname === "/";
+
   const xmtpNavEnabled = useMemo(() => isXmtpFeatureEnabled(), []);
 
   const NAV_ITEMS = useMemo(() => {
     const items: Array<{
-      href: "/vs/create" | "/explore" | "/dashboard" | "/messages";
+      href: "/vs/create" | "/explorer" | "/dashboard" | "/messages";
       label: string;
       accent: boolean;
       mobileLabel?: string;
     }> = [
       { href: "/vs/create", label: t("challenge"), accent: true },
-      { href: "/explore", label: t("explore"), accent: false },
+      { href: "/explorer", label: t("explore"), accent: false },
       { href: "/dashboard", label: t("myVS"), accent: false },
     ];
     if (xmtpNavEnabled) {
@@ -129,146 +132,183 @@ export default function Header() {
   }, [walletMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 backdrop-blur-[20px]">
+    <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.08] bg-pv-surface/75 pt-[env(safe-area-inset-top)] backdrop-blur-[20px]">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="group flex items-center gap-2.5">
-          <span className="font-display text-[17px] font-bold tracking-tight">
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="group font-display text-lg font-bold tracking-tight text-pv-emerald transition-colors duration-300 ease-in-out sm:text-xl">
             PROVEN
-            <motion.span
-              className="ml-[1px] inline-block text-[1.38em] leading-none text-pv-emerald"
-              whileHover={{ scale: 1.3, rotate: -8 }}
-              transition={{ type: "spring", stiffness: 400 }}
+            <span
+              className="ml-[1px] inline-block origin-center leading-none text-pv-text transition-[color,transform] duration-300 ease-out will-change-transform group-hover:scale-[1.22] group-hover:-rotate-6 group-hover:text-pv-emerald"
+              aria-hidden
             >
               .
-            </motion.span>
+            </span>
           </span>
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden items-center gap-2 md:flex lg:gap-3">
-          {isConnected &&
-            NAV_ITEMS.map((item) => {
-              const isActive = pathname === item.href;
-              return (
+        {isPresentationHome ? (
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex items-center gap-1 font-mono text-[10px] sm:text-xs">
+              <Link
+                href={pathname || "/"}
+                locale="es"
+                className={`px-1 transition-colors ${
+                  locale === "es"
+                    ? "font-bold text-pv-text"
+                    : "text-pv-muted hover:text-pv-text"
+                }`}
+              >
+                ES
+              </Link>
+              <span className="text-pv-border">|</span>
+              <Link
+                href={pathname || "/"}
+                locale="en"
+                className={`px-1 transition-colors ${
+                  locale === "en"
+                    ? "font-bold text-pv-text"
+                    : "text-pv-muted hover:text-pv-text"
+                }`}
+              >
+                EN
+              </Link>
+            </div>
+            <Link
+              href="/explorer"
+              className="btn-compact-primary px-4 py-1.5 text-[12px] focus-ring sm:text-[13px]"
+            >
+              {t("explore")}
+            </Link>
+          </div>
+        ) : (
+          <>
+            {/* Desktop nav */}
+            <div className="hidden items-center gap-2 md:flex lg:gap-3">
+              {isConnected &&
+                NAV_ITEMS.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`chip relative text-[13px] transition-all ${
+                        item.accent
+                          ? "border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-pv-emerald"
+                          : isActive
+                          ? "border-white/[0.32] bg-white/[0.06] text-pv-text"
+                          : "text-pv-muted hover:border-white/[0.22] hover:text-pv-text"
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+
+              {/* Language switcher */}
+              <div className="flex items-center gap-1 font-mono text-xs">
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`chip relative text-[13px] transition-all ${
-                    item.accent
-                      ? "border-pv-emerald/[0.28] bg-pv-emerald/[0.08] text-pv-emerald"
-                      : isActive
-                      ? "border-white/[0.32] bg-white/[0.06] text-pv-text"
-                      : "text-pv-muted hover:border-white/[0.22] hover:text-pv-text"
+                  href={pathname || "/"}
+                  locale="es"
+                  className={`px-1 transition-colors ${
+                    locale === "es"
+                      ? "font-bold text-pv-text"
+                      : "text-pv-muted hover:text-pv-text"
                   }`}
                 >
-                  {item.label}
+                  ES
                 </Link>
-              );
-            })}
+                <span className="text-pv-border">|</span>
+                <Link
+                  href={pathname || "/"}
+                  locale="en"
+                  className={`px-1 transition-colors ${
+                    locale === "en"
+                      ? "font-bold text-pv-text"
+                      : "text-pv-muted hover:text-pv-text"
+                  }`}
+                >
+                  EN
+                </Link>
+              </div>
 
-          {/* Language switcher */}
-          <div className="flex items-center gap-1 font-mono text-xs">
-            <Link
-              href={pathname || "/"}
-              locale="es"
-              className={`px-1 transition-colors ${
-                locale === "es"
-                  ? "font-bold text-pv-text"
-                  : "text-pv-muted hover:text-pv-text"
-              }`}
-            >
-              ES
-            </Link>
-            <span className="text-pv-border">|</span>
-            <Link
-              href={pathname || "/"}
-              locale="en"
-              className={`px-1 transition-colors ${
-                locale === "en"
-                  ? "font-bold text-pv-text"
-                  : "text-pv-muted hover:text-pv-text"
-              }`}
-            >
-              EN
-            </Link>
-          </div>
+              {isConnected && address ? (
+                <WalletAccountMenu
+                  address={address}
+                  open={walletMenuOpen}
+                  onOpenChange={setWalletMenuOpen}
+                  onDisconnect={disconnect}
+                  containerRef={walletMenuDesktopRef}
+                  buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={connect}
+                  disabled={isConnecting}
+                  className="btn-compact-primary px-4 py-1.5 text-[13px] focus-ring"
+                >
+                  {isConnecting ? "..." : tc("connect")}
+                </button>
+              )}
+            </div>
 
-          {isConnected && address ? (
-            <WalletAccountMenu
-              address={address}
-              open={walletMenuOpen}
-              onOpenChange={setWalletMenuOpen}
-              onDisconnect={disconnect}
-              containerRef={walletMenuDesktopRef}
-              buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={connect}
-              disabled={isConnecting}
-              className="cursor-pointer rounded px-4 py-1.5 text-[13px] font-bold text-pv-bg transition-all hover:brightness-110 focus-ring disabled:opacity-50 bg-pv-emerald"
-            >
-              {isConnecting ? "..." : tc("connect")}
-            </button>
-          )}
-        </div>
+            {/* Mobile */}
+            <div className="flex items-center gap-2 md:hidden">
+              <div className="flex items-center gap-0.5 font-mono text-[10px]">
+                <Link
+                  href={pathname || "/"}
+                  locale="es"
+                  className={`px-0.5 ${locale === "es" ? "font-bold text-pv-text" : "text-pv-muted"}`}
+                >
+                  ES
+                </Link>
+                <span className="text-pv-border">|</span>
+                <Link
+                  href={pathname || "/"}
+                  locale="en"
+                  className={`px-0.5 ${locale === "en" ? "font-bold text-pv-text" : "text-pv-muted"}`}
+                >
+                  EN
+                </Link>
+              </div>
 
-        {/* Mobile */}
-        <div className="flex items-center gap-2 md:hidden">
-          <div className="flex items-center gap-0.5 font-mono text-[10px]">
-            <Link
-              href={pathname || "/"}
-              locale="es"
-              className={`px-0.5 ${locale === "es" ? "font-bold text-pv-text" : "text-pv-muted"}`}
-            >
-              ES
-            </Link>
-            <span className="text-pv-border">|</span>
-            <Link
-              href={pathname || "/"}
-              locale="en"
-              className={`px-0.5 ${locale === "en" ? "font-bold text-pv-text" : "text-pv-muted"}`}
-            >
-              EN
-            </Link>
-          </div>
-
-          {isConnected && address ? (
-            <WalletAccountMenu
-              address={address}
-              open={walletMenuOpen}
-              onOpenChange={setWalletMenuOpen}
-              onDisconnect={disconnect}
-              containerRef={walletMenuMobileRef}
-              buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={connect}
-              disabled={isConnecting}
-              className="rounded px-3 py-1.5 text-[12px] font-bold text-pv-bg bg-pv-emerald"
-            >
-              {isConnecting ? "..." : tc("connect")}
-            </button>
-          )}
-          {isConnected && (
-            <button
-              type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className="rounded p-1.5 text-pv-muted transition-colors hover:text-pv-text"
-              aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
-            >
-              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          )}
-        </div>
+              {isConnected && address ? (
+                <WalletAccountMenu
+                  address={address}
+                  open={walletMenuOpen}
+                  onOpenChange={setWalletMenuOpen}
+                  onDisconnect={disconnect}
+                  containerRef={walletMenuMobileRef}
+                  buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={connect}
+                  disabled={isConnecting}
+                  className="btn-compact-primary px-3 py-1.5 text-[12px]"
+                >
+                  {isConnecting ? "..." : tc("connect")}
+                </button>
+              )}
+              {isConnected && (
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(!mobileOpen)}
+                  className="rounded p-1.5 text-pv-muted transition-colors hover:text-pv-text"
+                  aria-label={mobileOpen ? t("closeMenu") : t("openMenu")}
+                >
+                  {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Mobile sheet */}
       <AnimatePresence>
-        {mobileOpen && isConnected && (
+        {!isPresentationHome && mobileOpen && isConnected && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}

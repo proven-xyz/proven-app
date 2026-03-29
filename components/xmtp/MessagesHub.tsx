@@ -201,7 +201,7 @@ export default function MessagesHub() {
                   {t("noParticipationDesc")}
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
-                  <Link href="/explore">
+                  <Link href="/explorer">
                     <Button variant="ghost" fullWidth={false} className="!w-auto px-5">
                       {t("goExplore")}
                     </Button>

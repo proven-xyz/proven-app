@@ -5,7 +5,7 @@ import { ZERO_ADDRESS } from "@/lib/constants";
  * VS de demostración (ids negativos). La página /vs/[id] los resuelve sin llamar al contrato.
  * Categorías alineadas con filtros Explore: deportes (Sports), crypto, tech.
  *
- * `stake_amount` define el pool en VS abiertos (píldora $X) y debe encajar con `applyExploreFilters`
+ * `stake_amount` define el pool en listados joinables (píldora $X) y debe encajar con `applyExploreFilters`
  * (min stake: $2+ → ≥2, $5+ → ≥5, $10+ → ≥10, $20+ → ≥20):
  * - crypto $12 → pasa hasta $10+; falla en $20+
  * - tech $4 → solo Any y $2+
@@ -27,6 +27,9 @@ export const SAMPLE_VS: Record<number, VSData> = {
     resolution_summary: "",
     created_at: Math.floor(Date.now() / 1000),
     category: "crypto",
+    market_type: "binary",
+    odds_mode: "pool",
+    max_challengers: 8,
   },
   [-2]: {
     id: -2,
@@ -43,6 +46,9 @@ export const SAMPLE_VS: Record<number, VSData> = {
     resolution_summary: "",
     created_at: Math.floor(Date.now() / 1000),
     category: "tech",
+    market_type: "binary",
+    odds_mode: "pool",
+    max_challengers: 12,
   },
   [-3]: {
     id: -3,
@@ -59,6 +65,9 @@ export const SAMPLE_VS: Record<number, VSData> = {
     resolution_summary: "",
     created_at: Math.floor(Date.now() / 1000),
     category: "deportes",
+    market_type: "binary",
+    odds_mode: "pool",
+    max_challengers: 8,
   },
 };
 

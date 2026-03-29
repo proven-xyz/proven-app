@@ -162,13 +162,13 @@ flowchart TB
 
 ### Trust Boundaries
 
-| Boundary | Trust Level | Verification Mechanism |
-| --- | --- | --- |
-| User to Frontend | Untrusted | MetaMask wallet signature on every write transaction |
-| Frontend to Contract | Authenticated | Transactions signed by user's private key via EIP-1193 |
-| Contract to Web Sources | Semi-trusted | Multiple validators independently fetch and cross-verify |
-| AI Verdict | Consensus-verified | Optimistic Democracy with Equivalence Principle across validators |
-| API Cache to Contract | Internal | Cache is read-only; writes always go direct to contract |
+| Boundary                | Trust Level        | Verification Mechanism                                            |
+| ----------------------- | ------------------ | ----------------------------------------------------------------- |
+| User to Frontend        | Untrusted          | MetaMask wallet signature on every write transaction              |
+| Frontend to Contract    | Authenticated      | Transactions signed by user's private key via EIP-1193            |
+| Contract to Web Sources | Semi-trusted       | Multiple validators independently fetch and cross-verify          |
+| AI Verdict              | Consensus-verified | Optimistic Democracy with Equivalence Principle across validators |
+| API Cache to Contract   | Internal           | Cache is read-only; writes always go direct to contract           |
 
 ---
 
@@ -269,7 +269,6 @@ sequenceDiagram
 
 When a wallet is connected, all write operations are signed by the user's private key via EIP-1193. The Dashboard shows claims where the connected address is creator or challenger, and win/loss stats are calculated from the user's onchain history.
 
-
 ---
 
 ## Quick Start
@@ -296,9 +295,9 @@ cd proven-app && npm install
 npm run dev
 ```
 
-| Service | URL |
-| --- | --- |
-| Frontend | http://localhost:3000 |
+| Service        | URL                      |
+| -------------- | ------------------------ |
+| Frontend       | http://localhost:3000    |
 | Default locale | http://localhost:3000/es |
 
 If you encounter chunk errors in dev mode, start with a clean cache:
@@ -359,8 +358,8 @@ proven-app/
 │   │   ├── page.tsx                      # Landing page — hero VS + open claim previews
 │   │   ├── dashboard/
 │   │   │   └── page.tsx                  # User dashboard — my claims, stats, tabs
-│   │   ├── explore/
-│   │   │   ├── page.tsx                  # Server component — explore entry point
+│   │   ├── explorer/
+│   │   │   ├── page.tsx                  # Server component — Market Explorer entry
 │   │   │   └── ExploreClient.tsx         # Client component — filters, search, grid
 │   │   └── vs/
 │   │       ├── create/
@@ -456,11 +455,11 @@ proven-app/
 
 Claim data is public onchain. Private claims require an `invite` query parameter.
 
-| Method | Path | Description | Auth |
-| --- | --- | --- | --- |
-| GET | `/api/vs` | List all public VS claims. Pass `?refresh=1` to force cache rebuild. | None |
-| GET | `/api/vs/[id]` | Get a single VS by ID. Pass `?invite=KEY` for private claims. | Invite key (private only) |
-| GET | `/api/vs/user/[address]` | Get all VS where the address is creator or challenger. | None |
+| Method | Path                     | Description                                                          | Auth                      |
+| ------ | ------------------------ | -------------------------------------------------------------------- | ------------------------- |
+| GET    | `/api/vs`                | List all public VS claims. Pass `?refresh=1` to force cache rebuild. | None                      |
+| GET    | `/api/vs/[id]`           | Get a single VS by ID. Pass `?invite=KEY` for private claims.        | Invite key (private only) |
+| GET    | `/api/vs/user/[address]` | Get all VS where the address is creator or challenger.               | None                      |
 
 Response headers include `Cache-Control: public, s-maxage=15, stale-while-revalidate=60` for public endpoints. Private claim responses use `Cache-Control: private, no-store`.
 
@@ -468,19 +467,19 @@ Response headers include `Cache-Control: public, s-maxage=15, stale-while-revali
 
 ## Environment Variables
 
-| Variable | Description | Default |
-| --- | --- | --- |
-| `NEXT_PUBLIC_CONTRACT_ADDRESS` | Deployed PROVEN contract address | `0x000...000` |
-| `NEXT_PUBLIC_GENLAYER_RPC` | GenLayer RPC endpoint (overrides default) | `https://rpc-bradbury.genlayer.com` |
-| `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
-| `NEXT_PUBLIC_XMTP_ENV` | XMTP network: `local`, `dev`, or `production` | `dev` (in-app default if unset) |
-| `NEXT_PUBLIC_FEATURE_XMTP` | Enable XMTP UI when `1`, `true`, or `yes` | disabled if unset |
-| `NEXT_PUBLIC_XMTP_APP_VERSION` | App id for XMTP telemetry (e.g. `proven-app/1.0.0`) | `proven-app/0.1` |
-| `GENLAYER_RPC` | Server-side RPC override (not exposed to browser) | Same as public default |
-| `GENLAYER_MAIN_CONTRACT` | Server-side consensus contract override | Same as public default |
-| `TURSO_DATABASE_URL` | Turso/libSQL database URL for the disposable read index | Unset |
-| `TURSO_AUTH_TOKEN` | Turso auth token for the read index | Unset |
-| `CRON_SECRET` | Bearer token protecting `/api/cron/sync` | Unset |
+| Variable                             | Description                                             | Default                                      |
+| ------------------------------------ | ------------------------------------------------------- | -------------------------------------------- |
+| `NEXT_PUBLIC_CONTRACT_ADDRESS`       | Deployed PROVEN contract address                        | `0x000...000`                                |
+| `NEXT_PUBLIC_GENLAYER_RPC`           | GenLayer RPC endpoint (overrides default)               | `https://rpc-bradbury.genlayer.com`          |
+| `NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT` | Consensus main contract address                         | `0x0112Bf6e83497965A5fdD6Dad1E447a6E004271D` |
+| `NEXT_PUBLIC_XMTP_ENV`               | XMTP network: `local`, `dev`, or `production`           | `dev` (in-app default if unset)              |
+| `NEXT_PUBLIC_FEATURE_XMTP`           | Enable XMTP UI when `1`, `true`, or `yes`               | disabled if unset                            |
+| `NEXT_PUBLIC_XMTP_APP_VERSION`       | App id for XMTP telemetry (e.g. `proven-app/1.0.0`)     | `proven-app/0.1`                             |
+| `GENLAYER_RPC`                       | Server-side RPC override (not exposed to browser)       | Same as public default                       |
+| `GENLAYER_MAIN_CONTRACT`             | Server-side consensus contract override                 | Same as public default                       |
+| `TURSO_DATABASE_URL`                 | Turso/libSQL database URL for the disposable read index | Unset                                        |
+| `TURSO_AUTH_TOKEN`                   | Turso auth token for the read index                     | Unset                                        |
+| `CRON_SECRET`                        | Bearer token protecting `/api/cron/sync`                | Unset                                        |
 
 All `NEXT_PUBLIC_*` variables are exposed to the browser. Server-only variables are used by API routes and build scripts.
 
@@ -492,40 +491,40 @@ See [`.env.example`](.env.example) for a commented template and [`docs/xmtp-inte
 
 ### Frontend
 
-| Layer | Technology |
-| --- | --- |
-| Framework | Next.js 14 (App Router) |
-| UI Library | React 18 |
-| Language | TypeScript 5 (strict mode) |
-| Styling | Tailwind CSS 3.4 |
-| Animations | Framer Motion 12 |
-| Icons | Lucide React |
-| Notifications | Sonner |
-| Internationalization | next-intl 3.26 (ES + EN) |
-| Loading Bar | nextjs-toploader |
-| Messaging | XMTP Browser SDK v7 (encrypted peer-to-peer chat) |
+| Layer                | Technology                                        |
+| -------------------- | ------------------------------------------------- |
+| Framework            | Next.js 14 (App Router)                           |
+| UI Library           | React 18                                          |
+| Language             | TypeScript 5 (strict mode)                        |
+| Styling              | Tailwind CSS 3.4                                  |
+| Animations           | Framer Motion 12                                  |
+| Icons                | Lucide React                                      |
+| Notifications        | Sonner                                            |
+| Internationalization | next-intl 3.26 (ES + EN)                          |
+| Loading Bar          | nextjs-toploader                                  |
+| Messaging            | XMTP Browser SDK v7 (encrypted peer-to-peer chat) |
 
 ### Blockchain
 
-| Layer | Technology |
-| --- | --- |
-| Smart Contract | GenLayer Intelligent Contract (Python) |
-| Network | GenLayer Bradbury Testnet (Chain ID: 4221) |
-| Consensus | Optimistic Democracy + Equivalence Principle |
-| Web Verification | `gl.nondet.web.get()` — real-time web fetch |
-| AI Evaluation | `gl.nondet.exec_prompt()` — LLM verdict |
-| Client SDK | genlayer-js 0.23 |
-| Wallet | MetaMask (EIP-1193) |
+| Layer            | Technology                                   |
+| ---------------- | -------------------------------------------- |
+| Smart Contract   | GenLayer Intelligent Contract (Python)       |
+| Network          | GenLayer Bradbury Testnet (Chain ID: 4221)   |
+| Consensus        | Optimistic Democracy + Equivalence Principle |
+| Web Verification | `gl.nondet.web.get()` — real-time web fetch  |
+| AI Evaluation    | `gl.nondet.exec_prompt()` — LLM verdict      |
+| Client SDK       | genlayer-js 0.23                             |
+| Wallet           | MetaMask (EIP-1193)                          |
 
 ### Infrastructure
 
-| Layer | Technology |
-| --- | --- |
-| Hosting | Vercel (recommended) |
-| API Layer | Next.js API Routes (serverless) |
-| Caching | In-memory JSON cache with 15s revalidation |
-| Build Tool | Next.js (Webpack) |
-| Package Manager | npm |
+| Layer           | Technology                                 |
+| --------------- | ------------------------------------------ |
+| Hosting         | Vercel (recommended)                       |
+| API Layer       | Next.js API Routes (serverless)            |
+| Caching         | In-memory JSON cache with 15s revalidation |
+| Build Tool      | Next.js (Webpack)                          |
+| Package Manager | npm                                        |
 
 ---
 
@@ -535,29 +534,29 @@ For full details, see the [implementation checklist](implementation-checklist.md
 
 ### Key Security Properties
 
-| Property | Implementation |
-| --- | --- |
-| Stake custody | Funds held by the contract — non-custodial, no intermediary |
-| Write authorization | Every state-changing call requires a wallet-signed transaction |
-| Self-challenge prevention | Contract rejects `challenge_claim()` if sender equals creator |
-| Duplicate challenge prevention | Contract checks all existing challengers before accepting |
-| Minimum stake enforcement | All stakes must be >= 2 tokens (prevents dust spam) |
-| Fixed-odds liability cap | Creator liability is reserved upfront; challengers cannot exceed available liquidity |
-| Private claim access | Invite key required for both viewing and challenging private claims |
-| Resolution integrity | Multiple validators independently fetch web data and evaluate — consensus required |
-| Cancel safety | Only the creator can cancel, and only before any challenger joins |
+| Property                       | Implementation                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| Stake custody                  | Funds held by the contract — non-custodial, no intermediary                          |
+| Write authorization            | Every state-changing call requires a wallet-signed transaction                       |
+| Self-challenge prevention      | Contract rejects `challenge_claim()` if sender equals creator                        |
+| Duplicate challenge prevention | Contract checks all existing challengers before accepting                            |
+| Minimum stake enforcement      | All stakes must be >= 2 tokens (prevents dust spam)                                  |
+| Fixed-odds liability cap       | Creator liability is reserved upfront; challengers cannot exceed available liquidity |
+| Private claim access           | Invite key required for both viewing and challenging private claims                  |
+| Resolution integrity           | Multiple validators independently fetch web data and evaluate — consensus required   |
+| Cancel safety                  | Only the creator can cancel, and only before any challenger joins                    |
 
 ### Attack Resistance
 
-| Attack Vector | Status | Mechanism |
-| --- | --- | --- |
+| Attack Vector                | Status       | Mechanism                                                             |
+| ---------------------------- | ------------ | --------------------------------------------------------------------- |
 | Unauthorized fund withdrawal | ✅ Mitigated | Only contract logic triggers transfers; no external withdraw function |
-| Self-dealing / wash trading | ✅ Mitigated | Creator cannot challenge their own claim |
-| Stake manipulation | ✅ Mitigated | `gl.message.value` must exactly equal declared stake amount |
-| Oracle manipulation | ✅ Mitigated | Multi-validator independent verification via Optimistic Democracy |
-| Private claim enumeration | ✅ Mitigated | Private claims excluded from all public list endpoints |
-| Challenger overflow | ✅ Mitigated | Hard cap of 100 challengers per claim enforced by contract |
-| Resolution before event | ✅ Mitigated | AI returns UNRESOLVABLE if evidence is insufficient |
+| Self-dealing / wash trading  | ✅ Mitigated | Creator cannot challenge their own claim                              |
+| Stake manipulation           | ✅ Mitigated | `gl.message.value` must exactly equal declared stake amount           |
+| Oracle manipulation          | ✅ Mitigated | Multi-validator independent verification via Optimistic Democracy     |
+| Private claim enumeration    | ✅ Mitigated | Private claims excluded from all public list endpoints                |
+| Challenger overflow          | ✅ Mitigated | Hard cap of 100 challengers per claim enforced by contract            |
+| Resolution before event      | ✅ Mitigated | AI returns UNRESOLVABLE if evidence is insufficient                   |
 
 ---
 
@@ -611,6 +610,7 @@ npm run test:integration:studionet
 ```
 
 The staged workflow uses:
+
 - `genvm-lint` for structural contract validation
 - direct tests for the fastest feedback loop
 - integration smoke tests on `localnet` and `studionet`
@@ -652,7 +652,6 @@ Or import the GitHub repo at [vercel.com](https://vercel.com) and add `NEXT_PUBL
 3. Add env var: `NEXT_PUBLIC_CONTRACT_ADDRESS`
 
 ---
-
 
 <div align="center">
 
