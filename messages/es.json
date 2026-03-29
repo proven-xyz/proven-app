@@ -316,7 +316,7 @@
     }
   },
   "dashboard": {
-    "title": "Mis VS",
+    "title": "MI PANEL",
     "total": "{count} total",
     "new": "+ Nuevo",
     "record": "Record",
@@ -325,14 +325,103 @@
     "tabAll": "Todos",
     "tabActive": "Activos",
     "tabDone": "Resueltos",
+    "searchChallengesPlaceholder": "Buscar por pregunta o posición…",
+    "clearSearch": "Borrar búsqueda",
+    "clearSearchAction": "Borrar búsqueda",
+    "searchNoResultsTitle": "Sin resultados",
+    "searchNoResultsDesc": "Prueba otra palabra clave o borra la búsqueda.",
+    "filterNoResultsDesc": "Prueba otra búsqueda, o ajusta categoría, apuesta mínima o restablece todos los filtros.",
+    "resetFiltersAction": "Restablecer filtros",
     "noVSHere": "No hay VS aca",
     "noVSDesc": "Desafia a alguien y empieza a competir.",
     "challengeSomeone": "Desafiar a alguien",
     "privateBadge": "Privado",
+    "pendingSync": "Pendiente…",
     "connectTitle": "PROVEN.",
     "connectDesc": "Conecta tu wallet para ver tus VS.",
     "connect": "Conectar",
-    "eyebrow": "Tu arena"
+    "eyebrow": "Tus apuestas en un solo lugar",
+    "overviewSectionAria": "Resumen de la wallet",
+    "overviewActiveTitle": "Apuestas activas totales",
+    "overviewActiveValue": "14",
+    "overviewActiveSub": "+6 apuestas esta semana",
+    "overviewBankrollTitle": "Bankroll actual",
+    "overviewBankrollValue": "$327.23",
+    "overviewBankrollSub": "Activos líquidos: $40.25",
+    "overviewNetTitle": "Beneficio neto",
+    "overviewNetValue": "$120.73",
+    "overviewNetSub": "18% ROI registrado",
+    "holdings": {
+      "sectionAria": "Tenencias en juego",
+      "sectionTitle": "Tenencias en juego",
+      "viewDetails": "Ver detalles",
+      "positionSummaryLabel": "Resumen de posición",
+      "returnMultiple": "Multiplicador",
+      "chipsGroupAria": "Categoría e identificador del mercado",
+      "marketTypeShort": "Mercado",
+      "oddsModeShort": "Cuotas",
+      "status": {
+        "open": "Abierto",
+        "accepted": "En vivo",
+        "resolved": "Resuelto"
+      },
+      "yourStake": "Tu apuesta",
+      "winEstimate": "Estimado si ganas",
+      "riskSectionAria": "Perfil de asignación de riesgo",
+      "riskTitle": "Perfil de asignación de riesgo",
+      "risk": {
+        "conservative": "Conservador",
+        "moderate": "Moderado",
+        "aggressive": "Agresivo"
+      },
+      "quickActionsAria": "Acciones rápidas",
+      "quickActionsTitle": "Acciones rápidas",
+      "actionAnalysis": "Nuevo análisis",
+      "actionWithdraw": "Retirar",
+      "withdrawSoon": "Próximamente",
+      "friendsAria": "Amigos",
+      "friendsTitle": "Amigos",
+      "friendsHint": "Rivales y organizadores — muy pronto.",
+      "searchEmpty": "Ninguna tenencia coincide con tu búsqueda. Prueba otro nombre o palabra clave.",
+      "visibilityPublic": "Pública",
+      "visibilityPrivate": "Privada",
+      "footerParticipants": "{count} participantes",
+      "footerParticipantsCapped": "{current} / {max} participantes",
+      "poolPill": {
+        "closed": "Cerrado"
+      },
+      "items": {
+        "canelo": {
+          "title": "Pereira vs Canelo · Más de 7 asaltos",
+          "meta": "UFC Seattle — 25/05/2026 18:30",
+          "bodyLead": "Esta posición se liquida como ganadora si el combate supera siete asaltos completados.",
+          "body": "La liquidación se basa en el resultado oficial de la UFC y el reloj de asaltos, incluidas paradas en asaltos finales o decisiones de los jueces.",
+          "stake": "20 GEN",
+          "winEstimate": "27 GEN",
+          "returnMultiple": "1,35×"
+        },
+        "colapinto": {
+          "title": "Franco Colapinto · Termina P17",
+          "meta": "F1 — Circuit of the Americas — 14/05/2026 08:45",
+          "bodyLead": "Esta posición se liquida como ganadora si Franco Colapinto obtiene una clasificación final de 17.º lugar (P17).",
+          "body": "La liquidación se basa exclusivamente en los resultados oficiales de carrera de la FIA para el Gran Premio de Estados Unidos.",
+          "stake": "12 GEN",
+          "winEstimate": "18 GEN",
+          "returnMultiple": "1,50×"
+        },
+        "alvarez": {
+          "title": "Julián Álvarez · Más de 7 goles · Mundial FIFA 2026",
+          "meta": "Mundial FIFA — Ventana de fase de grupos",
+          "bodyLead": "La posición gana si Julián Álvarez registra más de 7 goles en total durante el Mundial 2026.",
+          "body": "La liquidación sigue las estadísticas oficiales del torneo de la FIFA en todas las apariciones activas.",
+          "stake": "35 GEN",
+          "winEstimate": "52 GEN",
+          "returnMultiple": "1,49×"
+        }
+      }
+    },
+    "statsSectionAria": "Resumen de rendimiento",
+    "tabsSectionAria": "Buscar y filtrar tus desafíos"
   },
   "vsDetail": {
     "eyebrow": "Arena en vivo",

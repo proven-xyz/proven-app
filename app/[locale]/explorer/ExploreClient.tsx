@@ -11,7 +11,6 @@ import {
   type VSData,
 } from "@/lib/contract";
 import { mergePendingVS } from "@/lib/pending-vs";
-import type { CategoryId } from "@/lib/constants";
 import {
   applyExploreFilters,
   DEFAULT_EXPLORE_FILTERS,
@@ -20,6 +19,7 @@ import {
   serializeExploreFilters,
   type ExploreSort,
 } from "@/lib/exploreFilters";
+import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
 import { getExploreSampleCards } from "@/lib/sampleVs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
@@ -28,15 +28,6 @@ import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
 import { ChevronDown, ListFilter, Search, X } from "lucide-react";
 import ExploreFeaturedCarousel from "@/components/explorer/ExploreFeaturedCarousel";
-
-/** Fila principal de categorías: ids reales del contrato + copia tipo “mercado” (ESPORTS/POLÍTICA apuntan a cultura/custom). */
-const PRIMARY_CATEGORY_ROW: { id: CategoryId; labelKey: string }[] = [
-  { id: "deportes", labelKey: "catSports" },
-  { id: "crypto", labelKey: "catCrypto" },
-  { id: "tech", labelKey: "catTech" },
-  { id: "cultura", labelKey: "catEsports" },
-  { id: "custom", labelKey: "catPolitics" },
-];
 
 /** Píldoras de filtro (CATEGORIES + Quick minimum): borde tipo botón, mismo hover. */
 const filterPillBase =
@@ -371,7 +362,7 @@ export default function ExploreClient() {
                       >
                         {t("all")}
                       </button>
-                      {PRIMARY_CATEGORY_ROW.map(({ id, labelKey }) => (
+                      {EXPLORE_PRIMARY_CATEGORY_ROW.map(({ id, labelKey }) => (
                         <button
                           key={id}
                           type="button"

@@ -317,7 +317,7 @@
     }
   },
   "dashboard": {
-    "title": "My VS",
+    "title": "MY DASHBOARD",
     "total": "{count} total",
     "new": "+ New",
     "record": "Record",
@@ -326,14 +326,103 @@
     "tabAll": "All",
     "tabActive": "Active",
     "tabDone": "Resolved",
+    "searchChallengesPlaceholder": "Search by question or position…",
+    "clearSearch": "Clear search",
+    "clearSearchAction": "Clear search",
+    "searchNoResultsTitle": "No matches",
+    "searchNoResultsDesc": "Try another keyword or clear the search.",
+    "filterNoResultsDesc": "Try another search, or adjust category, minimum stake, or reset all filters.",
+    "resetFiltersAction": "Reset filters",
     "noVSHere": "No VS here",
     "noVSDesc": "Challenge someone and start competing.",
     "challengeSomeone": "Challenge someone",
     "privateBadge": "Private",
+    "pendingSync": "Pending…",
     "connectTitle": "PROVEN.",
     "connectDesc": "Connect your wallet to see your VS.",
     "connect": "Connect",
-    "eyebrow": "Your Arena"
+    "eyebrow": "All your bets in one place",
+    "overviewSectionAria": "Wallet overview",
+    "overviewActiveTitle": "Total active stakes",
+    "overviewActiveValue": "14",
+    "overviewActiveSub": "+6 bets this week",
+    "overviewBankrollTitle": "Current bankroll",
+    "overviewBankrollValue": "$327.23",
+    "overviewBankrollSub": "Liquid assets: $40.25",
+    "overviewNetTitle": "Net profit",
+    "overviewNetValue": "$120.73",
+    "overviewNetSub": "18% ROI recorded",
+    "holdings": {
+      "sectionAria": "Stake holdings",
+      "sectionTitle": "Stake holdings",
+      "viewDetails": "View details",
+      "positionSummaryLabel": "Position summary",
+      "returnMultiple": "Return multiple",
+      "chipsGroupAria": "Category and market ID",
+      "marketTypeShort": "Market",
+      "oddsModeShort": "Odds",
+      "status": {
+        "open": "Open",
+        "accepted": "Live",
+        "resolved": "Settled"
+      },
+      "yourStake": "Your stake",
+      "winEstimate": "Win estimate",
+      "riskSectionAria": "Risk allocation profile",
+      "riskTitle": "Risk allocation profile",
+      "risk": {
+        "conservative": "Conservative",
+        "moderate": "Moderate",
+        "aggressive": "Aggressive"
+      },
+      "quickActionsAria": "Quick actions",
+      "quickActionsTitle": "Quick actions",
+      "actionAnalysis": "New analysis",
+      "actionWithdraw": "Withdraw",
+      "withdrawSoon": "Coming soon",
+      "friendsAria": "Friends",
+      "friendsTitle": "Friends",
+      "friendsHint": "Rivals and organizers — landing soon.",
+      "searchEmpty": "No stake holdings match your search. Try another name or keyword.",
+      "visibilityPublic": "Public",
+      "visibilityPrivate": "Private",
+      "footerParticipants": "{count} participants",
+      "footerParticipantsCapped": "{current} / {max} participants",
+      "poolPill": {
+        "closed": "Closed"
+      },
+      "items": {
+        "canelo": {
+          "title": "Pereira vs Canelo · Over 7 rounds",
+          "meta": "UFC Seattle — 25/05/2026 18:30",
+          "bodyLead": "This position settles as a win if the bout exceeds seven completed rounds.",
+          "body": "Settlement is based on the official UFC result and round clock, including late-round stoppages or judges' decisions.",
+          "stake": "20 GEN",
+          "winEstimate": "27 GEN",
+          "returnMultiple": "1.35×"
+        },
+        "colapinto": {
+          "title": "Franco Colapinto · Finishes P17",
+          "meta": "F1 — Circuit of the Americas — 14/05/2026 08:45",
+          "bodyLead": "This position settles as a win if Franco Colapinto achieves a final classification of 17th (P17).",
+          "body": "Settlement is based exclusively on official FIA race results for the United States Grand Prix.",
+          "stake": "12 GEN",
+          "winEstimate": "18 GEN",
+          "returnMultiple": "1.50×"
+        },
+        "alvarez": {
+          "title": "Julián Álvarez · Over 7 goals · FIFA World Cup 2026",
+          "meta": "FIFA World Cup — Group stage window",
+          "bodyLead": "Position wins if Julián Álvarez records over 7 total goals during the 2026 World Cup.",
+          "body": "Settlement follows official FIFA tournament statistics for all active appearances.",
+          "stake": "35 GEN",
+          "winEstimate": "52 GEN",
+          "returnMultiple": "1.49×"
+        }
+      }
+    },
+    "statsSectionAria": "Performance summary",
+    "tabsSectionAria": "Search and filter your challenges"
   },
   "vsDetail": {
     "eyebrow": "Live Arena",
