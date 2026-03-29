@@ -311,11 +311,6 @@
         "settlementTemplate": "Resuelve esto usando el spot price visible en la fuente enlazada al momento del deadline. Aplica cualquier umbral o linea exactamente como fue escrito."
       },
       "tech": {
-        "sourceHint": "Usa un blog de producto oficial, comunicado de prensa o changelog que siga reflejando el hecho anunciado al momento del settlement.",
-        "questionHint": "Nombra el producto, la empresa y el hito o ventana de fechas concretos que se juzgan.",
-        "settlementTemplate": "Resuelve esto solo desde la fuente oficial enlazada al deadline. Trata \"anunciado\" como una declaracion publica y atribuible de la parte nombrada."
-      },
-      "tech": {
         "sourceHint": "Usa un blog oficial del producto, comunicado de prensa, o changelog que siga reflejando el hecho anunciado al momento del settlement.",
         "questionHint": "Nombra el producto, la empresa, y el hito concreto o ventana de fechas que se va a juzgar.",
         "settlementTemplate": "Resuelve esto solo con la fuente oficial enlazada al momento del deadline. Trata 'anunciado' como una declaracion publica y atribuible de la parte nombrada."
@@ -339,6 +334,7 @@
     "subtitle": "Elige tu pelea. Acepta la apuesta de alguien más.",
     "searchPlaceholder": "Buscar VS...",
     "searchMarketsPlaceholder": "Buscar mercados, activos o equipos.",
+    "searchHeading": "BÚSQUEDA",
     "categoriesHeading": "CATEGORÍAS",
     "advanced": "AVANZADO",
     "advancedMinPresets": "Mínimo rápido",
@@ -358,8 +354,10 @@
     "sortBy": "ORDENAR",
     "newest": "Mas nuevos",
     "highestStake": "Mayor apuesta",
-    "expiring": "Por vencer",
     "strength": "Claim strength",
+    "quickFilterLabel": "FILTRO",
+    "quickFilterAll": "Todos",
+    "quickFilterSelectAria": "Filtrar por retadores o ventana de vencimiento",
     "needsChallengers": "Necesita retadores",
     "expiringSoon": "Vence pronto",
     "challengeOpportunities": "Oportunidades para desafiar",

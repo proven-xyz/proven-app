@@ -49,8 +49,10 @@ export default function ExploreClient() {
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [quickFilterMenuOpen, setQuickFilterMenuOpen] = useState(false);
   const [minDraft, setMinDraft] = useState("");
   const sortMenuRef = useRef<HTMLDivElement>(null);
+  const quickFilterMenuRef = useRef<HTMLDivElement>(null);
   const opportunitiesEnabled =
     process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
 
@@ -195,28 +197,70 @@ export default function ExploreClient() {
     return hasActiveFilters ? t("sampleNoMatchIntro") : null;
   }, [filtered.length, filteredSamples.length, hasActiveFilters, t]);
 
-  const sortOptions: { key: ExploreSort; label: string }[] = [
-    { key: "newest", label: t("newest") },
-    { key: "highest", label: t("highestStake") },
-    { key: "expiring", label: t("expiring") },
-    { key: "strength", label: t("strength") },
-  ];
+  const sortOnlyOptions: { key: ExploreSort; label: string }[] = useMemo(
+    () => [
+      { key: "newest", label: t("newest") },
+      { key: "highest", label: t("highestStake") },
+      { key: "expiring", label: t("expiringSoon") },
+      { key: "strength", label: t("strength") },
+    ],
+    [t]
+  );
 
-  const sortLabel =
-    sortOptions.find((o) => o.key === sort)?.label ?? sortOptions[0].label;
+  const sortTriggerLabel = useMemo(
+    () =>
+      sortOnlyOptions.find((o) => o.key === sort)?.label ??
+      sortOnlyOptions[0].label,
+    [sort, sortOnlyOptions]
+  );
+
+  const quickFilterTriggerLabel = useMemo(() => {
+    if (needsChallengers && expiringSoon) {
+      return `${t("needsChallengers")} · ${t("expiringSoon")}`;
+    }
+    if (needsChallengers) return t("needsChallengers");
+    if (expiringSoon) return t("expiringSoon");
+    if (sort === "strength" && !needsChallengers && !expiringSoon) {
+      return t("strength");
+    }
+    return t("quickFilterAll");
+  }, [expiringSoon, needsChallengers, sort, t]);
+
+  const quickFilterOptionSelected = (
+    choice: "all" | "needs" | "soon" | "strength"
+  ): boolean => {
+    if (choice === "all") {
+      return (
+        !needsChallengers &&
+        !expiringSoon &&
+        sort !== "strength"
+      );
+    }
+    if (choice === "needs") return needsChallengers && !expiringSoon;
+    if (choice === "soon") return expiringSoon && !needsChallengers;
+    return (
+      sort === "strength" && !needsChallengers && !expiringSoon
+    );
+  };
 
   useEffect(() => {
-    if (!sortMenuOpen) return;
+    if (!sortMenuOpen && !quickFilterMenuOpen) return;
     const onDoc = (e: MouseEvent) => {
+      const node = e.target as Node;
       if (
-        sortMenuRef.current &&
-        !sortMenuRef.current.contains(e.target as Node)
+        sortMenuRef.current?.contains(node) ||
+        quickFilterMenuRef.current?.contains(node)
       ) {
-        setSortMenuOpen(false);
+        return;
       }
+      setSortMenuOpen(false);
+      setQuickFilterMenuOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSortMenuOpen(false);
+      if (e.key === "Escape") {
+        setSortMenuOpen(false);
+        setQuickFilterMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDoc);
     window.addEventListener("keydown", onKey);
@@ -224,13 +268,13 @@ export default function ExploreClient() {
       document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("keydown", onKey);
     };
-  }, [sortMenuOpen]);
+  }, [sortMenuOpen, quickFilterMenuOpen]);
 
   return (
     <PageTransition>
       <AnimatedItem>
         <div className="mb-10">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-4 sm:gap-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-4 sm:gap-6">
             <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-6">
               <h1 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
                 {t("title")}
@@ -251,14 +295,21 @@ export default function ExploreClient() {
       </AnimatedItem>
 
       <AnimatedItem>
+        <ExploreFeaturedCarousel />
+      </AnimatedItem>
+
+      <AnimatedItem>
         <section
           className="mb-8"
           aria-label={t("filtersAriaLabel")}
         >
           <div className="rounded-lg border border-white/[0.1] bg-pv-surface p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-6">
-            {/* Sort, min stake, búsqueda + avanzado — móvil: sort|min en fila; búsqueda; ADVANCED debajo. lg: fila única 12 cols. */}
-            <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:gap-6 lg:items-end">
-              <div className="relative col-span-1 min-w-0 lg:col-span-3" ref={sortMenuRef}>
+            {/* Sort | filter (2+2); min 2 cols para cifras largas; búsqueda 6 cols. */}
+            <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:gap-4 lg:items-end xl:gap-5">
+              <div
+                className="relative col-span-1 min-w-0 lg:col-span-2"
+                ref={sortMenuRef}
+              >
                 <label
                   id="explore-sort-label"
                   htmlFor="explore-sort-trigger"
@@ -273,10 +324,13 @@ export default function ExploreClient() {
                   aria-expanded={sortMenuOpen}
                   aria-haspopup="listbox"
                   aria-controls="explore-sort-listbox"
-                  onClick={() => setSortMenuOpen((o) => !o)}
+                  onClick={() => {
+                    setQuickFilterMenuOpen(false);
+                    setSortMenuOpen((o) => !o);
+                  }}
                   className="input flex h-11 min-h-[44px] w-full cursor-pointer items-center justify-between gap-2 bg-pv-bg py-0 pr-3 text-left font-body text-sm text-pv-text transition-[border-color,box-shadow] hover:border-white/[0.14]"
                 >
-                  <span className="min-w-0 truncate">{sortLabel}</span>
+                  <span className="min-w-0 truncate">{sortTriggerLabel}</span>
                   <ChevronDown
                     size={18}
                     className={`shrink-0 text-pv-muted transition-transform duration-200 ${
@@ -296,9 +350,9 @@ export default function ExploreClient() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="absolute left-0 right-0 top-full z-40 mt-1.5 overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
+                      className="absolute left-0 top-full z-40 mt-1.5 w-max min-w-full max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
                     >
-                      {sortOptions.map(({ key, label }) => (
+                      {sortOnlyOptions.map(({ key, label }) => (
                         <button
                           key={key}
                           type="button"
@@ -322,7 +376,139 @@ export default function ExploreClient() {
                 </AnimatePresence>
               </div>
 
-              <div className="col-span-1 min-w-0 lg:col-span-2">
+              <div
+                className="relative col-span-1 min-w-0 lg:col-span-2"
+                ref={quickFilterMenuRef}
+              >
+                <label
+                  id="explore-quick-filter-label"
+                  htmlFor="explore-quick-filter-trigger"
+                  className="label"
+                >
+                  {t("quickFilterLabel")}
+                </label>
+                <button
+                  type="button"
+                  id="explore-quick-filter-trigger"
+                  aria-label={t("quickFilterSelectAria")}
+                  aria-expanded={quickFilterMenuOpen}
+                  aria-haspopup="listbox"
+                  aria-controls="explore-quick-filter-listbox"
+                  onClick={() => {
+                    setSortMenuOpen(false);
+                    setQuickFilterMenuOpen((o) => !o);
+                  }}
+                  className="input flex h-11 min-h-[44px] w-full cursor-pointer items-center justify-between gap-2 bg-pv-bg py-0 pr-3 text-left font-body text-sm text-pv-text transition-[border-color,box-shadow] hover:border-white/[0.14]"
+                >
+                  <span className="min-w-0 truncate">
+                    {quickFilterTriggerLabel}
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={`shrink-0 text-pv-muted transition-transform duration-200 ${
+                      quickFilterMenuOpen ? "rotate-180" : ""
+                    }`}
+                    aria-hidden
+                  />
+                </button>
+                <AnimatePresence>
+                  {quickFilterMenuOpen ? (
+                    <motion.div
+                      key="explore-quick-filter-listbox"
+                      id="explore-quick-filter-listbox"
+                      role="listbox"
+                      aria-labelledby="explore-quick-filter-label"
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="absolute left-0 top-full z-40 mt-1.5 w-max min-w-full max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
+                    >
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={quickFilterOptionSelected("all")}
+                        onClick={() => {
+                          updateFilters({
+                            needsChallengers: false,
+                            expiringSoon: false,
+                            sort: "newest",
+                          });
+                          setQuickFilterMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center px-4 py-2.5 text-left font-body text-sm transition-colors ${
+                          quickFilterOptionSelected("all")
+                            ? "bg-pv-emerald/[0.12] font-medium text-pv-emerald"
+                            : "text-pv-muted hover:bg-white/[0.05] hover:text-pv-text"
+                        }`}
+                      >
+                        {t("quickFilterAll")}
+                      </button>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={quickFilterOptionSelected("needs")}
+                        onClick={() => {
+                          updateFilters({
+                            needsChallengers: true,
+                            expiringSoon: false,
+                          });
+                          setQuickFilterMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center px-4 py-2.5 text-left font-body text-sm transition-colors ${
+                          quickFilterOptionSelected("needs")
+                            ? "bg-pv-emerald/[0.12] font-medium text-pv-emerald"
+                            : "text-pv-muted hover:bg-white/[0.05] hover:text-pv-text"
+                        }`}
+                      >
+                        {t("needsChallengers")}
+                      </button>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={quickFilterOptionSelected("soon")}
+                        onClick={() => {
+                          updateFilters({
+                            expiringSoon: true,
+                            needsChallengers: false,
+                            sort: "expiring",
+                          });
+                          setQuickFilterMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center px-4 py-2.5 text-left font-body text-sm transition-colors ${
+                          quickFilterOptionSelected("soon")
+                            ? "bg-pv-emerald/[0.12] font-medium text-pv-emerald"
+                            : "text-pv-muted hover:bg-white/[0.05] hover:text-pv-text"
+                        }`}
+                      >
+                        {t("expiringSoon")}
+                      </button>
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={quickFilterOptionSelected("strength")}
+                        onClick={() => {
+                          updateFilters({
+                            needsChallengers: false,
+                            expiringSoon: false,
+                            sort: "strength",
+                          });
+                          setQuickFilterMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center px-4 py-2.5 text-left font-body text-sm transition-colors ${
+                          quickFilterOptionSelected("strength")
+                            ? "bg-pv-emerald/[0.12] font-medium text-pv-emerald"
+                            : "text-pv-muted hover:bg-white/[0.05] hover:text-pv-text"
+                        }`}
+                      >
+                        {t("strength")}
+                      </button>
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+
+              <div className="col-span-1 min-w-0 w-full max-w-[7.875rem] lg:col-span-2 lg:w-3/4 lg:max-w-none lg:justify-self-start">
                 <label htmlFor="explore-min-stake" className="label">
                   {t("minStake")}
                 </label>
@@ -341,15 +527,16 @@ export default function ExploreClient() {
                       e.currentTarget.blur();
                     }
                   }}
-                  className="input h-11 min-h-[44px] bg-pv-bg py-2.5 font-mono text-sm tabular-nums"
+                  className="input h-11 min-h-[44px] w-full max-w-full bg-pv-bg py-2.5 font-mono text-sm tabular-nums"
                 />
               </div>
 
-              <div className="col-span-2 flex flex-col gap-3 lg:col-span-7 lg:flex-row lg:items-end lg:gap-3">
-                <label htmlFor="explore-search" className="sr-only">
-                  {t("searchMarketsPlaceholder")}
-                </label>
-                <div className="relative min-w-0 w-full lg:flex-1">
+              <div className="col-span-2 flex min-w-0 flex-col gap-3 lg:col-span-6 lg:flex-row lg:items-end lg:gap-3">
+                <div className="flex min-w-0 w-full flex-col lg:flex-1">
+                  <label htmlFor="explore-search" className="label">
+                    {t("searchHeading")}
+                  </label>
+                  <div className="relative min-w-0 w-full">
                     <Search
                       size={16}
                       className="pointer-events-none absolute left-3 top-1/2 z-[1] -translate-y-1/2 text-pv-muted"
@@ -380,6 +567,7 @@ export default function ExploreClient() {
                         <X size={16} strokeWidth={2} />
                       </button>
                     ) : null}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -393,32 +581,25 @@ export default function ExploreClient() {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                aria-pressed={needsChallengers}
-                onClick={() =>
-                  updateFilters({ needsChallengers: !needsChallengers })
-                }
-                className={`${filterPillBase} ${
-                  needsChallengers ? filterPillActive : filterPillInactive
-                }`}
-              >
-                {t("needsChallengers")}
-              </button>
-              <button
-                type="button"
-                aria-pressed={expiringSoon}
-                onClick={() => updateFilters({ expiringSoon: !expiringSoon })}
-                className={`${filterPillBase} ${
-                  expiringSoon ? filterPillActive : filterPillInactive
-                }`}
-              >
-                {t("expiringSoon")}
-              </button>
-            </div>
-
-            {advancedOpen ? (
+            <motion.div
+              initial={false}
+              animate={{
+                height: advancedOpen ? "auto" : 0,
+                opacity: advancedOpen ? 1 : 0,
+              }}
+              transition={{
+                height: {
+                  duration: 0.34,
+                  ease: [0.25, 0.46, 0.45, 0.94],
+                },
+                opacity: {
+                  duration: 0.22,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
+              }}
+              className={`overflow-hidden ${!advancedOpen ? "pointer-events-none" : ""}`}
+              aria-hidden={!advancedOpen}
+            >
               <div className="mt-6 border-t border-white/[0.06] pt-6">
                 <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-6 sm:items-start">
                   <div className="min-w-0">
@@ -494,13 +675,9 @@ export default function ExploreClient() {
                   </div>
                 </div>
               </div>
-            ) : null}
+            </motion.div>
           </div>
         </section>
-      </AnimatedItem>
-
-      <AnimatedItem>
-        <ExploreFeaturedCarousel />
       </AnimatedItem>
 
       <div>
