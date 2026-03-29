@@ -275,7 +275,7 @@
       "media": "Media source",
       "other": "Other source"
     },
-    "useRecommendedRule": "Use recommended rule",
+    "useRecommendedRule": "Use recommended rules",
     "qualityReview": "Demo readiness checklist",
     "qualityReviewHint": "Quick checks for your question, verification source, and settlement rule. This list is informative only and does not block publishing.",
     "qualityReady": "Everything here looks aligned with the current demo rules.",

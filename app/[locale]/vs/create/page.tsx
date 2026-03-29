@@ -878,7 +878,7 @@ export default function CreatePage() {
             glass
             noPad
             glow="none"
-            className="mb-6 !rounded-2xl border border-white/[0.12] w-full"
+            className="!rounded-2xl border border-white/[0.12] w-full"
           >
             <div className="space-y-5 p-6 sm:p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -1065,7 +1065,7 @@ export default function CreatePage() {
           glass
           noPad
           glow="none"
-          className="mb-6 !rounded-2xl border border-white/[0.12] w-full"
+          className="!rounded-2xl border border-white/[0.12] w-full"
         >
           <div className="space-y-6 p-6 sm:p-8">
             <div className="mb-2 flex items-center gap-3">
@@ -1160,7 +1160,7 @@ export default function CreatePage() {
           glass
           noPad
           glow="none"
-          className="mb-6 !rounded-2xl border border-white/[0.12] w-full"
+          className="!rounded-2xl border border-white/[0.12] w-full"
           role="group"
           aria-label={t("visibility")}
         >
@@ -1641,28 +1641,26 @@ export default function CreatePage() {
                     value={settlementRule}
                     onChange={(event) => setSettlementRule(event.target.value)}
                   />
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <p className="text-[10px] italic leading-relaxed text-pv-muted">
-                        {t("settlementRuleHint")}
-                      </p>
-                      <p
-                        className={`text-xs leading-relaxed ${
-                          settlementNeedsWork ? "text-amber-300" : "text-pv-muted"
-                        }`}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                    <p className="min-w-0 flex-1 text-left text-[11px] leading-relaxed text-pv-muted">
+                      {t("settlementRuleHint")}{" "}
+                      <span
+                        className={
+                          settlementNeedsWork ? "text-amber-300" : undefined
+                        }
                       >
                         {settlementNeedsWork
                           ? t("qualitySettlement")
                           : t("settlementStrengthHint")}
-                      </p>
-                    </div>
+                      </span>
+                    </p>
                     <button
                       type="button"
                       disabled={settlementMatchesRecommended}
                       onClick={() =>
                         setSettlementRule(recommendedSettlementTemplate)
                       }
-                      className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 text-left text-[11px] font-medium leading-snug text-pv-text/90 transition-colors hover:border-white/[0.16] hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/[0.1] disabled:hover:bg-white/[0.04] sm:max-w-[min(100%,14rem)]"
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 text-left text-[11px] font-medium leading-snug text-pv-text/90 transition-colors hover:border-white/[0.16] hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/[0.1] disabled:hover:bg-white/[0.04] sm:max-w-[min(100%,14rem)] sm:self-auto"
                       aria-label={t("useRecommendedRule")}
                     >
                       <Wand2
