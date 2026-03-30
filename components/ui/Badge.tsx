@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 interface BadgeProps {
   status: string;
   large?: boolean;
+  compact?: boolean;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,7 +28,11 @@ const colorMap: Record<string, string> = {
   "zinc-500":   "bg-zinc-500/[0.1] text-zinc-500 border-zinc-500/[0.25]",
 };
 
-export default function Badge({ status, large = false }: BadgeProps) {
+export default function Badge({
+  status,
+  large = false,
+  compact = false,
+}: BadgeProps) {
   const t = useTranslations("badges");
   const color   = STATUS_COLORS[status] ?? "pv-muted";
   const classes = colorMap[color] ?? colorMap["pv-muted"];
@@ -36,11 +41,17 @@ export default function Badge({ status, large = false }: BadgeProps) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 border font-bold uppercase tracking-[0.1em] rounded ${classes} ${
-        large ? "px-3 py-1.5 text-[11px]" : "px-2.5 py-1 text-[10px]"
+        compact
+          ? "px-2 py-0.5 text-[9px]"
+          : large
+            ? "px-3 py-1.5 text-[11px]"
+            : "px-2.5 py-1 text-[10px]"
       }`}
     >
       <span
-        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+        className={`rounded-full flex-shrink-0 ${
+          compact ? "h-2 w-2" : "h-1.5 w-1.5"
+        }`}
         style={{ background: "currentColor" }}
       />
       {label}

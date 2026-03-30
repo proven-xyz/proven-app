@@ -185,7 +185,7 @@
     "pendingHint": "Bradbury accepted your wallet transaction. The claim will appear automatically once consensus finishes.",
     "sendThisLink": "Send this link to your rival.",
     "sendThisPrivateLink": "Send this private link only to the people you want to invite.",
-    "viewVS": "View VS",
+    "viewVS": "View Challenge",
     "createAnother": "Create another",
     "errorCreating": "Error creating VS",
     "submittedPending": "Transaction submitted to Bradbury. It may take a moment to appear.",

@@ -252,22 +252,33 @@ function buildDesignPreviewRematchChain(
   const round1Base: VSData = {
     ...base,
     id: base.id - 100,
-    question: `${base.question} (Rematch #1)`,
+    question: base.question.includes("March")
+      ? base.question.replace("March", "January")
+      : base.question,
     resolution_summary: resolutionSummary,
   };
   const round2Base: VSData = {
     ...base,
     id: base.id - 101,
-    question: `${base.question} (Rematch #2)`,
+    question: base.question,
     resolution_summary: resolutionSummary,
   };
 
   const round2Outcome: "creator" | "challengers" =
     firstRoundOutcome === "creator" ? "challengers" : "creator";
 
+  // ROUND 3: no llega a PROVEN todavía (se mantiene en "accepted").
+  const round3Base: VSData = {
+    ...base,
+    id: base.id - 102,
+    question: "BTC Price will break $100k before April 30",
+    resolution_summary: resolutionSummary,
+  };
+
   return [
     buildDesignPreviewVs(round1Base, 3, resolutionSummary, firstRoundOutcome),
     buildDesignPreviewVs(round2Base, 3, resolutionSummary, round2Outcome),
+    buildDesignPreviewVs(round3Base, 2, resolutionSummary, "creator"),
   ];
 }
 
@@ -362,6 +373,7 @@ function ProgressBar({
           {steps.map((step, index) => {
             const isDone = isResolved || index < stepIndex;
             const isCurrent = !isResolved && index === stepIndex;
+            const isProvenStep = index === 3;
             const stepNum = String(index + 1).padStart(2, "0");
             const stepCode = `STEP ${stepNum}`;
             const label = `${stepCode}: ${step}`;
@@ -374,7 +386,11 @@ function ProgressBar({
                 </span>
                 <span
                   aria-current={isCurrent ? "step" : undefined}
-                  className={`flex items-start gap-2 font-display text-[10px] font-bold uppercase leading-snug tracking-[0.14em] sm:text-[11px] sm:tracking-[0.16em] ${
+                  className={`flex items-start gap-2 font-display ${
+                    isProvenStep
+                      ? "text-[9px] sm:text-[10px]"
+                      : "text-[10px] sm:text-[11px]"
+                  } font-bold uppercase leading-snug tracking-[0.14em] sm:tracking-[0.16em] ${
                     isCurrent
                       ? "text-pv-emerald"
                       : isDone
@@ -588,6 +604,10 @@ export default function VSDetailPage() {
   const [challengeStake, setChallengeStake] = useState("");
   const [rivalryChain, setRivalryChain] = useState<VSData[]>([]);
   const [rivalryLoading, setRivalryLoading] = useState(false);
+  // Evita parpadeos: si cambiamos de `vs.id` o aún no terminó el fetch,
+  // mostramos "loading" en vez de "empty" con datos viejos/vacíos.
+  const [rivalryLoadedForVsId, setRivalryLoadedForVsId] = useState<number | null>(null);
+  const [isRivalryExpanded, setIsRivalryExpanded] = useState(false);
   const [storedInviteKey, setStoredInviteKey] = useState("");
   const [marketTermsOpen, setMarketTermsOpen] = useState(false);
   const marketTermsHeadingId = useId();
@@ -693,6 +713,7 @@ export default function VSDetailPage() {
     if (vs.state !== "resolved") {
       setRivalryChain([]);
       setRivalryLoading(false);
+      setRivalryLoadedForVsId(null);
       return;
     }
 
@@ -700,6 +721,7 @@ export default function VSDetailPage() {
     const currentVsId = vs.id;
 
     async function loadRivalry() {
+      setRivalryLoadedForVsId(null);
       setRivalryLoading(true);
 
       try {
@@ -722,6 +744,7 @@ export default function VSDetailPage() {
       } finally {
         if (!cancelled) {
           setRivalryLoading(false);
+          setRivalryLoadedForVsId(currentVsId);
         }
       }
     }
@@ -734,6 +757,19 @@ export default function VSDetailPage() {
   }, [isSampleVS, vs?.id, vs?.state]);
 
   useEffect(() => {
+    // Para mantener coherencia visual, colapsamos el rematch list cuando cambia la data.
+    setIsRivalryExpanded(false);
+  }, [vs?.id, rivalryChain.length, designLifecycleStep, designResolvedOutcome]);
+
+  const visibleRivalryChain =
+    rivalryChain.length > 2 && !isRivalryExpanded
+      ? rivalryChain.slice(0, 2)
+      : rivalryChain;
+  const canLoadMoreRivalry = rivalryChain.length > 2 && !isRivalryExpanded;
+  const isRivalryDataReady =
+    isSampleVS || (rivalryLoadedForVsId !== null && rivalryLoadedForVsId === vs?.id);
+
+  useEffect(() => {
     // En demo/testing (VS de muestra) simulamos el rematch para que la card
     // `RIVALRY CHAIN` muestre rondas adicionales en el preview.
     if (!isSampleVS || !vs) return;
@@ -741,6 +777,7 @@ export default function VSDetailPage() {
     if (designLifecycleStep !== 3) {
       setRivalryChain([]);
       setRivalryLoading(false);
+      setRivalryLoadedForVsId(null);
       return;
     }
 
@@ -752,6 +789,7 @@ export default function VSDetailPage() {
         t("designPreviewResolutionSummary"),
       )
     );
+    setRivalryLoadedForVsId(vs.id);
   }, [
     isSampleVS,
     vs,
@@ -1670,14 +1708,14 @@ export default function VSDetailPage() {
                             )}
                         </div>
 
-                        {rivalryLoading ? (
+                        {!isRivalryDataReady || rivalryLoading ? (
                           <div className="rounded-xl border border-white/[0.08] bg-pv-bg/30 p-4 sm:p-5">
                             <p className="text-sm text-pv-muted">{tc("loading")}</p>
                           </div>
                         ) : rivalryChain.length > 1 ? (
                           <div className="rounded-xl border border-white/[0.08] bg-pv-bg/30 p-4 sm:p-5">
                             <div className="space-y-3">
-                              {rivalryChain.map((entry, index) => {
+                              {visibleRivalryChain.map((entry, index) => {
                                 const inner = (
                                   <div
                                     className={`${RIVALRY_ITEM_BASE_CLASS} ${
@@ -1693,13 +1731,13 @@ export default function VSDetailPage() {
                                           round: index + 1,
                                         })}
                                       </div>
-                                      <Badge status={entry.state} />
+                                      <Badge status={entry.state} compact />
                                     </div>
-                                    <div className="font-semibold">
+                                    <div className="font-semibold text-[14px] leading-snug sm:text-[15px]">
                                       {entry.question}
                                     </div>
                                     <div className="text-xs text-pv-muted mt-1">
-                                      {t("pool")}: ${getVSTotalPot(entry)}
+                                      {t("pool")}: {getVSTotalPot(entry)} GEN
                                     </div>
                                   </div>
                                 );
@@ -1719,6 +1757,19 @@ export default function VSDetailPage() {
                                 );
                               })}
                             </div>
+
+                            {canLoadMoreRivalry ? (
+                              <div className="pt-3 text-center">
+                                <button
+                                  type="button"
+                                  aria-expanded={isRivalryExpanded}
+                                  onClick={() => setIsRivalryExpanded(true)}
+                                  className="inline-flex items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.01] px-3 py-2 text-xs font-semibold text-pv-muted transition-[background-color,border-color] hover:border-white/[0.1] hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/25"
+                                >
+                                  Load more
+                                </button>
+                              </div>
+                            ) : null}
                           </div>
                         ) : (
                           <div className="rounded-xl border border-dashed border-white/[0.14] bg-pv-bg/30 p-4 text-center sm:p-5">

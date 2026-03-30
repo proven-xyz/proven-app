@@ -698,9 +698,9 @@ export default function CreatePage() {
       <>
         <Confetti active={showConfetti} />
         <PageTransition>
-          <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4 sm:px-6 sm:pb-20 sm:pt-8 md:max-w-xl">
+          <div className="mx-auto w-full max-w-lg px-4 pb-6 pt-4 sm:px-6 sm:pb-12 sm:pt-8 md:max-w-xl">
             <AnimatedItem>
-              <div className="space-y-8 sm:space-y-10">
+              <div className="space-y-6 sm:space-y-10">
                 <header className="text-center">
                   <motion.div
                     initial={{ opacity: 0, y: 14 }}
@@ -801,8 +801,16 @@ export default function CreatePage() {
                   <div className="space-y-2 text-left text-xs text-pv-muted">
                     {createdPending && createdTxHash && (
                       <p className="font-mono leading-relaxed">
-                        {t("walletTx")}: {createdTxHash.slice(0, 10)}…
-                        {createdTxHash.slice(-8)}
+                        {t("walletTx")}:{" "}
+                        <a
+                          href={getExplorerTxUrl(createdTxHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-pv-emerald underline-offset-2 transition-colors hover:underline"
+                        >
+                          {createdTxHash.slice(0, 10)}…
+                          {createdTxHash.slice(-8)}
+                        </a>
                       </p>
                     )}
                     {createdExplorerTxHash &&
