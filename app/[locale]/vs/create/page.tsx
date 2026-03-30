@@ -692,134 +692,183 @@ export default function CreatePage() {
   }
 
   if (created) {
+    const shareUrl = getShareUrl(created, createdInviteKey);
+
     return (
       <>
         <Confetti active={showConfetti} />
         <PageTransition>
-          <AnimatedItem>
-            <div className="text-center pt-6">
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                className="font-display text-5xl font-extrabold text-pv-emerald mb-4 tracking-tight"
-              >
-                PROVEN.
-              </motion.div>
-              <h2 className="font-display text-2xl font-bold mb-2 tracking-tight">
-                {createdPending
-                  ? t("pendingTitle")
-                  : rematchId
-                  ? t("rematchCreatedAndFunded")
-                  : t("vsCreatedAndFunded")}
-              </h2>
-              <p className="text-pv-muted mb-7">
-                {createdPending
-                  ? t("pendingHint")
-                  : createdInviteKey
-                  ? t("sendThisPrivateLink")
-                  : t("sendThisLink")}
-              </p>
-
-              <GlassCard className="mb-5">
-                <div className="flex gap-2.5">
-                  <input
-                    readOnly
-                    value={getShareUrl(created, createdInviteKey)}
-                    className="input flex-1 font-mono text-xs"
-                  />
-                  <button
-                    onClick={copyLink}
-                    className="px-5 py-3 rounded bg-pv-emerald text-pv-bg font-bold text-sm flex items-center gap-2 hover:brightness-110 transition-all focus-ring"
+          <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4 sm:px-6 sm:pb-20 sm:pt-8 md:max-w-xl">
+            <AnimatedItem>
+              <div className="space-y-8 sm:space-y-10">
+                <header className="text-center">
+                  <motion.div
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-pv-emerald/35 bg-pv-emerald/[0.08] shadow-[0_0_28px_-10px_rgba(78,222,163,0.5)]"
                   >
-                    {copied ? <Check size={16} /> : <Copy size={16} />}
-                    {copied ? tc("copied") : tc("copy")}
-                  </button>
-                </div>
-              </GlassCard>
-
-              <div className="flex gap-3 justify-center mb-7">
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Challenge me on PROVEN: ${getShareUrl(created, createdInviteKey)}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="chip text-pv-muted hover:text-pv-emerald hover:border-pv-emerald/[0.3] transition-colors"
-                >
-                  WhatsApp
-                </a>
-                <a
-                  href={`https://t.me/share/url?url=${encodeURIComponent(getShareUrl(created, createdInviteKey))}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="chip text-pv-muted hover:text-pv-emerald hover:border-pv-emerald/[0.3] transition-colors"
-                >
-                  Telegram
-                </a>
-              </div>
-
-              <div className="space-y-2 mb-5">
-                {createdPending && createdTxHash && (
-                  <p className="text-pv-muted text-xs font-mono">
-                    {t("walletTx")}: {createdTxHash.slice(0, 10)}...{createdTxHash.slice(-8)}
+                    <Check
+                      className="size-7 text-pv-emerald"
+                      strokeWidth={2.5}
+                      aria-hidden
+                    />
+                  </motion.div>
+                  <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald/90">
+                    {createdPending
+                      ? t("createSuccessBadgePending")
+                      : t("createSuccessBadgeLive")}
                   </p>
-                )}
-                {createdExplorerTxHash &&
-                  (!createdPending || createdExplorerTxHash !== createdTxHash) && (
-                  <p className="text-pv-muted text-xs font-mono">
-                    {createdPending ? t("consensusTx") : "Tx"}:{" "}
+                  <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-pv-text sm:text-3xl">
+                    {createdPending
+                      ? t("pendingTitle")
+                      : rematchId
+                        ? t("rematchCreatedAndFunded")
+                        : t("vsCreatedAndFunded")}
+                  </h1>
+                  <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+                    {createdPending
+                      ? t("pendingHint")
+                      : createdInviteKey
+                        ? t("sendThisPrivateLink")
+                        : t("sendThisLink")}
+                  </p>
+                </header>
+
+                <GlassCard
+                  glass
+                  noPad
+                  glow="none"
+                  className="!rounded-2xl border border-white/[0.12]"
+                >
+                  <div className="space-y-3 p-5 sm:p-6">
+                    <label
+                      className="block text-left text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted"
+                      htmlFor="create-success-share-url"
+                    >
+                      {t("inviteLinkLabel")}
+                    </label>
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:gap-3">
+                      <input
+                        id="create-success-share-url"
+                        readOnly
+                        value={shareUrl}
+                        className="form-field-pv min-h-[3rem] flex-1 break-all font-mono text-[11px] leading-snug sm:min-h-0 sm:text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="primary"
+                        fullWidth={false}
+                        onClick={copyLink}
+                        className="w-full shrink-0 rounded-xl py-3.5 font-display text-xs font-bold uppercase tracking-widest sm:w-auto sm:min-w-[8.5rem]"
+                      >
+                        {copied ? (
+                          <Check className="size-4 shrink-0" aria-hidden />
+                        ) : (
+                          <Copy className="size-4 shrink-0" aria-hidden />
+                        )}
+                        {copied ? tc("copied") : tc("copy")}
+                      </Button>
+                    </div>
+                  </div>
+                </GlassCard>
+
+                <div>
+                  <p className="mb-3 text-center font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted/75">
+                    {t("shareVia")}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-2">
                     <a
-                      href={getExplorerTxUrl(createdExplorerTxHash)}
+                      href={`https://wa.me/?text=${encodeURIComponent(`Challenge me on PROVEN: ${shareUrl}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-pv-emerald hover:underline"
+                      className="chip inline-flex min-h-[44px] items-center justify-center px-4 text-xs font-semibold uppercase tracking-wide text-pv-muted transition-colors hover:border-pv-emerald/35 hover:text-pv-emerald"
                     >
-                      {createdExplorerTxHash.slice(0, 10)}...{createdExplorerTxHash.slice(-8)}
+                      WhatsApp
                     </a>
-                  </p>
-                )}
-                <p className="text-pv-muted text-xs">
-                  <a
-                    href={getExplorerUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-pv-emerald hover:underline"
-                  >
-                    {t("openExplorer")}
-                  </a>
-                </p>
-              </div>
+                    <a
+                      href={`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="chip inline-flex min-h-[44px] items-center justify-center px-4 text-xs font-semibold uppercase tracking-wide text-pv-muted transition-colors hover:border-pv-emerald/35 hover:text-pv-emerald"
+                    >
+                      Telegram
+                    </a>
+                  </div>
+                </div>
 
-              <div className="flex gap-3 justify-center">
-                <Link href={`/vs/${created}`}>
-                  <Button variant="primary" fullWidth={false} className="px-7" size="sm">
-                    {t("viewVS")}
+                <div className="rounded-xl border border-white/[0.08] bg-pv-bg/35 px-4 py-3.5 sm:px-5">
+                  <div className="space-y-2 text-left text-xs text-pv-muted">
+                    {createdPending && createdTxHash && (
+                      <p className="font-mono leading-relaxed">
+                        {t("walletTx")}: {createdTxHash.slice(0, 10)}…
+                        {createdTxHash.slice(-8)}
+                      </p>
+                    )}
+                    {createdExplorerTxHash &&
+                      (!createdPending ||
+                        createdExplorerTxHash !== createdTxHash) && (
+                        <p className="font-mono leading-relaxed">
+                          {createdPending ? t("consensusTx") : "Tx"}:{" "}
+                          <a
+                            href={getExplorerTxUrl(createdExplorerTxHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-pv-emerald underline-offset-2 transition-colors hover:underline"
+                          >
+                            {createdExplorerTxHash.slice(0, 10)}…
+                            {createdExplorerTxHash.slice(-8)}
+                          </a>
+                        </p>
+                      )}
+                    <p>
+                      <a
+                        href={getExplorerUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-pv-emerald underline-offset-2 transition-colors hover:underline"
+                      >
+                        {t("openExplorer")}
+                      </a>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-center sm:gap-4">
+                  <Button
+                    variant="ghost"
+                    fullWidth
+                    className="rounded-xl py-3.5 font-display text-xs font-bold uppercase tracking-widest sm:w-auto sm:min-w-[10rem] sm:px-8"
+                    onClick={() => {
+                      setCreated(null);
+                      setCreatedPending(false);
+                      setCreatedTxHash("");
+                      setQuestion("");
+                      setCreatorPos("");
+                      setOpponentPos("");
+                      setUrl("");
+                      setHandicapLine("");
+                      setSettlementRule("");
+                      setVisibility("public");
+                      setCreatedExplorerTxHash("");
+                      setCreatedInviteKey("");
+                    }}
+                  >
+                    {t("createAnother")}
                   </Button>
-                </Link>
-                <Button
-                  variant="ghost"
-                  fullWidth={false}
-                  className="px-7"
-                  size="sm"
-                  onClick={() => {
-                    setCreated(null);
-                    setCreatedPending(false);
-                    setCreatedTxHash("");
-                    setQuestion("");
-                    setCreatorPos("");
-                    setOpponentPos("");
-                    setUrl("");
-                    setHandicapLine("");
-                    setSettlementRule("");
-                    setVisibility("public");
-                    setCreatedExplorerTxHash("");
-                    setCreatedInviteKey("");
-                  }}
-                >
-                  {t("createAnother")}
-                </Button>
+                  <Link href={`/vs/${created}`} className="block sm:inline-block">
+                    <Button
+                      variant="primary"
+                      fullWidth
+                      className="rounded-xl py-3.5 font-display text-xs font-bold uppercase tracking-widest sm:w-auto sm:min-w-[10rem] sm:px-8"
+                    >
+                      {t("viewVS")}
+                    </Button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          </AnimatedItem>
+            </AnimatedItem>
+          </div>
         </PageTransition>
       </>
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -28,7 +28,6 @@ import { getPendingVS } from "@/lib/pending-vs";
 import {
   MIN_STAKE,
   ZERO_ADDRESS,
-  getCategoryInfo,
   getShareUrl,
   shortenAddress,
 } from "@/lib/constants";
@@ -58,10 +57,13 @@ import { VS_XMTP_CHAT_ANCHOR_ID } from "@/lib/xmtp/vs-chat-eligibility";
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   Copy,
   ExternalLink,
+  FlaskConical,
   GitBranch,
   Share2,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 
@@ -73,52 +75,105 @@ function ProgressBar({ state }: { state: string }) {
     t("progressVerifying"),
     t("progressProven"),
   ];
+  const total = steps.length;
 
   const stepIndex =
     state === "open"
       ? 0
       : state === "accepted"
-      ? 1
-      : state === "resolved"
-      ? 3
-      : state === "cancelled"
-      ? -1
-      : 0;
+        ? 1
+        : state === "resolved"
+          ? 3
+          : state === "cancelled"
+            ? -1
+            : 0;
 
   if (stepIndex === -1) {
     return null;
   }
 
+  const isResolved = state === "resolved";
+  const progressPercent = isResolved ? 100 : ((stepIndex + 1) / total) * 100;
+  const phaseCurrent = isResolved ? total : stepIndex + 1;
+
   return (
-    <div className="flex items-center gap-1 mb-6">
-      {steps.map((step, index) => {
-        const isActive = index <= stepIndex;
-        const isCurrent = index === stepIndex;
-        return (
-          <div key={step} className="flex-1 flex flex-col items-center gap-1.5">
-            <div className="w-full h-0.5 overflow-hidden bg-pv-surface2">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: isActive ? "100%" : "0%" }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="h-full bg-pv-emerald"
-              />
-            </div>
-            <span
-              className={`text-[10px] font-bold uppercase tracking-wider ${
-                isCurrent
-                  ? "text-pv-emerald"
-                  : isActive
-                  ? "text-pv-text/60"
-                  : "text-pv-muted/40"
-              }`}
-            >
-              {step}
-            </span>
+    <nav
+      className="mb-8 sm:mb-10"
+      aria-label={t("progressAriaLabel")}
+    >
+      <div className="rounded-lg border border-white/[0.1] bg-pv-surface p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-6">
+        <div>
+          <div
+            className="relative h-1 w-full overflow-hidden rounded-sm bg-white/[0.06]"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progressPercent)}
+            aria-valuetext={t("progressStepFraction", {
+              current: phaseCurrent,
+              total,
+            })}
+          >
+            <motion.div
+              initial={false}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{
+                duration: 0.65,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="h-full rounded-sm bg-pv-emerald"
+            />
           </div>
-        );
-      })}
-    </div>
+        </div>
+
+        <ol className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-4 sm:gap-4">
+          {steps.map((step, index) => {
+            const isDone = isResolved || index < stepIndex;
+            const isCurrent = !isResolved && index === stepIndex;
+            const stepNum = String(index + 1).padStart(2, "0");
+            const stepCode = `STEP ${stepNum}`;
+
+            return (
+              <li key={stepCode} className="min-w-0 list-none">
+                <div
+                  className={`flex h-full flex-col gap-2 rounded-lg border px-3 py-3 text-left transition-[border-color,background-color] duration-200 sm:py-3.5 ${
+                    isCurrent
+                      ? "border-pv-emerald/40 bg-pv-emerald/[0.07]"
+                      : isDone
+                        ? "border-pv-emerald/20 bg-pv-emerald/[0.04]"
+                        : "border-white/[0.06] bg-pv-bg/40"
+                  }`}
+                >
+                  <span className="sr-only">{stepCode}</span>
+                  <span className="font-mono text-[10px] font-medium tabular-nums tracking-[0.12em] text-pv-muted/70">
+                    {stepNum}
+                  </span>
+                  <span
+                    aria-current={isCurrent ? "step" : undefined}
+                    className={`flex items-start gap-2 font-display text-[9px] font-bold uppercase leading-snug tracking-[0.14em] sm:text-[10px] sm:tracking-[0.16em] ${
+                      isCurrent
+                        ? "text-pv-emerald"
+                        : isDone
+                          ? "text-pv-text/90"
+                          : "text-pv-muted/45"
+                    }`}
+                  >
+                    {isDone ? (
+                      <Check
+                        className="mt-0.5 h-3 w-3 shrink-0 text-pv-emerald"
+                        strokeWidth={2.5}
+                        aria-hidden
+                      />
+                    ) : null}
+                    <span>{step}</span>
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </nav>
   );
 }
 
@@ -137,6 +192,125 @@ function formatChallengers(vs: VSData): ClaimChallenger[] {
   }));
 }
 
+function VsChallengersCard({
+  challengers,
+  counterPosition,
+  address,
+  challengerCount,
+  maxChallengers,
+  className = "border border-white/[0.12] !rounded-2xl",
+}: {
+  challengers: ClaimChallenger[];
+  counterPosition: string;
+  address: string | null | undefined;
+  challengerCount: number;
+  maxChallengers: number;
+  className?: string;
+}) {
+  const t = useTranslations("vsDetail");
+
+  return (
+    <GlassCard glass glow="none" noPad className={className}>
+      <div className="space-y-4 p-5 sm:p-6">
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
+              {t("challengers")}
+            </div>
+            <span
+              className="inline-flex shrink-0 items-center rounded-full border border-pv-fuch/35 bg-pv-fuch/[0.12] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-fuch sm:tracking-[0.16em]"
+              title={t("slotsFilled", {
+                count: challengerCount,
+                total: maxChallengers,
+              })}
+            >
+              {t("slotsFilled", {
+                count: challengerCount,
+                total: maxChallengers,
+              })}
+            </span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-pv-muted">
+            {t("challengersHint")}
+          </p>
+        </div>
+
+        {challengers.length === 0 ? (
+          <div
+            className="rounded-xl border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-9 text-center sm:py-11"
+            role="status"
+          >
+            <Users
+              className="mx-auto mb-3 size-10 text-pv-fuch/35 sm:size-11"
+              strokeWidth={1.25}
+              aria-hidden
+            />
+            <p className="text-sm leading-relaxed text-pv-muted">
+              {t("noChallengersYet")}
+            </p>
+          </div>
+        ) : (
+          <ul className="space-y-3" role="list">
+            {challengers.map((challenger, index) => (
+              <li key={`${challenger.address}-${index}`}>
+                <div
+                  className="rounded-xl border border-white/[0.1] bg-gradient-to-br from-pv-fuch/[0.05] via-transparent to-transparent p-4 transition-[border-color,background-color] duration-200 hover:border-white/[0.16] sm:p-5"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-5">
+                    <div className="flex min-w-0 gap-3 sm:items-start">
+                      <div
+                        className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-pv-fuch/[0.28] bg-pv-fuch/[0.08] font-mono text-[10px] font-bold tabular-nums text-pv-fuch sm:size-11 sm:text-[11px]"
+                        aria-hidden
+                      >
+                        #{index + 1}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="font-mono text-sm font-semibold tracking-tight text-pv-text">
+                            {shortenAddress(challenger.address)}
+                          </span>
+                          {address &&
+                            challenger.address.toLowerCase() ===
+                              address.toLowerCase() && (
+                              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
+                                {t("you")}
+                              </span>
+                            )}
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-pv-muted">
+                          {counterPosition}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex min-w-0 gap-2 sm:shrink-0 sm:gap-3">
+                      <div className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-pv-bg/45 px-3 py-2.5 sm:flex-none sm:min-w-[6.75rem]">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                          {t("challengerStake")}
+                        </div>
+                        <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-pv-fuch">
+                          {challenger.stake} GEN
+                        </div>
+                      </div>
+                      <div className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-pv-bg/45 px-3 py-2.5 sm:flex-none sm:min-w-[6.75rem]">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                          {t("potentialPayout")}
+                        </div>
+                        <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-pv-gold">
+                          {challenger.potential_payout} GEN
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </GlassCard>
+  );
+}
+
 export default function VSDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -146,7 +320,6 @@ export default function VSDetailPage() {
   const { address, isConnected, connect } = useWallet();
   const t = useTranslations("vsDetail");
   const tc = useTranslations("common");
-  const tCat = useTranslations("categories");
   const tStamp = useTranslations("stamp");
 
   const [vs, setVS] = useState<VSData | null>(null);
@@ -160,6 +333,9 @@ export default function VSDetailPage() {
   const [rivalryChain, setRivalryChain] = useState<VSData[]>([]);
   const [rivalryLoading, setRivalryLoading] = useState(false);
   const [storedInviteKey, setStoredInviteKey] = useState("");
+  const [marketTermsOpen, setMarketTermsOpen] = useState(false);
+  const marketTermsHeadingId = useId();
+  const marketTermsPanelId = useId();
 
   const countdown = useCountdown(vs?.deadline || 0);
 
@@ -335,7 +511,6 @@ export default function VSDetailPage() {
     : tStamp("won", { address: shortenAddress(vs.winner) });
   const winnerAmountLabel =
     !hasWinner ? null : resolvedPayout === null ? `${pool} GEN` : `+${resolvedPayout} GEN`;
-  const categoryInfo = getCategoryInfo(vs.category);
   const marketType = vs.market_type ?? "binary";
   const oddsMode = vs.odds_mode ?? "pool";
   const challengeStakeValue = Number(challengeStake);
@@ -461,16 +636,36 @@ export default function VSDetailPage() {
   return (
     <>
       <Confetti active={showConfetti} />
-      <div className="fixed inset-0 rivalry-bg pointer-events-none" style={{ zIndex: 0 }} />
       <PageTransition>
+        <div className="relative z-[1] mx-auto w-full max-w-[1280px] px-4 pb-16 pt-2 sm:px-6 sm:pb-20 sm:pt-4">
+          <div className="mx-auto w-full min-w-0">
         <AnimatedItem>
           <Link
             href={isConnected ? "/dashboard" : "/"}
-            className="inline-flex items-center gap-1.5 text-sm text-pv-muted hover:text-pv-text mb-5 transition-colors"
+            className="mb-6 inline-flex items-center gap-2 rounded-lg border border-transparent px-2 py-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted transition-[color,border-color,background-color] hover:border-white/[0.1] hover:bg-white/[0.04] hover:text-pv-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/30 sm:mb-8 sm:px-3 sm:text-[11px]"
           >
-            <ArrowLeft size={14} />
+            <ArrowLeft size={14} className="shrink-0 opacity-80" aria-hidden />
             {tc("back")}
           </Link>
+        </AnimatedItem>
+
+        <AnimatedItem>
+          <div className="mb-6 sm:mb-8">
+            <div className="mb-4 flex flex-wrap items-center gap-4 sm:gap-6">
+              <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-6">
+                <h1 className="min-w-0 max-w-4xl font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
+                  {t("heroLead")}
+                </h1>
+                <div
+                  className="h-px min-w-[2rem] flex-1 bg-white/[0.12]"
+                  aria-hidden
+                />
+              </div>
+            </div>
+            <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
+              {t("subtitle")}
+            </span>
+          </div>
         </AnimatedItem>
 
         {vs.state !== "cancelled" && (
@@ -479,55 +674,8 @@ export default function VSDetailPage() {
           </AnimatedItem>
         )}
 
-        <AnimatedItem>
-          <div className="mb-6 lg:max-w-[800px] lg:mx-auto">
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
-                {t("eyebrow")}
-              </span>
-            </div>
-            <p className="mt-4 text-sm sm:text-base text-pv-muted leading-relaxed max-w-[700px]">
-              {t("subtitle")}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span
-                className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border"
-                style={{
-                  backgroundColor: `${categoryInfo.color}14`,
-                  borderColor: `${categoryInfo.color}4A`,
-                  color: categoryInfo.color,
-                }}
-              >
-                {tCat(categoryInfo.id)}
-              </span>
-              <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-cyan/[0.25] bg-pv-cyan/[0.08] text-pv-cyan">
-                {t(`marketTypes.${marketType}`)}
-              </span>
-              <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-fuch/[0.25] bg-pv-fuch/[0.08] text-pv-fuch">
-                {isOneToMany
-                  ? t("oneToManySummary", { count: maxChallengers })
-                  : t("headToHeadSummary")}
-              </span>
-              {isPrivateVS && (
-                <span className="px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-[0.12em] border border-pv-emerald/[0.25] bg-pv-emerald/[0.08] text-pv-emerald">
-                  {t("privateLink")}
-                </span>
-              )}
-              <span className="px-2.5 py-1 rounded text-[10px] font-mono font-bold uppercase tracking-[0.12em] border border-pv-gold/[0.25] bg-pv-gold/[0.08] text-pv-gold">
-                {t("pool")}: {pool} GEN
-              </span>
-              {"pending" in vs && (vs as any).pending ? (
-                <span className="chip text-[10px] text-pv-cyan border-pv-cyan/[0.25] bg-pv-cyan/[0.08] animate-pulse">
-                  {t("submittedPending")}
-                </span>
-              ) : (
-                <Badge status={vs.state} />
-              )}
-            </div>
-          </div>
-        </AnimatedItem>
-
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:items-start lg:gap-10">
+          <div className="min-w-0 lg:col-span-8">
         {vs.state === "resolved" && resolvePhase === -1 && (
           <>
             <AnimatedItem>
@@ -538,7 +686,7 @@ export default function VSDetailPage() {
               />
             </AnimatedItem>
             <AnimatedItem>
-              <div className="mb-5 lg:max-w-[800px] lg:mx-auto">
+              <div className="mb-6 sm:mb-8">
                 <SettlementExplanationCard vs={vs} />
               </div>
             </AnimatedItem>
@@ -553,11 +701,22 @@ export default function VSDetailPage() {
 
         {(vs.state !== "resolved" || resolvePhase !== -1) && actionLoading !== "resolve" && (
           <AnimatedItem>
-            <GlassCard glow="both" noPad className="mb-5 lg:max-w-[800px] lg:mx-auto">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-5">
+            <GlassCard
+              glass
+              glow="none"
+              noPad
+              className="mb-6 !rounded-2xl border border-white/[0.12] sm:mb-8"
+            >
+              <div className="relative">
+                <div
+                  className="rivalry-card-ambient pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl"
+                  aria-hidden
+                />
+                <div className="relative z-[1]">
+              <div className="p-5 sm:p-8">
+                <div className="mb-5 flex items-center justify-between sm:mb-6">
                   {vs.state === "open" && !isCreator ? (
-                    <div className="text-sm font-bold text-pv-fuch">
+                    <div className="inline-flex max-w-full min-w-0 items-center rounded-full border border-pv-fuch/35 bg-pv-fuch/[0.08] px-2.5 py-1 text-left text-[11px] font-semibold leading-tight text-pv-fuch shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] sm:px-3 sm:py-1.5 sm:text-xs">
                       {t("challengesYou", { address: shortenAddress(vs.creator) })}
                     </div>
                   ) : (
@@ -566,15 +725,15 @@ export default function VSDetailPage() {
                   <span className="font-mono text-[11px] text-pv-muted">#{vs.id}</span>
                 </div>
 
-                <h1 className="font-display text-[clamp(28px,8.5vw,46px)] font-bold leading-[0.92] tracking-tight mb-7">
+                <h2 className="mb-6 font-display text-[clamp(28px,8.5vw,46px)] font-bold leading-[0.92] tracking-tight sm:mb-7">
                   {vs.question}
-                </h1>
+                </h2>
 
-                <div className="flex flex-col sm:flex-row overflow-hidden border border-white/[0.12] mb-6">
+                <div className="mb-6 flex flex-col overflow-hidden rounded-xl border border-white/[0.12] sm:flex-row">
                   <div className="flex-1 p-4 bg-pv-cyan/[0.04]">
                     <div className="flex items-center gap-2 mb-2">
                       <Avatar side="creator" size={28} />
-                      <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-cyan/60">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-cyan/60 sm:text-[11px]">
                         {t("creator")}
                       </div>
                     </div>
@@ -587,9 +746,9 @@ export default function VSDetailPage() {
                     <div className="text-xs text-pv-cyan mt-1">{vs.creator_position}</div>
                   </div>
 
-                  <div className="w-full h-px sm:w-px sm:h-auto bg-white/[0.08] flex items-center justify-center relative">
-                    <span className="absolute bg-pv-surface2 text-pv-muted text-[10px] font-bold px-1.5 py-0.5">
-                      VS
+                  <div className="relative flex h-px w-full items-center justify-center bg-white/[0.06] sm:h-auto sm:w-px">
+                    <span className="absolute rounded-full border border-white/[0.12] bg-pv-surface/90 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-pv-text/60 sm:text-[10px]">
+                      {t("vsDivider")}
                     </span>
                   </div>
 
@@ -605,7 +764,7 @@ export default function VSDetailPage() {
                       <>
                         <div className="flex items-center gap-2 mb-2">
                           <Avatar side="opponent" size={28} />
-                          <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-fuch/60">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-fuch/60 sm:text-[11px]">
                             {t("rival")}
                           </div>
                         </div>
@@ -621,7 +780,7 @@ export default function VSDetailPage() {
                       <>
                         <div className="flex items-center gap-2 mb-2">
                           <Users size={15} className="text-pv-fuch" />
-                          <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-fuch/60">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-fuch/60 sm:text-[11px]">
                             {t("challengerSide")}
                           </div>
                         </div>
@@ -637,39 +796,48 @@ export default function VSDetailPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="bg-pv-surface2 p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
+                {/* Métricas: mobile-first — 1 col → 2 (sm) → 4 (lg); panel unificado + celdas con min-h táctil */}
+                <div className="grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-white/[0.1] bg-white/[0.07] p-px shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] sm:grid-cols-2 lg:grid-cols-4">
+                  {/* Misma estructura en las 4: título arriba (shrink-0) + valor abajo (mt-auto) para alinear filas */}
+                  <div className="flex min-h-[5.75rem] min-w-0 flex-col bg-pv-bg/55 px-4 py-3.5 sm:min-h-[6rem] sm:px-4 sm:py-4">
+                    <p className="shrink-0 text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted/90 sm:text-[11px] sm:tracking-[0.18em]">
                       {t("pool")}
+                    </p>
+                    <div className="mt-auto min-w-0 pt-2 font-mono text-base font-bold tabular-nums leading-tight text-pv-gold sm:text-lg lg:text-xl">
+                      {pool} GEN
                     </div>
-                    <div className="font-mono text-2xl font-bold text-pv-gold">{pool} GEN</div>
                   </div>
-                  <div className="bg-pv-surface2 p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
+                  <div className="flex min-h-[5.75rem] min-w-0 flex-col bg-pv-bg/55 px-4 py-3.5 sm:min-h-[6rem] sm:px-4 sm:py-4">
+                    <p className="shrink-0 text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted/90 sm:text-[11px] sm:tracking-[0.18em]">
                       {t("creatorStake")}
-                    </div>
-                    <div className="font-mono text-2xl font-bold text-pv-cyan">
+                    </p>
+                    <div className="mt-auto min-w-0 pt-2 font-mono text-base font-bold tabular-nums leading-tight text-pv-cyan sm:text-lg lg:text-xl">
                       {vs.creator_stake ?? vs.stake_amount} GEN
                     </div>
                   </div>
-                  <div className="bg-pv-surface2 p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
+                  <div className="flex min-h-[5.75rem] min-w-0 flex-col bg-pv-bg/55 px-4 py-3.5 sm:min-h-[6rem] sm:px-4 sm:py-4">
+                    <p className="shrink-0 text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted/90 sm:text-[11px] sm:tracking-[0.18em]">
                       {t("deadline")}
+                    </p>
+                    <div className="mt-auto min-w-0 pt-2">
+                      <CountdownTimer
+                        deadline={vs.deadline}
+                        className="block w-full max-w-full break-words text-sm leading-tight sm:text-base lg:text-lg"
+                      />
                     </div>
-                    <CountdownTimer deadline={vs.deadline} className="text-xl" />
                   </div>
-                  <div className="bg-pv-surface2 p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
+                  <div className="flex min-h-[5.75rem] min-w-0 flex-col bg-pv-bg/55 px-4 py-3.5 sm:min-h-[6rem] sm:px-4 sm:py-4">
+                    <p className="shrink-0 text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted/90 sm:text-[11px] sm:tracking-[0.18em]">
                       {t("slots")}
-                    </div>
-                    <div className="font-mono text-2xl font-bold text-pv-fuch">
+                    </p>
+                    <div className="mt-auto min-w-0 pt-2 font-mono text-base font-bold tabular-nums leading-tight text-pv-fuch sm:text-lg lg:text-xl">
                       {challengerCount}/{maxChallengers}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-white/[0.08] px-6 py-3 flex items-center justify-between">
+              <div className="flex items-center justify-between border-t border-white/[0.08] px-5 py-3 sm:px-8">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
                   <span className="text-xs text-pv-muted">{t("provenVerifies")}</span>
@@ -690,6 +858,8 @@ export default function VSDetailPage() {
                   </a>
                 )}
               </div>
+                </div>
+              </div>
             </GlassCard>
           </AnimatedItem>
         )}
@@ -706,161 +876,163 @@ export default function VSDetailPage() {
         )}
 
         <AnimatedItem>
-          <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80 mb-1">
-              {t("marketTerms")}
-            </div>
-            <p className="text-sm text-pv-muted mb-4">{t("marketTermsHint")}</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div className="bg-pv-surface2 p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                  {t("marketType")}
-                </div>
-                <div className="font-semibold">{t(`marketTypes.${marketType}`)}</div>
-              </div>
-              <div className="bg-pv-surface2 p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                  {t("oddsMode")}
-                </div>
-                <div className="font-semibold">{t(`oddsModes.${oddsMode}`)}</div>
-              </div>
-              <div className="bg-pv-surface2 p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                  {t("format")}
-                </div>
-                <div className="font-semibold">
-                  {isOneToMany
-                    ? t("oneToManySummary", { count: maxChallengers })
-                    : t("headToHeadSummary")}
-                </div>
-              </div>
-              <div className="bg-pv-surface2 p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                  {t("challengerCapacity")}
-                </div>
-                <div className="font-semibold">
-                  {t("slotsFilled", { count: challengerCount, total: maxChallengers })}
-                </div>
-              </div>
-              <div className="bg-pv-surface2 p-4">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                  {t("visibility")}
-                </div>
-                <div className="font-semibold">
-                  {isPrivateVS ? t("visibilityPrivate") : t("visibilityPublic")}
-                </div>
-              </div>
-              {oddsMode === "fixed" && typeof vs.challenger_payout_bps === "number" && (
-                <div className="bg-pv-surface2 p-4 sm:col-span-2">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                    {t("fixedPayout")}
-                  </div>
-                  <div className="font-semibold">
-                    {(vs.challenger_payout_bps / 10000).toFixed(2)}x
-                  </div>
-                </div>
-              )}
-              {vs.handicap_line && (
-                <div className="bg-pv-surface2 p-4 sm:col-span-2">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                    {t("handicapLine")}
-                  </div>
-                  <div className="font-semibold">{vs.handicap_line}</div>
-                </div>
-              )}
-              {vs.settlement_rule && (
-                <div className="bg-pv-surface2 p-4 sm:col-span-2">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted mb-1.5">
-                    {t("settlementRule")}
-                  </div>
-                  <div className="font-semibold leading-relaxed">{vs.settlement_rule}</div>
-                </div>
-              )}
-            </div>
-          </GlassCard>
-        </AnimatedItem>
-
-        {(vs.state === "open" || vs.state === "accepted") && (
-          <AnimatedItem>
-            <div className="mb-5 lg:max-w-[800px] lg:mx-auto">
-              <ClaimStrengthCard
-                input={{
-                  question: vs.question,
-                  creator_position: vs.creator_position,
-                  opponent_position: vs.opponent_position,
-                  resolution_url: vs.resolution_url,
-                  settlement_rule: vs.settlement_rule ?? "",
-                  category: vs.category,
-                  deadline: vs.deadline,
-                }}
-              />
-            </div>
-          </AnimatedItem>
-        )}
-
-        <AnimatedItem>
-          <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-fuch/80 mb-1">
-              {t("challengers")}
-            </div>
-            <p className="text-sm text-pv-muted mb-4">
-              {t("slotsFilled", { count: challengerCount, total: maxChallengers })}
-            </p>
-            {challengers.length === 0 ? (
-              <p className="text-sm text-pv-muted">{t("noChallengersYet")}</p>
-            ) : (
-              <div className="space-y-3">
-                {challengers.map((challenger, index) => (
-                  <div
-                    key={`${challenger.address}-${index}`}
-                    className="bg-pv-surface2 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+          <GlassCard
+            glass
+            glow="none"
+            noPad
+            className="mb-6 w-full overflow-hidden !rounded-2xl border border-white/[0.12] sm:mb-8"
+          >
+            <button
+              type="button"
+              onClick={() => setMarketTermsOpen((open) => !open)}
+              aria-expanded={marketTermsOpen}
+              aria-controls={marketTermsPanelId}
+              className="flex w-full min-h-[3.25rem] items-start justify-between gap-3 px-5 py-5 text-left transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-pv-emerald/35 sm:min-h-0 sm:gap-4 sm:px-8 sm:py-6"
+            >
+              <div className="flex min-w-0 gap-3 sm:gap-3.5">
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                  aria-hidden
+                >
+                  <SlidersHorizontal size={16} strokeWidth={2} />
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <h3
+                    id={marketTermsHeadingId}
+                    className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]"
                   >
-                    <div>
-                      <div className="text-sm font-semibold">
-                        {shortenAddress(challenger.address)}
-                        {address &&
-                          challenger.address.toLowerCase() === address.toLowerCase() && (
-                            <span className="text-pv-emerald text-[10px] ml-1">
-                              {t("you")}
-                            </span>
-                          )}
-                      </div>
-                      <div className="text-xs text-pv-muted mt-1">{vs.counter_position}</div>
+                    {t("marketTerms")}
+                  </h3>
+                  <p className="text-[10px] leading-relaxed text-pv-muted sm:text-[11px]">
+                    {t("marketTermsHint")}
+                  </p>
+                </div>
+              </div>
+              <ChevronDown
+                size={20}
+                className={`shrink-0 text-pv-muted transition-transform duration-200 ease-out ${
+                  marketTermsOpen ? "rotate-180" : ""
+                }`}
+                aria-hidden
+              />
+            </button>
+
+            <motion.div
+              initial={false}
+              animate={{
+                height: marketTermsOpen ? "auto" : 0,
+                opacity: marketTermsOpen ? 1 : 0,
+              }}
+              transition={{
+                height: {
+                  duration: 0.34,
+                  ease: [0.25, 0.46, 0.45, 0.94],
+                },
+                opacity: {
+                  duration: 0.22,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
+              }}
+              className={`overflow-hidden ${!marketTermsOpen ? "pointer-events-none" : ""}`}
+              aria-hidden={!marketTermsOpen}
+            >
+              <div
+                id={marketTermsPanelId}
+                role="region"
+                aria-labelledby={marketTermsHeadingId}
+                className="border-t border-white/[0.08] px-5 pb-6 pt-5 sm:px-8 sm:pb-8 sm:pt-6"
+              >
+                <div className="grid grid-cols-1 gap-2.5 text-sm sm:grid-cols-2 sm:gap-3">
+                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                      {t("marketType")}
                     </div>
-                    <div className="flex gap-3 text-sm">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-1">
-                          {t("challengerStake")}
-                        </div>
-                        <div className="font-mono font-semibold text-pv-fuch">
-                          {challenger.stake} GEN
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-muted mb-1">
-                          {t("potentialPayout")}
-                        </div>
-                        <div className="font-mono font-semibold text-pv-gold">
-                          {challenger.potential_payout} GEN
-                        </div>
-                      </div>
+                    <div className="font-semibold">{t(`marketTypes.${marketType}`)}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                      {t("oddsMode")}
+                    </div>
+                    <div className="font-semibold">{t(`oddsModes.${oddsMode}`)}</div>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                      {t("format")}
+                    </div>
+                    <div className="font-semibold">
+                      {isOneToMany
+                        ? t("oneToManySummary", { count: maxChallengers })
+                        : t("headToHeadSummary")}
                     </div>
                   </div>
-                ))}
+                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                      {t("challengerCapacity")}
+                    </div>
+                    <div className="font-semibold">
+                      {t("slotsFilled", { count: challengerCount, total: maxChallengers })}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                    <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                      {t("visibility")}
+                    </div>
+                    <div className="font-semibold">
+                      {isPrivateVS ? t("visibilityPrivate") : t("visibilityPublic")}
+                    </div>
+                  </div>
+                  {oddsMode === "fixed" && typeof vs.challenger_payout_bps === "number" && (
+                    <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4 sm:col-span-2">
+                      <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                        {t("fixedPayout")}
+                      </div>
+                      <div className="font-semibold">
+                        {(vs.challenger_payout_bps / 10000).toFixed(2)}x
+                      </div>
+                    </div>
+                  )}
+                  {vs.handicap_line && (
+                    <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4 sm:col-span-2">
+                      <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                        {t("handicapLine")}
+                      </div>
+                      <div className="font-semibold">{vs.handicap_line}</div>
+                    </div>
+                  )}
+                  {vs.settlement_rule && (
+                    <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4 sm:col-span-2">
+                      <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                        {t("settlementRule")}
+                      </div>
+                      <div className="font-semibold leading-relaxed">{vs.settlement_rule}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </motion.div>
           </GlassCard>
         </AnimatedItem>
 
         {showRivalrySection && (
           <AnimatedItem>
-            <GlassCard className="mb-5 lg:max-w-[800px] lg:mx-auto">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/80">
-                    {t("rivalry")}
+            <GlassCard
+              glass
+              noPad
+              className="mb-6 !rounded-2xl border border-white/[0.12] sm:mb-8"
+            >
+              <div className="p-5 sm:p-6">
+              <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 flex-wrap items-center gap-3">
+                    <h2 className="font-display text-sm font-bold tracking-tight text-pv-text sm:text-base">
+                      {t("rivalry")}
+                    </h2>
+                    <div
+                      className="h-px min-h-px min-w-[2rem] flex-1 bg-white/[0.12] sm:min-w-0"
+                      aria-hidden
+                    />
                   </div>
-                  <p className="text-sm text-pv-muted mt-1">{t("rivalryHint")}</p>
+                  <p className="mt-2 text-sm text-pv-muted sm:mt-3">{t("rivalryHint")}</p>
                 </div>
                 {!isSampleVS && (vs.state === "resolved" || vs.state === "cancelled") && (
                   <Link href={`/vs/create?rematch=${vs.id}`}>
@@ -878,10 +1050,10 @@ export default function VSDetailPage() {
                   {rivalryChain.map((entry, index) => (
                     <Link key={entry.id} href={`/vs/${entry.id}`} className="block">
                       <div
-                        className={`p-4 border transition-colors ${
+                        className={`rounded-xl border p-4 transition-colors ${
                           entry.id === vs.id
                             ? "border-pv-emerald/[0.35] bg-pv-emerald/[0.08]"
-                            : "border-white/[0.12] bg-pv-surface2 hover:border-white/[0.22]"
+                            : "border-white/[0.12] bg-pv-bg/40 hover:border-white/[0.22]"
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
@@ -902,16 +1074,17 @@ export default function VSDetailPage() {
               ) : (
                 <p className="text-sm text-pv-muted">{t("rivalryEmpty")}</p>
               )}
+            </div>
             </GlassCard>
           </AnimatedItem>
         )}
 
         {!isSampleVS ? (
           <AnimatedItem>
-            <div className="flex flex-col gap-3 lg:max-w-[800px] lg:mx-auto">
+            <div className="flex flex-col gap-3 sm:gap-4">
               {missingPrivateInvite && (
-                <GlassCard>
-                  <div className="text-sm font-semibold mb-2 text-pv-emerald">
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12]">
+                  <div className="mb-2 text-sm font-semibold text-pv-emerald">
                     {t("privateInviteRequired")}
                   </div>
                   <p className="text-sm text-pv-muted">{t("privateInviteHint")}</p>
@@ -919,7 +1092,7 @@ export default function VSDetailPage() {
               )}
 
               {canAccept && (
-                <GlassCard>
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12]">
                   <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
                     <Input
                       label={t("challengeStake")}
@@ -970,45 +1143,68 @@ export default function VSDetailPage() {
               )}
 
               {vs.state === "accepted" && !countdown.expired && actionLoading !== "resolve" && (
-                <GlassCard className="text-center">
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12] text-center">
                   <p className="text-sm text-pv-muted">{t("waitingDeadline")}</p>
                 </GlassCard>
               )}
 
               {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) &&
                 isCreator && (
-                <GlassCard>
-                  <div className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <Share2 size={14} className="text-pv-cyan" />
-                    {isPrivateVS
-                      ? t("sendPrivateLink")
-                      : isOneToMany
-                      ? t("sendLinkToChallengers")
-                      : t("sendLink")}
-                  </div>
-                  {isPrivateVS && !inviteKey ? (
-                    <p className="text-sm text-pv-muted">{t("privateLinkUnavailable")}</p>
-                  ) : (
-                    <div className="flex gap-2.5">
-                      <input
-                        readOnly
-                        value={shareUrl}
-                        className="input flex-1 font-mono text-[11px]"
-                      />
-                      <button
-                        onClick={async () => {
-                          await navigator.clipboard.writeText(shareUrl);
-                          setCopied(true);
-                          toast.success(tc("copied"));
-                          setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className="px-4 py-3 rounded bg-pv-emerald text-pv-bg font-bold text-sm flex items-center gap-1.5 hover:brightness-110 transition-all focus-ring"
-                      >
-                        {copied ? <Check size={14} /> : <Copy size={14} />}
-                        {copied ? tc("copied") : tc("copy")}
-                      </button>
+                <GlassCard
+                  glass
+                  noPad
+                  glow="none"
+                  className="!rounded-2xl border border-white/[0.12]"
+                >
+                  <div className="space-y-3 p-5 sm:p-6">
+                    <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-pv-text">
+                      <Share2 size={14} className="shrink-0 text-pv-cyan" aria-hidden />
+                      {isPrivateVS
+                        ? t("sendPrivateLink")
+                        : isOneToMany
+                          ? t("sendLinkToChallengers")
+                          : t("sendLink")}
                     </div>
-                  )}
+                    {isPrivateVS && !inviteKey ? (
+                      <p className="text-sm text-pv-muted">{t("privateLinkUnavailable")}</p>
+                    ) : (
+                      <>
+                        <label
+                          className="block text-left text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted"
+                          htmlFor="vs-detail-share-url"
+                        >
+                          {t("shareLinkLabel")}
+                        </label>
+                        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:gap-3">
+                          <input
+                            id="vs-detail-share-url"
+                            readOnly
+                            value={shareUrl}
+                            className="form-field-pv min-h-[3rem] flex-1 break-all font-mono text-[11px] leading-snug sm:min-h-0 sm:text-xs"
+                          />
+                          <Button
+                            type="button"
+                            variant="primary"
+                            fullWidth={false}
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(shareUrl);
+                              setCopied(true);
+                              toast.success(tc("copied"));
+                              setTimeout(() => setCopied(false), 2000);
+                            }}
+                            className="w-full shrink-0 rounded-xl py-3.5 font-display text-xs font-bold uppercase tracking-widest sm:w-auto sm:min-w-[8.5rem]"
+                          >
+                            {copied ? (
+                              <Check className="size-4 shrink-0" aria-hidden />
+                            ) : (
+                              <Copy className="size-4 shrink-0" aria-hidden />
+                            )}
+                            {copied ? tc("copied") : tc("copy")}
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </GlassCard>
               )}
 
@@ -1025,18 +1221,81 @@ export default function VSDetailPage() {
           </AnimatedItem>
         ) : (
           <AnimatedItem>
-            <GlassCard className="text-center">
-              <p className="text-sm text-pv-muted">{t("sampleMode")}</p>
-              <div className="mt-3 flex justify-center">
-                <Link href="/vs/create" className="block w-full sm:w-auto">
-                  <Button variant="primary" fullWidth={false}>
-                    {t("sampleModeCTA")}
-                  </Button>
-                </Link>
+            <GlassCard
+              glass
+              glow="none"
+              noPad
+              className="!rounded-2xl !border-2 !border-dashed !border-white/[0.18] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+            >
+              <div className="p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-4">
+                  <span
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.03] text-pv-muted"
+                    aria-hidden
+                  >
+                    <FlaskConical size={18} strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                      <h3 className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
+                        {t("sampleModeTitle")}
+                      </h3>
+                      <span className="inline-flex shrink-0 rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-pv-muted sm:text-[10px] sm:tracking-[0.22em]">
+                        {t("sampleModeDemoBadge")}
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-pv-muted sm:text-xs">
+                      {t("sampleModeBody")}
+                    </p>
+                    <div className="pt-0.5">
+                      <Link href="/vs/create" className="inline-block w-full sm:w-auto">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          fullWidth={false}
+                          className="w-full !border-white/[0.1] !bg-white/[0.03] !py-2 !px-3 !text-[10px] !font-semibold !text-pv-muted !shadow-none hover:!border-white/[0.16] hover:!bg-white/[0.05] hover:!text-pv-text sm:w-auto sm:!px-3.5 sm:!text-[11px]"
+                        >
+                          {t("sampleModeCTA")}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </div>
               </div>
             </GlassCard>
           </AnimatedItem>
         )}
+          </div>
+
+          <aside className="min-w-0 lg:col-span-4 text-pv-text">
+            <AnimatedItem>
+              <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+                {(vs.state === "open" || vs.state === "accepted") && (
+                  <ClaimStrengthCard
+                    input={{
+                      question: vs.question,
+                      creator_position: vs.creator_position,
+                      opponent_position: vs.opponent_position,
+                      resolution_url: vs.resolution_url,
+                      settlement_rule: vs.settlement_rule ?? "",
+                      category: vs.category,
+                      deadline: vs.deadline,
+                    }}
+                  />
+                )}
+                <VsChallengersCard
+                  challengers={challengers}
+                  counterPosition={vs.counter_position ?? ""}
+                  address={address}
+                  challengerCount={challengerCount}
+                  maxChallengers={maxChallengers}
+                />
+              </div>
+            </AnimatedItem>
+          </aside>
+        </div>
+        </div>
+        </div>
       </PageTransition>
     </>
   );

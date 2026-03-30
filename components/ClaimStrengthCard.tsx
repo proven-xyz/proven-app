@@ -35,22 +35,22 @@ export default function ClaimStrengthCard({
       className={`border border-white/[0.12] !rounded-2xl ${className}`}
     >
       <div className={compact ? "space-y-3" : "space-y-4"}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
               {t("claimStrength")}
             </div>
-            {!compact ? (
-              <p className="mt-1 text-xs leading-relaxed text-pv-muted">
-                {t("hint")}
-              </p>
-            ) : null}
+            <span
+              className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tierClasses[result.tier]}`}
+            >
+              {t(`tiers.${result.tier}`)}
+            </span>
           </div>
-          <span
-            className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${tierClasses[result.tier]}`}
-          >
-            {t(`tiers.${result.tier}`)}
-          </span>
+          {!compact ? (
+            <p className="mt-2 text-xs leading-relaxed text-pv-muted">
+              {t("hint")}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex items-end justify-between gap-3">

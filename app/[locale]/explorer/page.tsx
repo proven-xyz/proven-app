@@ -33,7 +33,6 @@ export default function ExplorePage() {
     </Suspense>
   );
 }
-
 function ExploreLoading() {
   return (
     <div className="animate-pulse space-y-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -48,3 +47,4 @@ function ExploreLoading() {
     </div>
   );
 }
+

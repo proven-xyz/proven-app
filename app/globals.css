@@ -203,8 +203,15 @@
            text-sm font-semibold cursor-pointer transition-all duration-150;
   }
 
-  /* ── Ambient rivalry glow (for VS detail pages) ── */
+  /* ── Ambient rivalry glow (VS detail: full-page legacy / card-scoped) ── */
   .rivalry-bg {
+    background:
+      radial-gradient(ellipse 60% 40% at 0% 30%, rgba(93,230,255,0.06) 0%, transparent 70%),
+      radial-gradient(ellipse 60% 40% at 100% 70%, rgba(248,172,255,0.06) 0%, transparent 70%);
+  }
+
+  /* Same dual glow, clipped to the main VS hero card (behind content) */
+  .rivalry-card-ambient {
     background:
       radial-gradient(ellipse 60% 40% at 0% 30%, rgba(93,230,255,0.06) 0%, transparent 70%),
       radial-gradient(ellipse 60% 40% at 100% 70%, rgba(248,172,255,0.06) 0%, transparent 70%);
