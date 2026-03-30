@@ -694,9 +694,11 @@
   },
   "stamp": {
     "provenDecided": "PROVEN ya decidio",
-    "won": "Gano @{address}",
+    "won": "Gano {address}",
     "draw": "Empate",
-    "challengersWon": "Lado ganador: retadores"
+    "challengersWon": "Lado ganador: retadores",
+    "youWon": "Ganaste",
+    "lost": "Perdiste"
   },
   "terminal": {
     "searchingEvidence": "IA buscando pruebas...",

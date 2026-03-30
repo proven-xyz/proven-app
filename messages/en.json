@@ -688,9 +688,11 @@
   },
   "stamp": {
     "provenDecided": "PROVEN has decided",
-    "won": "Winner @{address}",
+    "won": "Winner {address}",
     "draw": "Draw",
-    "challengersWon": "Winning side: Challengers"
+    "challengersWon": "Winning side: Challengers",
+    "youWon": "You win",
+    "lost": "You lost"
   },
   "terminal": {
     "searchingEvidence": "AI searching for evidence...",

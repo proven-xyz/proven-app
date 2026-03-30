@@ -79,10 +79,16 @@ const DESIGN_PREVIEW_THIRD_CHALLENGER =
 const DUEL_STATUS_FUCHSIA_PILL_CLASS =
   "inline-flex max-w-full min-w-0 items-center rounded-full border border-pv-fuch/35 bg-pv-fuch/[0.08] px-2.5 py-1 text-left text-[11px] font-semibold leading-tight text-pv-fuch shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] sm:px-3 sm:py-1.5 sm:text-xs";
 
+const RIVALRY_ITEM_BASE_CLASS =
+  "rounded-xl border p-4 transition-[border-color,background-color] duration-200 bg-pv-bg/30 hover:border-white/[0.22] hover:bg-pv-bg/35";
+const RIVALRY_ITEM_ACTIVE_CLASS =
+  "border-pv-emerald/[0.35] bg-pv-emerald/[0.08] hover:border-pv-emerald/[0.45] hover:bg-pv-emerald/[0.12]";
+
 function buildDesignPreviewVs(
   base: VSData,
   step: number,
   resolutionSummary: string,
+  resolvedOutcome: "creator" | "challengers" = "creator",
 ): VSData {
   if (step <= 0) {
     return {
@@ -142,32 +148,54 @@ function buildDesignPreviewVs(
       state: "resolved",
     });
 
+    if (resolvedOutcome === "creator") {
+      return {
+        ...base,
+        state: "resolved",
+        opponent: DESIGN_PREVIEW_OPPONENT,
+        winner: base.creator,
+        winner_side: "creator",
+        resolution_summary: resolutionSummary,
+        challenger_count: 3,
+        challenger_addresses: [
+          DESIGN_PREVIEW_OPPONENT,
+          DESIGN_PREVIEW_SECOND_CHALLENGER,
+          DESIGN_PREVIEW_THIRD_CHALLENGER,
+        ],
+        challengers: [
+          {
+            address: DESIGN_PREVIEW_OPPONENT,
+            stake: base.stake_amount,
+            potential_payout: resolvedPot,
+          },
+          {
+            address: DESIGN_PREVIEW_SECOND_CHALLENGER,
+            stake: base.stake_amount,
+            potential_payout: resolvedPot,
+          },
+          {
+            address: DESIGN_PREVIEW_THIRD_CHALLENGER,
+            stake: base.stake_amount,
+            potential_payout: resolvedPot,
+          },
+        ],
+      };
+    }
+
+    // Preview "lost": winner_side = challengers.
+    // Usamos challenger_count=1 para que getVSSingleWinnerPayout devuelva un payout y la tarjeta se vea completa.
     return {
       ...base,
       state: "resolved",
       opponent: DESIGN_PREVIEW_OPPONENT,
-      winner: base.creator,
-      winner_side: "creator",
+      winner: DESIGN_PREVIEW_OPPONENT,
+      winner_side: "challengers",
       resolution_summary: resolutionSummary,
-      challenger_count: 3,
-      challenger_addresses: [
-        DESIGN_PREVIEW_OPPONENT,
-        DESIGN_PREVIEW_SECOND_CHALLENGER,
-        DESIGN_PREVIEW_THIRD_CHALLENGER,
-      ],
+      challenger_count: 1,
+      challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
       challengers: [
         {
           address: DESIGN_PREVIEW_OPPONENT,
-          stake: base.stake_amount,
-          potential_payout: resolvedPot,
-        },
-        {
-          address: DESIGN_PREVIEW_SECOND_CHALLENGER,
-          stake: base.stake_amount,
-          potential_payout: resolvedPot,
-        },
-        {
-          address: DESIGN_PREVIEW_THIRD_CHALLENGER,
           stake: base.stake_amount,
           potential_payout: resolvedPot,
         },
@@ -213,6 +241,34 @@ function buildDesignPreviewVs(
       },
     ],
   };
+}
+
+function buildDesignPreviewRematchChain(
+  base: VSData,
+  firstRoundOutcome: "creator" | "challengers",
+  resolutionSummary: string,
+): VSData[] {
+  // Dos rondas mock para que se vea "Rematch" en el card sin depender de on-chain.
+  const round1Base: VSData = {
+    ...base,
+    id: base.id - 100,
+    question: `${base.question} (Rematch #1)`,
+    resolution_summary: resolutionSummary,
+  };
+  const round2Base: VSData = {
+    ...base,
+    id: base.id - 101,
+    question: `${base.question} (Rematch #2)`,
+    resolution_summary: resolutionSummary,
+  };
+
+  const round2Outcome: "creator" | "challengers" =
+    firstRoundOutcome === "creator" ? "challengers" : "creator";
+
+  return [
+    buildDesignPreviewVs(round1Base, 3, resolutionSummary, firstRoundOutcome),
+    buildDesignPreviewVs(round2Base, 3, resolutionSummary, round2Outcome),
+  ];
 }
 
 type ProgressBarProps = {
@@ -313,12 +369,12 @@ function ProgressBar({
             const inner = (
               <>
                 <span className="sr-only">{label}</span>
-                <span className="font-mono text-[10px] font-medium tabular-nums tracking-[0.12em] text-pv-muted/70">
+                <span className="font-mono text-[11px] font-medium tabular-nums tracking-[0.12em] text-pv-muted/70 sm:text-[12px]">
                   {stepNum}
                 </span>
                 <span
                   aria-current={isCurrent ? "step" : undefined}
-                  className={`flex items-start gap-2 font-display text-[9px] font-bold uppercase leading-snug tracking-[0.14em] sm:text-[10px] sm:tracking-[0.16em] ${
+                  className={`flex items-start gap-2 font-display text-[10px] font-bold uppercase leading-snug tracking-[0.14em] sm:text-[11px] sm:tracking-[0.16em] ${
                     isCurrent
                       ? "text-pv-emerald"
                       : isDone
@@ -326,14 +382,14 @@ function ProgressBar({
                         : "text-pv-muted/45"
                   }`}
                 >
+                  <span>{step}</span>
                   {isDone ? (
                     <Check
-                      className="mt-0.5 h-3 w-3 shrink-0 text-pv-emerald"
+                      className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pv-emerald"
                       strokeWidth={2.5}
                       aria-hidden
                     />
                   ) : null}
-                  <span>{step}</span>
                 </span>
               </>
             );
@@ -454,33 +510,33 @@ function VsChallengersCard({
                   <div className="rounded-lg border border-white/[0.08] bg-gradient-to-br from-pv-fuch/[0.04] via-transparent to-transparent p-2.5 transition-[border-color,background-color] duration-200 hover:border-white/[0.14] sm:p-3">
                     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2.5 md:gap-3">
                       <div
-                        className="flex size-6 shrink-0 items-center justify-center rounded-md border border-pv-fuch/[0.28] bg-pv-fuch/[0.08] font-mono text-[8px] font-bold tabular-nums leading-none text-pv-fuch sm:size-7 sm:text-[9px]"
+                        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-pv-fuch/[0.28] bg-pv-fuch/[0.08] font-mono text-[9px] font-bold tabular-nums leading-none text-pv-fuch sm:size-8 sm:text-[10px]"
                         aria-hidden
                       >
                         #{index + 1}
                       </div>
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-                          <span className="break-words font-semibold text-[11px] leading-tight text-pv-text sm:text-xs">
+                          <span className="break-words font-semibold text-[12px] leading-tight text-pv-text sm:text-[13px]">
                             {shortenAddress(challenger.address)}
                           </span>
                           {address &&
                             challenger.address.toLowerCase() ===
                               address.toLowerCase() && (
-                              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-emerald">
+                              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-pv-emerald">
                                 {t("you")}
                               </span>
                             )}
                         </div>
                         {counterPosition.trim() ? (
-                          <p className="mt-1 text-[10px] leading-snug text-pv-muted sm:text-[11px]">
+                          <p className="mt-1 text-[11px] leading-snug text-pv-muted sm:text-[12px]">
                             {counterPosition}
                           </p>
                         ) : null}
                       </div>
                       <div className="min-w-0 justify-self-end sm:justify-self-start">
                         <div
-                          className="flex h-6 min-w-[3.5rem] items-center justify-center rounded-md border border-white/[0.1] bg-pv-bg/55 px-2 font-mono text-[8px] font-bold tabular-nums leading-none text-pv-fuch sm:h-7 sm:min-w-[4rem] sm:text-[9px]"
+                          className="flex h-7 min-w-[4rem] items-center justify-center rounded-md border border-white/[0.1] bg-pv-bg/55 px-2 font-mono text-[9px] font-bold tabular-nums leading-none text-pv-fuch sm:h-8 sm:min-w-[4.5rem] sm:text-[10px]"
                           title={t("challengerStake")}
                         >
                           {challenger.stake} GEN
@@ -538,6 +594,7 @@ export default function VSDetailPage() {
   const marketTermsPanelId = useId();
   /** Solo VS de muestra (ids negativos): índice 0–4 para previsualizar diseño sin blockchain. */
   const [designLifecycleStep, setDesignLifecycleStep] = useState<number | null>(null);
+  const [designResolvedOutcome, setDesignResolvedOutcome] = useState<"creator" | "challengers">("creator");
 
   const countdown = useCountdown(vs?.deadline || 0);
 
@@ -545,6 +602,7 @@ export default function VSDetailPage() {
 
   useEffect(() => {
     setDesignLifecycleStep(null);
+    setDesignResolvedOutcome("creator");
   }, [vsId]);
 
   const displayVs = useMemo(() => {
@@ -556,8 +614,9 @@ export default function VSDetailPage() {
       vs,
       designLifecycleStep,
       t("designPreviewResolutionSummary"),
+      designResolvedOutcome,
     );
-  }, [vs, isSampleVS, designLifecycleStep, t]);
+  }, [vs, isSampleVS, designLifecycleStep, t, designResolvedOutcome]);
 
   useEffect(() => {
     if (isSampleVS) {
@@ -674,6 +733,33 @@ export default function VSDetailPage() {
     };
   }, [isSampleVS, vs?.id, vs?.state]);
 
+  useEffect(() => {
+    // En demo/testing (VS de muestra) simulamos el rematch para que la card
+    // `RIVALRY CHAIN` muestre rondas adicionales en el preview.
+    if (!isSampleVS || !vs) return;
+
+    if (designLifecycleStep !== 3) {
+      setRivalryChain([]);
+      setRivalryLoading(false);
+      return;
+    }
+
+    setRivalryLoading(false);
+    setRivalryChain(
+      buildDesignPreviewRematchChain(
+        vs,
+        designResolvedOutcome,
+        t("designPreviewResolutionSummary"),
+      )
+    );
+  }, [
+    isSampleVS,
+    vs,
+    designLifecycleStep,
+    designResolvedOutcome,
+    t,
+  ]);
+
   if (loading) {
     return (
       <div className="text-center py-20">
@@ -727,13 +813,27 @@ export default function VSDetailPage() {
   const pool = getVSTotalPot(display);
   const challengers = formatChallengers(display);
   const resolvedPayout = getVSSingleWinnerPayout(display);
+  const isDesignSampleLost =
+    isSampleVS && designLifecycleStep === 3 && designResolvedOutcome === "challengers";
+  const isDesignSampleWin =
+    isSampleVS && designLifecycleStep === 3 && designResolvedOutcome === "creator";
+
   const winnerTitle = !hasWinner
     ? tStamp("draw")
-    : display.winner_side === "challengers" && challengerCount > 1
-    ? tStamp("challengersWon")
-    : tStamp("won", { address: shortenAddress(display.winner) });
+    : isDesignSampleLost
+      ? tStamp("lost")
+      : isDesignSampleWin
+        ? tStamp("youWon")
+        : display.winner_side === "challengers" && challengerCount > 1
+          ? tStamp("challengersWon")
+          : tStamp("won", { address: shortenAddress(display.winner) });
+  const provenResultTone = isDesignSampleLost ? "lost" : isDesignSampleWin ? "win" : undefined;
   const winnerAmountLabel =
-    !hasWinner ? null : resolvedPayout === null ? `${pool} GEN` : `+${resolvedPayout} GEN`;
+    !hasWinner
+      ? null
+      : resolvedPayout === null
+        ? `${pool} GEN`
+        : `${provenResultTone === "lost" ? "-" : "+"}${resolvedPayout} GEN`;
   const marketType = display.market_type ?? "binary";
   const oddsMode = display.odds_mode ?? "pool";
   const challengeStakeValue = Number(challengeStake);
@@ -908,7 +1008,12 @@ export default function VSDetailPage() {
               visualStepIndex={isSampleVS ? designLifecycleStep : null}
               interactive={isSampleVS}
               onStepSelect={
-                isSampleVS ? (index) => setDesignLifecycleStep(index) : undefined
+                isSampleVS
+                  ? (index) => {
+                      setDesignLifecycleStep(index);
+                      if (index !== 3) setDesignResolvedOutcome("creator");
+                    }
+                  : undefined
               }
             />
             {isSampleVS && (
@@ -919,7 +1024,10 @@ export default function VSDetailPage() {
                 {designLifecycleStep !== null ? (
                   <button
                     type="button"
-                    onClick={() => setDesignLifecycleStep(null)}
+                    onClick={() => {
+                      setDesignLifecycleStep(null);
+                      setDesignResolvedOutcome("creator");
+                    }}
                     className="shrink-0 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-pv-emerald/90 underline-offset-2 hover:underline sm:text-right sm:text-[11px]"
                   >
                     {t("designPreviewReset")}
@@ -939,6 +1047,7 @@ export default function VSDetailPage() {
                 title={winnerTitle}
                 amountLabel={winnerAmountLabel}
                 resolutionSummary={display.resolution_summary}
+                resultTone={provenResultTone}
               />
             </AnimatedItem>
             <AnimatedItem>
@@ -1277,71 +1386,7 @@ export default function VSDetailPage() {
           </GlassCard>
         </AnimatedItem>
 
-        {showRivalrySection && (
-          <AnimatedItem>
-            <GlassCard
-              glass
-              noPad
-              className="mb-6 !rounded-2xl border border-white/[0.12] sm:mb-8"
-            >
-              <div className="p-5 sm:p-6">
-              <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 flex-wrap items-center gap-3">
-                    <h2 className="font-display text-sm font-bold tracking-tight text-pv-text sm:text-base">
-                      {t("rivalry")}
-                    </h2>
-                    <div
-                      className="h-px min-h-px min-w-[2rem] flex-1 bg-white/[0.12] sm:min-w-0"
-                      aria-hidden
-                    />
-                  </div>
-                  <p className="mt-2 text-sm text-pv-muted sm:mt-3">{t("rivalryHint")}</p>
-                </div>
-                {!isSampleVS && (vs.state === "resolved" || vs.state === "cancelled") && (
-                  <Link href={`/vs/create?rematch=${vs.id}`}>
-                    <Button variant="emerald" fullWidth={false} size="sm">
-                      {t("createRematch")}
-                    </Button>
-                  </Link>
-                )}
-              </div>
-
-              {rivalryLoading ? (
-                <p className="text-sm text-pv-muted">{tc("loading")}</p>
-              ) : rivalryChain.length > 1 ? (
-                <div className="space-y-3">
-                  {rivalryChain.map((entry, index) => (
-                    <Link key={entry.id} href={`/vs/${entry.id}`} className="block">
-                      <div
-                        className={`rounded-xl border p-4 transition-colors ${
-                          entry.id === vs.id
-                            ? "border-pv-emerald/[0.35] bg-pv-emerald/[0.08]"
-                            : "border-white/[0.12] bg-pv-bg/40 hover:border-white/[0.22]"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2 text-pv-muted text-xs font-bold uppercase tracking-[0.14em]">
-                            <GitBranch size={12} />
-                            {t("roundLabel", { round: index + 1 })}
-                          </div>
-                          <Badge status={entry.state} />
-                        </div>
-                        <div className="font-semibold">{entry.question}</div>
-                        <div className="text-xs text-pv-muted mt-1">
-                          {t("pool")}: ${getVSTotalPot(entry)}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-pv-muted">{t("rivalryEmpty")}</p>
-              )}
-            </div>
-            </GlassCard>
-          </AnimatedItem>
-        )}
+        {null}
 
         {!isSampleVS ? (
           <AnimatedItem>
@@ -1518,10 +1563,31 @@ export default function VSDetailPage() {
                           variant="ghost"
                           size="sm"
                           fullWidth={false}
-                          onClick={() => setDesignLifecycleStep(4)}
+                          onClick={() => {
+                            setDesignLifecycleStep(4);
+                            setDesignResolvedOutcome("creator");
+                          }}
                           className="w-full !border-white/[0.1] !bg-white/[0.03] !py-2 !px-3 !text-[10px] !font-semibold !text-pv-muted !shadow-none hover:!border-white/[0.16] hover:!bg-white/[0.05] hover:!text-pv-text sm:w-auto sm:!px-3.5 sm:!text-[11px]"
                         >
                           {tBadges("cancelled")}
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          fullWidth={false}
+                          onClick={() => {
+                            setDesignLifecycleStep(3);
+                            setDesignResolvedOutcome((prev) =>
+                              prev === "challengers" ? "creator" : "challengers"
+                            );
+                          }}
+                          className="w-full !border-white/[0.1] !bg-white/[0.03] !py-2 !px-3 !text-[10px] !font-semibold !text-pv-muted !shadow-none hover:!border-white/[0.16] hover:!bg-white/[0.05] hover:!text-pv-text sm:w-auto sm:!px-3.5 sm:!text-[11px]"
+                        >
+                          {designResolvedOutcome === "challengers"
+                            ? tBadges("lost")
+                            : tBadges("won")}
                         </Button>
 
                         <Link
@@ -1571,6 +1637,100 @@ export default function VSDetailPage() {
                   maxChallengers={maxChallengers}
                   showLoadMore={isSampleVS && designLifecycleStep !== null}
                 />
+                {showRivalrySection && (
+                  <AnimatedItem>
+                    <GlassCard
+                      glass
+                      noPad
+                      className="!rounded-2xl border border-white/[0.12]"
+                    >
+                      <div className="p-5 sm:p-6">
+                        <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex min-w-0 flex-wrap items-center gap-3">
+                              <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
+                                {t("rivalry")}
+                              </h2>
+                            </div>
+                            <p className="mt-2 text-sm leading-relaxed text-pv-muted sm:mt-3">
+                              {t("rivalryHint")}
+                            </p>
+                          </div>
+                          {!isSampleVS &&
+                            (vs.state === "resolved" || vs.state === "cancelled") && (
+                              <Link href={`/vs/create?rematch=${vs.id}`}>
+                                <Button
+                                  variant="emerald"
+                                  fullWidth={false}
+                                  size="sm"
+                                >
+                                  {t("createRematch")}
+                                </Button>
+                              </Link>
+                            )}
+                        </div>
+
+                        {rivalryLoading ? (
+                          <div className="rounded-xl border border-white/[0.08] bg-pv-bg/30 p-4 sm:p-5">
+                            <p className="text-sm text-pv-muted">{tc("loading")}</p>
+                          </div>
+                        ) : rivalryChain.length > 1 ? (
+                          <div className="rounded-xl border border-white/[0.08] bg-pv-bg/30 p-4 sm:p-5">
+                            <div className="space-y-3">
+                              {rivalryChain.map((entry, index) => {
+                                const inner = (
+                                  <div
+                                    className={`${RIVALRY_ITEM_BASE_CLASS} ${
+                                      entry.id === vs.id
+                                        ? RIVALRY_ITEM_ACTIVE_CLASS
+                                        : "border-white/[0.1]"
+                                    }`}
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                                      <div className="flex items-center gap-2 text-pv-muted text-[10px] font-bold uppercase tracking-[0.14em]">
+                                        <GitBranch size={12} />
+                                        {t("roundLabel", {
+                                          round: index + 1,
+                                        })}
+                                      </div>
+                                      <Badge status={entry.state} />
+                                    </div>
+                                    <div className="font-semibold">
+                                      {entry.question}
+                                    </div>
+                                    <div className="text-xs text-pv-muted mt-1">
+                                      {t("pool")}: ${getVSTotalPot(entry)}
+                                    </div>
+                                  </div>
+                                );
+
+                                return isSampleVS ? (
+                                  <div key={entry.id} className="block">
+                                    {inner}
+                                  </div>
+                                ) : (
+                                  <Link
+                                    key={entry.id}
+                                    href={`/vs/${entry.id}`}
+                                    className="block"
+                                  >
+                                    {inner}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-white/[0.14] bg-pv-bg/30 p-4 text-center sm:p-5">
+                            <p className="text-sm leading-relaxed text-pv-muted">
+                              {t("rivalryEmpty")}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  </AnimatedItem>
+                )}
               </div>
             </AnimatedItem>
           </aside>
