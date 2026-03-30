@@ -702,6 +702,7 @@
     "searchingEvidence": "IA buscando pruebas...",
     "analyzing": "Analizando {url}...",
     "comparingSources": "Comparando fuentes...",
+    "fetchingResults": "Obteniendo resultados...",
     "issuingVerdict": "Emitiendo veredicto"
   },
   "badges": {

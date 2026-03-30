@@ -696,6 +696,7 @@
     "searchingEvidence": "AI searching for evidence...",
     "analyzing": "Analyzing {url}...",
     "comparingSources": "Comparing sources...",
+    "fetchingResults": "Fetching results...",
     "issuingVerdict": "Issuing verdict"
   },
   "badges": {

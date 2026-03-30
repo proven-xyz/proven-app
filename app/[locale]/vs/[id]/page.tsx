@@ -808,9 +808,15 @@ export default function VSDetailPage() {
     setActionLoading("resolve");
     setResolvePhase(0);
 
-    const t1 = setTimeout(() => setResolvePhase(1), 1500);
-    const t2 = setTimeout(() => setResolvePhase(2), 3200);
-    const t3 = setTimeout(() => setResolvePhase(3), 4800);
+    // La terminal escribe letra por letra (muy lento). Sincronizamos el avance de fase
+    // para que se puedan ver TODAS las líneas (incl. "Fetching results..." y "Issuing verdict").
+    // Si el tx on-chain tarda menos, mantenemos la terminal visible hasta terminar la animación.
+    const t1 = setTimeout(() => setResolvePhase(1), 2600);
+    const t2 = setTimeout(() => setResolvePhase(2), 4600);
+    const t3 = setTimeout(() => setResolvePhase(3), 6500);
+    const t4 = setTimeout(() => setResolvePhase(4), 8400);
+    const ANIM_TOTAL_MS = 9600;
+    const startedAt = Date.now();
 
     try {
       const result = await resolveVS(address!, vsId, inviteKey);
@@ -822,12 +828,20 @@ export default function VSDetailPage() {
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 4000);
       fetchVS();
+
+      // Asegura que la terminal tenga tiempo de mostrar la última línea aunque la tx
+      // se confirme rápido.
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < ANIM_TOTAL_MS) {
+        await new Promise((r) => setTimeout(r, ANIM_TOTAL_MS - elapsed));
+      }
     } catch (err: any) {
       toast.error(err.message || t("errorResolving"));
     }
     clearTimeout(t1);
     clearTimeout(t2);
     clearTimeout(t3);
+    clearTimeout(t4);
     setResolvePhase(-1);
     setActionLoading(null);
   }
@@ -939,7 +953,7 @@ export default function VSDetailPage() {
           (isSampleVS && designLifecycleStep === 2)) && (
           <AnimatedItem>
             <ResolutionTerminal
-              phase={actionLoading === "resolve" ? resolvePhase : 2}
+              phase={actionLoading === "resolve" ? resolvePhase : 4}
               url={display.resolution_url}
             />
           </AnimatedItem>
