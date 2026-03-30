@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -21,6 +22,10 @@ import VSCard from "@/components/VSCard";
 import ArenaCard from "@/components/ArenaCard";
 import ArenaProposeCard from "@/components/ArenaProposeCard";
 import SettlementArchiveSection from "@/components/SettlementArchiveSection";
+import Stage from "@/components/Stage";
+import Artifact from "@/components/Artifact";
+import LiveStat from "@/components/LiveStat";
+import { kineticContainer, kineticLetter } from "@/lib/animations/rituals";
 
 type ParsedStat = {
   prefix: string;
@@ -300,28 +305,28 @@ export default function HomePage() {
     {
       icon: null,
       iconSrc: "/icons/handshake-logo.svg",
-      title: "1. CHALLENGE",
+      title: `1. ${t("stepChallenge").toUpperCase()}`,
       description:
         "Define your terms and lock your stake in the vault. The AI starts watching.",
     },
     {
       icon: null,
       iconSrc: "/icons/letter.svg",
-      title: "2. INVITE",
+      title: `2. ${t("stepSend").toUpperCase()}`,
       description:
-        "Broadcast your link. Challenge a specific rival or open it to the public square.",
+        "Broadcast your link. Call out a specific rival or open it to the public arena.",
     },
     {
       icon: null,
       iconSrc: "/icons/check-circle-logo.svg",
-      title: "3. ACCEPT",
+      title: `3. ${t("stepAccept").toUpperCase()}`,
       description:
         "Rival stakes their matching amount. Smart contract activates and locks the pool.",
     },
     {
       icon: null,
       iconSrc: "/icons/verified.svg",
-      title: "4. PROVEN",
+      title: `4. ${t("stepProven").toUpperCase()}`,
       description:
         "Consensus validates the proof, and the winner gets paid on-chain instantly.",
     },
@@ -329,39 +334,115 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      {/* Hero de marketing: siempre el titular PROVEN + CTAs (no sustituir por un VS arbitrario de la API). */}
+      {/* Hero — Manifesto with kinetic typography + arena grid */}
       <AnimatedItem>
-        <div
-          className="relative mb-4 flex w-full flex-col justify-center max-md:min-h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem)] md:mx-auto md:mb-6 md:block md:min-h-0 md:max-w-4xl lg:max-w-5xl 2xl:max-w-6xl"
+        <Stage
+          glow="both"
+          grid
+          className="!rounded-none mb-10"
+          style={{
+            width: "100vw",
+            marginLeft: "calc(-50vw + 50%)",
+            marginTop: "calc(-1rem - env(safe-area-inset-top, 0px))",
+            minHeight: "calc(100dvh + 10rem)",
+          }}
         >
-          <div className="px-5 py-5 text-center sm:px-8 sm:py-7 lg:py-9 xl:py-11">
-            <h1 className="mb-3 flex flex-col items-center gap-1 text-center font-display text-[clamp(3.4rem,12.5vw,6rem)] font-bold leading-[0.92] tracking-tight text-pv-text sm:mb-3.5 md:text-[clamp(3rem,11vw,5.5rem)] lg:gap-1.5 lg:text-[clamp(3.7rem,9vw,8rem)]">
-              <span className="block">
-                {t("emptyHeroTitleLine1Lead")}{" "}
-                <span className="whitespace-nowrap">
-                  {t("emptyHeroTitleOnChainSegment")}
+          {/* Full atmospheric backdrop — shifted right so left robot clears the text panel */}
+          <div className="absolute inset-0 z-0">
+            <Image
+              src="/Hero.jpg"
+              alt=""
+              fill
+              priority
+              quality={85}
+              className="object-cover opacity-[0.62] scale-[1.12]"
+              style={{ objectPosition: "58% 40%" }}
+              sizes="100vw"
+            />
+            {/* Left scrim — dark behind text only, fades to transparent before center */}
+            <div
+              className="absolute inset-0"
+              style={{ background: "linear-gradient(to right, var(--color-pv-bg) 0%, color-mix(in srgb, var(--color-pv-bg) 75%, transparent) 22%, transparent 42%)" }}
+            />
+            {/* Bottom edge fade */}
+            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-pv-bg/60 via-pv-bg/18 to-transparent" />
+          </div>
+
+          {/* Text panel — left-aligned, inset to match page container */}
+          <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-[1200px] items-center px-4 sm:px-6 lg:px-8">
+            <div className="w-full max-w-[500px] py-14 sm:py-16 lg:py-20">
+              {/* Headline — 3 lines, reduced size, payoff line smaller */}
+              <motion.h1
+                className="mb-6 flex flex-col gap-1 text-left font-display font-bold leading-[0.92] tracking-tight text-pv-text"
+                variants={kineticContainer}
+                initial="hidden"
+                animate="visible"
+              >
+                {/* Line 1: PROVE IT */}
+                <span className="block overflow-hidden text-[clamp(2.2rem,6.5vw,3.6rem)] lg:text-[clamp(2.6rem,4.5vw,4rem)]">
+                  {["PROVE", "IT"].map((word) => (
+                    <motion.span key={word} variants={kineticLetter} className="inline-block mr-[0.25em]">
+                      {word}
+                    </motion.span>
+                  ))}
                 </span>
-              </span>
-              <span className="block">
-                {t("emptyHeroTitleLine2Lead")}{" "}
-                <span className="italic text-pv-emerald drop-shadow-[0_0_22px_rgba(78,222,163,0.6)]">
-                  PROVEN.
+                {/* Line 2: ON-CHAIN. */}
+                <span className="block overflow-hidden text-[clamp(2.2rem,6.5vw,3.6rem)] lg:text-[clamp(2.6rem,4.5vw,4rem)]">
+                  <motion.span variants={kineticLetter} className="inline-block whitespace-nowrap">
+                    {t("emptyHeroTitleOnChainSegment")}
+                  </motion.span>
                 </span>
-              </span>
-            </h1>
-            <p className="mx-auto mb-4 max-w-xl text-sm leading-relaxed text-pv-muted sm:mb-5 sm:text-base lg:max-w-[26rem] lg:text-[19px]">
-              {t("emptyHeroSubtitle")}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto">
-              <Link href="/vs/create" className="block sm:flex-1 sm:min-w-0">
-                <Button variant="primary">{t("heroChallengeSomeone")}</Button>
-              </Link>
-              <Link href="/explorer" className="block sm:flex-1 sm:min-w-0">
-                <Button variant="ghost">{t("heroExploreChallenges")}</Button>
-              </Link>
+                {/* Rhythmic pause */}
+                <span className="block h-2 lg:h-3" aria-hidden />
+                {/* Line 3: WITH PROVEN. — smaller payoff/accent */}
+                <span className="block overflow-hidden text-[clamp(1.4rem,4vw,2rem)] lg:text-[clamp(1.6rem,2.8vw,2.2rem)]">
+                  <motion.span variants={kineticLetter} className="inline-block mr-[0.25em] font-medium text-pv-muted">
+                    {t("emptyHeroTitleLine2Lead")}
+                  </motion.span>
+                  <motion.span
+                    variants={kineticLetter}
+                    className="inline-block italic text-pv-emerald drop-shadow-[0_0_18px_rgba(78,222,163,0.5)]"
+                  >
+                    PROVEN.
+                  </motion.span>
+                </span>
+              </motion.h1>
+
+              <motion.p
+                className="mb-5 max-w-[380px] text-[13px] leading-relaxed text-pv-muted/90 sm:text-sm lg:text-[15px] lg:leading-7"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+              >
+                {t("emptyHeroSubtitle")}
+              </motion.p>
+
+              <motion.div
+                className="flex flex-col gap-3 sm:flex-row sm:gap-4"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7, duration: 0.5 }}
+              >
+                {/* Primary CTA — cyan neon */}
+                <Link
+                  href="/vs/create"
+                  className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-pv-cyan/40 bg-pv-cyan/[0.08] px-7 py-3.5 font-display text-[13px] font-bold uppercase tracking-[0.14em] text-pv-cyan transition-all duration-300 hover:border-pv-cyan/70 hover:bg-pv-cyan/[0.15] hover:text-white hover:shadow-[0_0_28px_-4px_rgba(93,230,255,0.5),inset_0_0_20px_-8px_rgba(93,230,255,0.15)]"
+                >
+                  <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-r from-pv-cyan/[0.12] via-transparent to-pv-cyan/[0.06]" />
+                  <span className="relative">{t("heroChallengeSomeone")}</span>
+                </Link>
+                {/* Secondary CTA — fuchsia neon */}
+                <Link
+                  href="/explorer"
+                  className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-pv-fuch/30 bg-transparent px-7 py-3.5 font-display text-[13px] font-bold uppercase tracking-[0.14em] text-pv-fuch/80 transition-all duration-300 hover:border-pv-fuch/60 hover:bg-pv-fuch/[0.1] hover:text-pv-fuch hover:shadow-[0_0_28px_-4px_rgba(248,172,255,0.45),inset_0_0_20px_-8px_rgba(248,172,255,0.12)]"
+                >
+                  <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-r from-pv-fuch/[0.1] via-transparent to-pv-fuch/[0.05]" />
+                  <span className="relative">{t("heroExploreChallenges")}</span>
+                </Link>
+              </motion.div>
             </div>
           </div>
-        </div>
+        </Stage>
       </AnimatedItem>
 
       {/* Differentiator — stats strip (total / resolved / GEN staked); mismo patrón que THE PROTOCOL / LIVE ARENA */}
@@ -375,32 +456,37 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-            {[
-              { value: String(allVS.length), label: t("totalClaims") },
-              { value: String(resolvedVS.length), label: t("resolvedClaims") },
-              { value: String(totalGenStaked), label: t("genStaked") },
-            ].map((item, index) => (
-              <div key={item.label} className="p-5 sm:p-6 text-center bg-transparent border-0">
-                <div className="overflow-hidden">
-                  <motion.div
-                    className="font-display text-[36px] sm:text-[40px] lg:text-[48px] font-bold tracking-tight text-pv-emerald leading-none"
-                    // No usamos whileInView aquí para evitar que, en mobile,
-                    // el contenido quede recortado por `overflow-hidden` si el umbral no se cumple.
-                    initial={{ y: 0, opacity: 1 }}
-                    transition={{
-                      duration: 0.45,
-                      ease: "easeOut",
-                      delay: 0.08 * index,
-                    }}
-                  >
-                    <AnimatedStatNumber raw={item.value} delayMs={80 * index} />
-                  </motion.div>
-                </div>
-                <p className="mt-2 text-[12px] sm:text-[13px] lg:text-[14px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                  {item.label}
-                </p>
-              </div>
-            ))}
+            <div className="p-5 sm:p-6 text-center border border-white/[0.06] rounded-xl bg-pv-surface/30">
+              <LiveStat
+                value={allVS.length}
+                label={t("totalClaims")}
+                labelPosition="below"
+                size="lg"
+                color="emerald"
+                className="items-center"
+              />
+            </div>
+            <div className="p-5 sm:p-6 text-center border border-white/[0.06] rounded-xl bg-pv-surface/30">
+              <LiveStat
+                value={resolvedVS.length}
+                label={t("resolvedClaims")}
+                labelPosition="below"
+                size="lg"
+                color="emerald"
+                className="items-center"
+              />
+            </div>
+            <div className="p-5 sm:p-6 text-center border border-white/[0.06] rounded-xl bg-pv-surface/30">
+              <LiveStat
+                value={totalGenStaked}
+                label={t("genStaked")}
+                labelPosition="below"
+                size="lg"
+                color="gold"
+                suffix="GEN"
+                className="items-center"
+              />
+            </div>
           </div>
         </div>
       </AnimatedItem>
@@ -595,7 +681,7 @@ export default function HomePage() {
         </div>
       </AnimatedItem>
 
-      {/* LIVE ARENA */}
+      {/* LIVE ARENA — tiered: MAIN EVENT (spotlight) + ACTIVE MATCHES */}
       {arenaCardsRow1.length > 0 && (
         <AnimatedItem>
           <div className="mb-12">
@@ -606,27 +692,56 @@ export default function HomePage() {
               <div className="h-px flex-1 bg-white/[0.12]" aria-hidden />
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-              {arenaCardsRow1.map(({ vs, challengersCount }) => (
-                <ArenaCard
-                  key={vs.id}
-                  vs={vs}
-                  challengersCount={challengersCount}
-                  archiveLabelShort={vs.id === -5}
-                  hideClaimStrengthPill
-                />
-              ))}
-              {arenaCardsRow2.map(({ vs, challengersCount }) => (
-                <ArenaCard
-                  key={vs.id}
-                  vs={vs}
-                  challengersCount={challengersCount}
-                  archiveLabelShort={vs.id === -5}
-                  hideClaimStrengthPill
-                />
-              ))}
-              <ArenaProposeCard />
-            </div>
+            {/* MAIN EVENT — first 2 items get Stage treatment */}
+            {arenaCardsRow1.length > 0 && (
+              <div className="mb-6">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-gold mb-3 block">
+                  Main Event
+                </span>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  {arenaCardsRow1.slice(0, 2).map(({ vs, challengersCount }) => (
+                    <Stage key={vs.id} glow="both" className="border border-white/[0.10]">
+                      <ArenaCard
+                        vs={vs}
+                        challengersCount={challengersCount}
+                        archiveLabelShort={vs.id === -5}
+                        hideClaimStrengthPill
+                      />
+                    </Stage>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ACTIVE MATCHES — remaining items as compact rows */}
+            {(arenaCardsRow1.length > 2 || arenaCardsRow2.length > 0) && (
+              <div className="mb-4">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-cyan mb-3 block">
+                  Active Matches
+                </span>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {arenaCardsRow1.slice(2).map(({ vs, challengersCount }) => (
+                    <ArenaCard
+                      key={vs.id}
+                      vs={vs}
+                      challengersCount={challengersCount}
+                      archiveLabelShort={vs.id === -5}
+                      hideClaimStrengthPill
+                    />
+                  ))}
+                  {arenaCardsRow2.map(({ vs, challengersCount }) => (
+                    <ArenaCard
+                      key={vs.id}
+                      vs={vs}
+                      challengersCount={challengersCount}
+                      archiveLabelShort={vs.id === -5}
+                      hideClaimStrengthPill
+                    />
+                  ))}
+                  <ArenaProposeCard />
+                </div>
+              </div>
+            )}
           </div>
         </AnimatedItem>
       )}
@@ -652,7 +767,7 @@ export default function HomePage() {
               <div className="mt-6 flex justify-center">
                 <Link href="/vs/create" className="block w-full sm:w-auto">
                   <Button variant="primary" className="w-full sm:w-auto px-8">
-                    START CHALLENGE
+                    ISSUE A CLAIM
                   </Button>
                 </Link>
               </div>
@@ -698,17 +813,17 @@ export default function HomePage() {
         </AnimatedItem>
       )}
 
-      {/* Recently proven — 2 cols en desktop */}
+      {/* Proof Ledger — recently proven, terminal/document aesthetic */}
       {decidedResolvedVS.length > 0 && (
         <AnimatedItem>
-          <div>
+          <Artifact serial="PV-LEDGER" watermark="PROVEN" className="mt-4">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-1.5 h-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
+              <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald">
                 {t("recentlyProven")}
               </span>
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
               {decidedResolvedVS.slice(0, 4).map((vs) => {
                 const payout = getVSSingleWinnerPayout(vs);
                 const winnerLabel =
@@ -721,17 +836,18 @@ export default function HomePage() {
                 <Link key={vs.id} href={`/vs/${vs.id}`} className="block group">
                   <motion.div
                     whileHover={{ x: 4 }}
-                    className="flex items-center justify-between p-3 bg-pv-surface border border-white/[0.1] group-hover:border-pv-emerald/[0.25] transition-colors"
+                    className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/[0.06] rounded group-hover:border-pv-emerald/[0.25] transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7 h-7 rounded-full bg-pv-emerald/[0.1] border border-pv-emerald/[0.25] flex items-center justify-center flex-shrink-0">
-                        <div className="w-2 h-2 rounded-full bg-pv-emerald" />
-                      </div>
-                      <span className="text-[13px] truncate font-semibold">
+                      <span className="font-mono text-[10px] text-pv-muted/40 w-8 shrink-0">
+                        #{vs.id}
+                      </span>
+                      <span className="w-1 h-1 rounded-full bg-pv-emerald shrink-0" />
+                      <span className="font-mono text-[12px] truncate text-pv-text/80">
                         {winnerLabel}
                       </span>
                     </div>
-                    <span className="font-mono text-[13px] font-bold text-pv-gold flex-shrink-0 ml-2">
+                    <span className="font-mono text-[12px] font-bold text-pv-gold flex-shrink-0 ml-2">
                       {payout === null ? `${getVSTotalPot(vs)} GEN` : `+${payout} GEN`}
                     </span>
                   </motion.div>
@@ -739,7 +855,7 @@ export default function HomePage() {
                 );
               })}
             </div>
-          </div>
+          </Artifact>
         </AnimatedItem>
       )}
     </PageTransition>
