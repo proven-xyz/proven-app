@@ -677,6 +677,9 @@
       "pool": "Pool odds",
       "fixed": "Fixed odds"
     },
+    "designPreviewLifecycleHint": "Design only: tap a lifecycle step to preview that phase (no on-chain state changes).",
+    "designPreviewReset": "Use live sample state",
+    "designPreviewResolutionSummary": "Preview only: the creator side is shown as the prevailing outcome. No consensus transaction was executed.",
     "sampleModeTitle": "Preview challenge",
     "sampleModeBody": "This is a testing page for the challenge lifecycle design. It is not a live on-chain VS—use it to review layout and copy only.",
     "sampleModeDemoBadge": "Demo",
