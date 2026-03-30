@@ -135,18 +135,60 @@ function buildDesignPreviewVs(
       ],
     };
   }
-  const resolvedPot = getVSTotalPot({
+  if (step === 3) {
+    const resolvedPot = getVSTotalPot({
+      ...base,
+      opponent: DESIGN_PREVIEW_OPPONENT,
+      state: "resolved",
+    });
+
+    return {
+      ...base,
+      state: "resolved",
+      opponent: DESIGN_PREVIEW_OPPONENT,
+      winner: base.creator,
+      winner_side: "creator",
+      resolution_summary: resolutionSummary,
+      challenger_count: 3,
+      challenger_addresses: [
+        DESIGN_PREVIEW_OPPONENT,
+        DESIGN_PREVIEW_SECOND_CHALLENGER,
+        DESIGN_PREVIEW_THIRD_CHALLENGER,
+      ],
+      challengers: [
+        {
+          address: DESIGN_PREVIEW_OPPONENT,
+          stake: base.stake_amount,
+          potential_payout: resolvedPot,
+        },
+        {
+          address: DESIGN_PREVIEW_SECOND_CHALLENGER,
+          stake: base.stake_amount,
+          potential_payout: resolvedPot,
+        },
+        {
+          address: DESIGN_PREVIEW_THIRD_CHALLENGER,
+          stake: base.stake_amount,
+          potential_payout: resolvedPot,
+        },
+      ],
+    };
+  }
+
+  // step >= 4 => CANCELLED (solo para modo demo/testing)
+  const cancelledPot = getVSTotalPot({
     ...base,
     opponent: DESIGN_PREVIEW_OPPONENT,
-    state: "resolved",
+    state: "cancelled",
   });
+
   return {
     ...base,
-    state: "resolved",
+    state: "cancelled",
     opponent: DESIGN_PREVIEW_OPPONENT,
-    winner: base.creator,
-    winner_side: "creator",
-    resolution_summary: resolutionSummary,
+    winner: ZERO_ADDRESS,
+    winner_side: undefined,
+    resolution_summary: "",
     challenger_count: 3,
     challenger_addresses: [
       DESIGN_PREVIEW_OPPONENT,
@@ -157,17 +199,17 @@ function buildDesignPreviewVs(
       {
         address: DESIGN_PREVIEW_OPPONENT,
         stake: base.stake_amount,
-        potential_payout: resolvedPot,
+        potential_payout: cancelledPot,
       },
       {
         address: DESIGN_PREVIEW_SECOND_CHALLENGER,
         stake: base.stake_amount,
-        potential_payout: resolvedPot,
+        potential_payout: cancelledPot,
       },
       {
         address: DESIGN_PREVIEW_THIRD_CHALLENGER,
         stake: base.stake_amount,
-        potential_payout: resolvedPot,
+        potential_payout: cancelledPot,
       },
     ],
   };
@@ -494,7 +536,7 @@ export default function VSDetailPage() {
   const [marketTermsOpen, setMarketTermsOpen] = useState(false);
   const marketTermsHeadingId = useId();
   const marketTermsPanelId = useId();
-  /** Solo VS de muestra (ids negativos): índice 0–3 del ciclo para previsualizar diseño sin blockchain. */
+  /** Solo VS de muestra (ids negativos): índice 0–4 para previsualizar diseño sin blockchain. */
   const [designLifecycleStep, setDesignLifecycleStep] = useState<number | null>(null);
 
   const countdown = useCountdown(vs?.deadline || 0);
@@ -584,7 +626,14 @@ export default function VSDetailPage() {
   }, [challengeStake, vs]);
 
   useEffect(() => {
-    if (isSampleVS || !vs) {
+    // La rivalry chain puede ser costosa y además se recalcula en cada refresh del VS.
+    // Para evitar parpadeos en despliegues (polling), solo la cargamos cuando el duelo
+    // entra a fase PROVEN/resolved.
+    if (isSampleVS || !vs) return;
+
+    if (vs.state !== "resolved") {
+      setRivalryChain([]);
+      setRivalryLoading(false);
       return;
     }
 
@@ -596,19 +645,15 @@ export default function VSDetailPage() {
 
       try {
         const ids = await getRivalryChain(currentVsId);
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
+
         if (ids.length === 0) {
           setRivalryChain([]);
-          setRivalryLoading(false);
           return;
         }
 
         const items = await Promise.all(ids.map((id) => getVS(id)));
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setRivalryChain(items.filter((item): item is VSData => item !== null));
       } catch {
@@ -627,7 +672,7 @@ export default function VSDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [isSampleVS, vs]);
+  }, [isSampleVS, vs?.id, vs?.state]);
 
   if (loading) {
     return (
@@ -702,11 +747,7 @@ export default function VSDetailPage() {
       ? Math.floor((challengeStakeValue * vs.challenger_payout_bps) / 10000)
       : null;
   const showRivalrySection =
-    rivalryLoading ||
-    rivalryChain.length > 1 ||
-    !!vs.parent_id ||
-    display.state === "resolved" ||
-    display.state === "cancelled";
+    rivalryChain.length > 1 || display.state === "resolved";
   const shareUrl = getShareUrl(vsId, inviteKey);
 
   async function handleAccept() {
@@ -846,10 +887,10 @@ export default function VSDetailPage() {
           </div>
         </AnimatedItem>
 
-        {vs.state !== "cancelled" && (
+        {(isSampleVS ? display.state : vs.state) !== "cancelled" && (
           <AnimatedItem>
             <ProgressBar
-              canonicalState={vs.state}
+              canonicalState={isSampleVS ? display.state : vs.state}
               visualStepIndex={isSampleVS ? designLifecycleStep : null}
               interactive={isSampleVS}
               onStepSelect={
@@ -1457,16 +1498,32 @@ export default function VSDetailPage() {
                       {t("sampleModeBody")}
                     </p>
                     <div className="pt-0.5">
-                      <Link href="/vs/create" className="inline-block w-full sm:w-auto">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           fullWidth={false}
+                          onClick={() => setDesignLifecycleStep(4)}
                           className="w-full !border-white/[0.1] !bg-white/[0.03] !py-2 !px-3 !text-[10px] !font-semibold !text-pv-muted !shadow-none hover:!border-white/[0.16] hover:!bg-white/[0.05] hover:!text-pv-text sm:w-auto sm:!px-3.5 sm:!text-[11px]"
                         >
-                          {t("sampleModeCTA")}
+                          {tBadges("cancelled")}
                         </Button>
-                      </Link>
+
+                        <Link
+                          href="/vs/create"
+                          className="inline-block w-full sm:w-auto"
+                        >
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            fullWidth={false}
+                            className="w-full !border-white/[0.1] !bg-white/[0.03] !py-2 !px-3 !text-[10px] !font-semibold !text-pv-muted !shadow-none hover:!border-white/[0.16] hover:!bg-white/[0.05] hover:!text-pv-text sm:w-auto sm:!px-3.5 sm:!text-[11px]"
+                          >
+                            {t("sampleModeCTA")}
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>
