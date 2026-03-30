@@ -70,6 +70,14 @@ import {
 /** Dirección ficticia para previsualizar fases accepted / verifying / proven en VS de muestra (sin blockchain). */
 const DESIGN_PREVIEW_OPPONENT =
   "0x2222222222222222222222222222222222222222";
+const DESIGN_PREVIEW_SECOND_CHALLENGER =
+  "0x3333333333333333333333333333333333333333";
+const DESIGN_PREVIEW_THIRD_CHALLENGER =
+  "0x4444444444444444444444444444444444444444";
+
+/** Misma silueta que la píldora «{addr} challenges you» (fucsia, pill redondeada). */
+const DUEL_STATUS_FUCHSIA_PILL_CLASS =
+  "inline-flex max-w-full min-w-0 items-center rounded-full border border-pv-fuch/35 bg-pv-fuch/[0.08] px-2.5 py-1 text-left text-[11px] font-semibold leading-tight text-pv-fuch shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] sm:px-3 sm:py-1.5 sm:text-xs";
 
 function buildDesignPreviewVs(
   base: VSData,
@@ -102,11 +110,25 @@ function buildDesignPreviewVs(
       winner: ZERO_ADDRESS,
       resolution_summary: "",
       winner_side: undefined,
-      challenger_count: 1,
-      challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
+      challenger_count: 3,
+      challenger_addresses: [
+        DESIGN_PREVIEW_OPPONENT,
+        DESIGN_PREVIEW_SECOND_CHALLENGER,
+        DESIGN_PREVIEW_THIRD_CHALLENGER,
+      ],
       challengers: [
         {
           address: DESIGN_PREVIEW_OPPONENT,
+          stake: base.stake_amount,
+          potential_payout: pot,
+        },
+        {
+          address: DESIGN_PREVIEW_SECOND_CHALLENGER,
+          stake: base.stake_amount,
+          potential_payout: pot,
+        },
+        {
+          address: DESIGN_PREVIEW_THIRD_CHALLENGER,
           stake: base.stake_amount,
           potential_payout: pot,
         },
@@ -125,11 +147,25 @@ function buildDesignPreviewVs(
     winner: base.creator,
     winner_side: "creator",
     resolution_summary: resolutionSummary,
-    challenger_count: 1,
-    challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
+    challenger_count: 3,
+    challenger_addresses: [
+      DESIGN_PREVIEW_OPPONENT,
+      DESIGN_PREVIEW_SECOND_CHALLENGER,
+      DESIGN_PREVIEW_THIRD_CHALLENGER,
+    ],
     challengers: [
       {
         address: DESIGN_PREVIEW_OPPONENT,
+        stake: base.stake_amount,
+        potential_payout: resolvedPot,
+      },
+      {
+        address: DESIGN_PREVIEW_SECOND_CHALLENGER,
+        stake: base.stake_amount,
+        potential_payout: resolvedPot,
+      },
+      {
+        address: DESIGN_PREVIEW_THIRD_CHALLENGER,
         stake: base.stake_amount,
         potential_payout: resolvedPot,
       },
@@ -305,6 +341,7 @@ function VsChallengersCard({
   address,
   challengerCount,
   maxChallengers,
+  showLoadMore = false,
   className = "border border-white/[0.12] !rounded-2xl",
 }: {
   challengers: ClaimChallenger[];
@@ -312,9 +349,20 @@ function VsChallengersCard({
   address: string | null | undefined;
   challengerCount: number;
   maxChallengers: number;
+  showLoadMore?: boolean;
   className?: string;
 }) {
   const t = useTranslations("vsDetail");
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    // Cuando cambiamos de fase del preview o el listado, volvemos al estado colapsado.
+    setIsExpanded(false);
+  }, [showLoadMore, challengers.length]);
+
+  const visibleChallengers =
+    showLoadMore && !isExpanded ? challengers.slice(0, 2) : challengers;
+  const canLoadMore = showLoadMore && challengers.length > 2 && !isExpanded;
 
   return (
     <GlassCard glass glow="none" noPad className={className}>
@@ -357,61 +405,63 @@ function VsChallengersCard({
             </p>
           </div>
         ) : (
-          <ul className="space-y-3" role="list">
-            {challengers.map((challenger, index) => (
-              <li key={`${challenger.address}-${index}`}>
-                <div
-                  className="rounded-xl border border-white/[0.1] bg-gradient-to-br from-pv-fuch/[0.05] via-transparent to-transparent p-4 transition-[border-color,background-color] duration-200 hover:border-white/[0.16] sm:p-5"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch sm:justify-between sm:gap-5">
-                    <div className="flex min-w-0 gap-3 sm:items-start">
+          <div className="rounded-xl border border-white/[0.1] bg-pv-bg/25 p-2.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-3.5">
+            <ul className="space-y-2 sm:space-y-2.5" role="list">
+              {visibleChallengers.map((challenger, index) => (
+                <li key={`${challenger.address}-${index}`}>
+                  <div className="rounded-lg border border-white/[0.08] bg-gradient-to-br from-pv-fuch/[0.04] via-transparent to-transparent p-2.5 transition-[border-color,background-color] duration-200 hover:border-white/[0.14] sm:p-3">
+                    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1.5 sm:gap-2.5 md:gap-3">
                       <div
-                        className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-pv-fuch/[0.28] bg-pv-fuch/[0.08] font-mono text-[10px] font-bold tabular-nums text-pv-fuch sm:size-11 sm:text-[11px]"
+                        className="flex size-6 shrink-0 items-center justify-center rounded-md border border-pv-fuch/[0.28] bg-pv-fuch/[0.08] font-mono text-[8px] font-bold tabular-nums leading-none text-pv-fuch sm:size-7 sm:text-[9px]"
                         aria-hidden
                       >
                         #{index + 1}
                       </div>
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span className="font-mono text-sm font-semibold tracking-tight text-pv-text">
+                        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                          <span className="break-words font-semibold text-[11px] leading-tight text-pv-text sm:text-xs">
                             {shortenAddress(challenger.address)}
                           </span>
                           {address &&
                             challenger.address.toLowerCase() ===
                               address.toLowerCase() && (
-                              <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
+                              <span className="text-[9px] font-bold uppercase tracking-[0.1em] text-pv-emerald">
                                 {t("you")}
                               </span>
                             )}
                         </div>
-                        <p className="mt-1 text-xs leading-relaxed text-pv-muted">
-                          {counterPosition}
-                        </p>
+                        {counterPosition.trim() ? (
+                          <p className="mt-1 text-[10px] leading-snug text-pv-muted sm:text-[11px]">
+                            {counterPosition}
+                          </p>
+                        ) : null}
                       </div>
-                    </div>
-                    <div className="flex min-w-0 gap-2 sm:shrink-0 sm:gap-3">
-                      <div className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-pv-bg/45 px-3 py-2.5 sm:flex-none sm:min-w-[6.75rem]">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                          {t("challengerStake")}
-                        </div>
-                        <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-pv-fuch">
+                      <div className="min-w-0 justify-self-end sm:justify-self-start">
+                        <div
+                          className="flex h-6 min-w-[3.5rem] items-center justify-center rounded-md border border-white/[0.1] bg-pv-bg/55 px-2 font-mono text-[8px] font-bold tabular-nums leading-none text-pv-fuch sm:h-7 sm:min-w-[4rem] sm:text-[9px]"
+                          title={t("challengerStake")}
+                        >
                           {challenger.stake} GEN
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-pv-bg/45 px-3 py-2.5 sm:flex-none sm:min-w-[6.75rem]">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                          {t("potentialPayout")}
-                        </div>
-                        <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums text-pv-gold">
-                          {challenger.potential_payout} GEN
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+            {canLoadMore ? (
+              <div className="pt-3 text-center">
+                <button
+                  type="button"
+                  aria-expanded={isExpanded}
+                  onClick={() => setIsExpanded(true)}
+                  className="inline-flex items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.01] px-3 py-2 text-xs font-semibold text-pv-muted transition-[background-color,border-color] hover:border-white/[0.1] hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/25"
+                >
+                  Load more
+                </button>
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
     </GlassCard>
@@ -428,6 +478,7 @@ export default function VSDetailPage() {
   const t = useTranslations("vsDetail");
   const tc = useTranslations("common");
   const tStamp = useTranslations("stamp");
+  const tBadges = useTranslations("badges");
 
   const [vs, setVS] = useState<VSData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -871,8 +922,12 @@ export default function VSDetailPage() {
               <div className="p-5 sm:p-8">
                 <div className="mb-5 flex items-center justify-between sm:mb-6">
                   {display.state === "open" && !isCreator ? (
-                    <div className="inline-flex max-w-full min-w-0 items-center rounded-full border border-pv-fuch/35 bg-pv-fuch/[0.08] px-2.5 py-1 text-left text-[11px] font-semibold leading-tight text-pv-fuch shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] sm:px-3 sm:py-1.5 sm:text-xs">
+                    <div className={DUEL_STATUS_FUCHSIA_PILL_CLASS}>
                       {t("challengesYou", { address: shortenAddress(display.creator) })}
+                    </div>
+                  ) : display.state === "accepted" ? (
+                    <div className={DUEL_STATUS_FUCHSIA_PILL_CLASS}>
+                      {tBadges("accepted")}
                     </div>
                   ) : (
                     <Badge status={display.state} large />
@@ -901,11 +956,10 @@ export default function VSDetailPage() {
                     <div className="text-xs text-pv-cyan mt-1">{display.creator_position}</div>
                   </div>
 
-                  <div className="relative flex h-px w-full items-center justify-center bg-white/[0.06] sm:h-auto sm:w-px">
-                    <span className="absolute rounded-full border border-white/[0.12] bg-pv-surface/90 px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.22em] text-pv-text/60 sm:text-[10px]">
-                      {t("vsDivider")}
-                    </span>
-                  </div>
+                  <div
+                    className="h-px w-full shrink-0 bg-white/[0.06] sm:h-auto sm:w-px sm:self-stretch"
+                    aria-hidden
+                  />
 
                   <div className="flex-1 p-4 bg-pv-fuch/[0.04]">
                     {isOpen ? (
@@ -1444,6 +1498,7 @@ export default function VSDetailPage() {
                   address={address}
                   challengerCount={challengerCount}
                   maxChallengers={maxChallengers}
+                  showLoadMore={isSampleVS && designLifecycleStep !== null}
                 />
               </div>
             </AnimatedItem>
