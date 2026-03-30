@@ -339,41 +339,54 @@ export default function HomePage() {
         <Stage
           glow="both"
           grid
-          className="!rounded-none mb-10"
-          style={{
-            width: "100vw",
-            marginLeft: "calc(-50vw + 50%)",
-            marginTop: "calc(-1rem - env(safe-area-inset-top, 0px))",
-            minHeight: "calc(100dvh + 10rem)",
-          }}
+          className="!rounded-none mb-6 sm:mb-8 relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]"
         >
           {/* Full atmospheric backdrop — shifted right so left robot clears the text panel */}
           <div className="absolute inset-0 z-0">
+            {/* Mobile-first hero image */}
+            <Image
+              src="/HeroMobile-2jpeg.jpeg"
+              alt=""
+              fill
+              priority
+              quality={85}
+              className="object-cover opacity-[0.62] scale-[1.08] object-[50%_65%] sm:hidden"
+              sizes="100vw"
+            />
+            {/* Desktop/tablet hero image */}
             <Image
               src="/Hero.jpg"
               alt=""
               fill
               priority
               quality={85}
-              className="object-cover opacity-[0.62] scale-[1.12]"
-              style={{ objectPosition: "58% 40%" }}
+              className="hidden sm:block object-cover opacity-[0.62] scale-[1.12] object-[58%_40%] sm:object-[56%_38%] lg:object-[54%_36%]"
               sizes="100vw"
             />
-            {/* Left scrim — dark behind text only, fades to transparent before center */}
-            <div
-              className="absolute inset-0"
-              style={{ background: "linear-gradient(to right, var(--color-pv-bg) 0%, color-mix(in srgb, var(--color-pv-bg) 75%, transparent) 22%, transparent 42%)" }}
-            />
+            {/* Center scrim — keeps text readable without killing the image */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_55%_at_50%_38%,rgba(14,14,14,0.75)_0%,rgba(14,14,14,0.35)_35%,transparent_68%)]" />
             {/* Bottom edge fade */}
-            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-pv-bg/60 via-pv-bg/18 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-pv-bg/70 via-pv-bg/25 to-transparent" />
           </div>
 
-          {/* Text panel — left-aligned, inset to match page container */}
-          <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-[1200px] items-center px-4 sm:px-6 lg:px-8">
-            <div className="w-full max-w-[500px] py-14 sm:py-16 lg:py-20">
+          {/* Text panel — centered so the backdrop stays visible */}
+          <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-[1200px] items-center justify-center px-4 sm:px-6 lg:px-8 pt-[env(safe-area-inset-top,0px)]">
+            <div className="w-full max-w-[640px] py-14 sm:py-16 lg:py-20 text-center">
+              <motion.div
+                className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.04] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted/80 backdrop-blur"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.45 }}
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-pv-emerald shadow-[0_0_10px_rgba(78,222,163,0.55)]" />
+                <span>{t("statsSectionTitle")}</span>
+                <span className="text-pv-muted/40">/</span>
+                <span>{t("heroExploreChallenges")}</span>
+              </motion.div>
+
               {/* Headline — 3 lines, reduced size, payoff line smaller */}
               <motion.h1
-                className="mb-6 flex flex-col gap-1 text-left font-display font-bold leading-[0.92] tracking-tight text-pv-text"
+                className="mb-6 flex flex-col gap-1 text-center font-display font-bold leading-[0.92] tracking-tight text-pv-text"
                 variants={kineticContainer}
                 initial="hidden"
                 animate="visible"
@@ -409,7 +422,7 @@ export default function HomePage() {
               </motion.h1>
 
               <motion.p
-                className="mb-5 max-w-[380px] text-[13px] leading-relaxed text-pv-muted/90 sm:text-sm lg:text-[15px] lg:leading-7"
+                className="mb-5 mx-auto max-w-[460px] text-[13px] leading-relaxed text-pv-muted/90 sm:text-sm lg:text-[15px] lg:leading-7"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
@@ -418,7 +431,7 @@ export default function HomePage() {
               </motion.p>
 
               <motion.div
-                className="flex flex-col gap-3 sm:flex-row sm:gap-4"
+                className="flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7, duration: 0.5 }}
