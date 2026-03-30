@@ -59,7 +59,7 @@ export default function ResolutionTerminal({
   // Typing speed for "character by character" console animation.
   // Mantiene el "slow, alive typing" que pediste para que el texto se sienta real.
   const CHAR_MS = 85;
-  const DOT_MS = 330;
+  const DOT_MS = 350;
 
   useEffect(() => {
     let cancelled = false;
@@ -264,9 +264,9 @@ export default function ResolutionTerminal({
         {/* Terminal header (estética de consola) */}
         <div className="mb-3 flex items-center justify-between border-b border-white/[0.08] pb-2">
           <div className="flex items-center gap-2" aria-hidden>
-            <span className="h-2.5 w-2.5 rounded-full border border-white/[0.12] bg-white/[0.03]" />
+            <span className="h-2.5 w-2.5 rounded-full border border-pv-danger/25 bg-pv-danger/[0.08]" />
+            <span className="h-2.5 w-2.5 rounded-full border border-pv-gold/25 bg-pv-gold/[0.08]" />
             <span className="h-2.5 w-2.5 rounded-full border border-pv-emerald/25 bg-pv-emerald/[0.08]" />
-            <span className="h-2.5 w-2.5 rounded-full border border-white/[0.12] bg-white/[0.03]" />
           </div>
           <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-pv-muted">
             resolve console
