@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useWallet } from "@/lib/wallet";
 import {
   getAllVSFast,
   getVSChallengerCount,
@@ -17,7 +16,7 @@ import {
 import { ZERO_ADDRESS, shortenAddress } from "@/lib/constants";
 import { mergePendingVS } from "@/lib/pending-vs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { GlassCard, PoolBadge, Button } from "@/components/ui";
+import { Button } from "@/components/ui";
 import VSCard from "@/components/VSCard";
 import ArenaCard from "@/components/ArenaCard";
 import ArenaProposeCard from "@/components/ArenaProposeCard";
@@ -194,7 +193,6 @@ function AnimatedStatNumber({
 }
 
 export default function HomePage() {
-  const { isConnected, connect } = useWallet();
   const [allVS, setAllVS]     = useState<VSData[]>([]);
   const [loading, setLoading] = useState(true);
   const t  = useTranslations("home");
@@ -217,7 +215,6 @@ export default function HomePage() {
   const openVS     = allVS.filter((v) => isVSJoinable(v));
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
   const decidedResolvedVS = resolvedVS.filter((v) => hasVSWinner(v));
-  const featuredVS = allVS[0];
   const totalGenStaked = allVS.reduce((sum, vs) => sum + getVSTotalPot(vs), 0);
   const fallbackArenaCards = [
     {
@@ -332,23 +329,12 @@ export default function HomePage() {
 
   return (
     <PageTransition>
-      {/* Hero — altura reservada siempre desde el primer render para evitar CLS.
-          Ancho: móvil usa todo el ancho útil del layout (título puede partirse); desde md
-          centramos y ampliamos el tope para que las dos líneas del h1 quepan en un renglón cada una.
-          Móvil (<md): min-height acotada (viewport − layout pt − safe areas − reserva inferior) para
-          centrar el bloque sin empujar la franja de stats demasiado abajo. */}
+      {/* Hero de marketing: siempre el titular PROVEN + CTAs (no sustituir por un VS arbitrario de la API). */}
       <AnimatedItem>
         <div
           className="relative mb-4 flex w-full flex-col justify-center max-md:min-h-[calc(100dvh-4.5rem-env(safe-area-inset-top)-env(safe-area-inset-bottom)-5rem)] md:mx-auto md:mb-6 md:block md:min-h-0 md:max-w-4xl lg:max-w-5xl 2xl:max-w-6xl"
         >
-
-          {/* Hero vacío: siempre visible, se oculta con fade cuando carga un VS destacado */}
-          <motion.div
-            className="px-5 py-5 text-center sm:px-8 sm:py-7 lg:py-9 xl:py-11"
-            animate={{ opacity: featuredVS ? 0 : 1, pointerEvents: featuredVS ? "none" : "auto" }}
-            transition={{ duration: 0.3 }}
-            style={{ position: featuredVS ? "absolute" : "relative", inset: 0 }}
-          >
+          <div className="px-5 py-5 text-center sm:px-8 sm:py-7 lg:py-9 xl:py-11">
             <h1 className="mb-3 flex flex-col items-center gap-1 text-center font-display text-[clamp(3.4rem,12.5vw,6rem)] font-bold leading-[0.92] tracking-tight text-pv-text sm:mb-3.5 md:text-[clamp(3rem,11vw,5.5rem)] lg:gap-1.5 lg:text-[clamp(3.7rem,9vw,8rem)]">
               <span className="block">
                 {t("emptyHeroTitleLine1Lead")}{" "}
@@ -374,45 +360,7 @@ export default function HomePage() {
                 <Button variant="ghost">{t("heroExploreChallenges")}</Button>
               </Link>
             </div>
-          </motion.div>
-
-          {/* VS del día: aparece con fade sobre el mismo espacio cuando hay datos */}
-          {featuredVS && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4 }}
-              className="py-5 sm:py-7 lg:py-9 xl:py-11"
-            >
-              <GlassCard glow="both">
-                <div className="p-2 text-center">
-                  <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald mb-6">
-                    {t("vsOfDay")}
-                  </div>
-                  <h1 className="font-display text-[clamp(30px,5vw,48px)] font-bold leading-[0.92] tracking-tight mb-7">
-                    {featuredVS.question}
-                  </h1>
-              <PoolBadge
-                    amount={getVSTotalPot(featuredVS)}
-                    large
-                  />
-                </div>
-              </GlassCard>
-              {/* CTAs solo cuando hay VS destacado */}
-              <div className="flex flex-col sm:flex-row gap-3 mt-3">
-                {isConnected ? (
-                  <Link href="/vs/create" className="block sm:flex-1">
-                    <Button variant="primary">{t("challengeSomeone")}</Button>
-                  </Link>
-                ) : (
-                  <Button onClick={connect} className="sm:flex-1">{t("connectWalletToStart")}</Button>
-                )}
-                <Link href="/explorer" className="block sm:flex-1">
-                  <Button variant="ghost">{t("exploreOpenVS")}</Button>
-                </Link>
-              </div>
-            </motion.div>
-          )}
+          </div>
         </div>
       </AnimatedItem>
 
