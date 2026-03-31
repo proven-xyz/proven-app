@@ -170,6 +170,10 @@ export default function DashboardPage() {
     },
   ] as const;
 
+  const featuredVS =
+    filtered.find((vs) => vs.state === "open" || vs.state === "accepted") ??
+    null;
+
   return (
     <PageTransition>
       <AnimatedItem>
@@ -208,19 +212,27 @@ export default function DashboardPage() {
         </header>
 
         <section
-          className="mb-10 mt-5 border-t border-white/[0.06] pt-8 sm:mt-6 sm:pt-10"
+          className="mb-10 mt-5 pt-8 sm:mt-6 sm:pt-10"
           aria-label={t("overviewSectionAria")}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:gap-4">
             {(
               [
                 {
-                  key: "record",
-                  title: t("record"),
-                  value: `${won}W – ${lost}L`,
+                  key: "wins",
+                  title: "CHALLENGES WON",
+                  value: `${won}`,
                   sub: t("record"),
                   valueClass: "text-pv-emerald",
                   subClass: "text-pv-emerald",
+                },
+                {
+                  key: "lose",
+                  title: "CHALLENGES LOSSES",
+                  value: `${lost}`,
+                  sub: t("record"),
+                  valueClass: "text-pv-danger",
+                  subClass: "text-pv-danger",
                 },
                 {
                   key: "winRate",
@@ -232,7 +244,7 @@ export default function DashboardPage() {
                 },
                 {
                   key: "won",
-                  title: t("totalWon"),
+                  title: "TOTAL CLAIMED",
                   value: `${totalWon} GEN`,
                   sub: t("totalWon"),
                   valueClass: "text-pv-gold",
@@ -292,6 +304,9 @@ export default function DashboardPage() {
               onMinStakeFilterChange={setMinStakeFilter}
             />
           }
+          featuredVS={featuredVS}
+          wins={won}
+          losses={lost}
         />
       </AnimatedItem>
 

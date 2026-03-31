@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { motion } from "framer-motion";
 import { Search, X, ListFilter } from "lucide-react";
 import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { MIN_STAKE_OPTIONS } from "@/lib/exploreFilters";
@@ -141,7 +142,25 @@ export default function DashboardVSFilterBar({
         </div>
       </div>
 
-      {advancedOpen ? (
+      <motion.div
+        initial={false}
+        animate={{
+          height: advancedOpen ? "auto" : 0,
+          opacity: advancedOpen ? 1 : 0,
+        }}
+        transition={{
+          height: {
+            duration: 0.34,
+            ease: [0.25, 0.46, 0.45, 0.94],
+          },
+          opacity: {
+            duration: 0.22,
+            ease: [0.25, 0.1, 0.25, 1],
+          },
+        }}
+        className={`overflow-hidden ${!advancedOpen ? "pointer-events-none" : ""}`}
+        aria-hidden={!advancedOpen}
+      >
         <div className="mt-6 border-t border-white/[0.06] pt-6">
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-6 sm:items-start">
             <div className="min-w-0">
@@ -218,7 +237,7 @@ export default function DashboardVSFilterBar({
             </div>
           </div>
         </div>
-      ) : null}
+      </motion.div>
     </section>
   );
 }
