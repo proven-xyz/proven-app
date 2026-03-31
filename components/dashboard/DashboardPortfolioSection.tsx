@@ -369,8 +369,21 @@ function StakeHoldingVSRow({
     typeof vs.deadline === "number" && vs.deadline > 0
       ? new Date(vs.deadline * 1000)
       : null;
+  const dateStamp = createdAtDate
+    ? new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(createdAtDate)
+    : "";
+  const timeStamp = createdAtDate
+    ? new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(createdAtDate)
+    : "";
   const metaLine = createdAtDate
-    ? `${tCat(vs.category as never)} — ${createdAtDate.toLocaleString()}`
+    ? `${tCat(vs.category as never)} — ${dateStamp} ${timeStamp}`
     : tCat(vs.category as never);
 
   const participantCount = 1 + getVSChallengerCount(vs);
@@ -379,8 +392,8 @@ function StakeHoldingVSRow({
   const titleLine = vs.question?.trim()
     ? vs.question
     : isPrivate
-      ? `${t("privateBadge")} VS #${vs.id}`
-      : `VS #${vs.id}`;
+      ? `PRIVATE CHALLENGE #${vs.id}`
+      : `CHALLENGE #${vs.id}`;
 
   const status: "open" | "accepted" | "resolved" =
     vs.state === "open" || vs.state === "accepted" ? vs.state : "resolved";
@@ -580,8 +593,8 @@ function StakeHoldingsColumn({
   stakeHoldingsSearchQuery,
   featuredVS,
 }: {
-  openId: DashboardStakeHoldingId | null;
-  setOpenId: (id: DashboardStakeHoldingId | null) => void;
+  openId: DashboardStakeHoldingId | "featured" | null;
+  setOpenId: (id: DashboardStakeHoldingId | "featured" | null) => void;
   headerExtra?: ReactNode;
   stakeHoldingsSearchQuery: string;
   featuredVS?: VSData | null;
@@ -597,7 +610,11 @@ function StakeHoldingsColumn({
   );
 
   useEffect(() => {
-    if (openId !== null && !visibleHoldingIds.includes(openId)) {
+    if (
+      openId !== null &&
+      openId !== "featured" &&
+      !visibleHoldingIds.includes(openId)
+    ) {
       setOpenId(null);
     }
   }, [openId, visibleHoldingIds, setOpenId]);
@@ -626,8 +643,10 @@ function StakeHoldingsColumn({
           {featuredVS ? (
             <StakeHoldingVSRow
               vs={featuredVS}
-              isOpen={openId === null}
-              onToggle={() => setOpenId(null)}
+              isOpen={openId === "featured"}
+              onToggle={() =>
+                setOpenId(openId === "featured" ? null : "featured")
+              }
             />
           ) : null}
           {visibleHoldingIds.map((id) => (
@@ -755,7 +774,9 @@ export default function DashboardPortfolioSection({
   wins?: number;
   losses?: number;
 }) {
-  const [openId, setOpenId] = useState<DashboardStakeHoldingId | null>(null);
+  const [openId, setOpenId] = useState<
+    DashboardStakeHoldingId | "featured" | null
+  >(null);
 
   return (
     <div className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">
