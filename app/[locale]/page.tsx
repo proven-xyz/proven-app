@@ -727,20 +727,45 @@ export default function HomePage() {
       {/* READY TO WIN CTA */}
       <AnimatedItem>
         <div className="mt-16 sm:mt-20 mb-12">
-          <div className="relative overflow-hidden card max-w-[900px] mx-auto p-6 sm:p-8 md:p-10 text-center border-white/[0.14]">
-            <div className="pointer-events-none absolute top-0 right-0 translate-x-1/3 -translate-y-1/3 w-36 h-36 sm:w-52 sm:h-52 rounded-full bg-pv-emerald/[0.10] blur-3xl" />
-            <div className="pointer-events-none absolute bottom-0 left-0 -translate-x-1/3 translate-y-1/3 w-40 h-40 sm:w-56 sm:h-56 rounded-full bg-pv-emerald/[0.12] blur-3xl" />
-            <div className="relative z-10">
-              <h2 className="font-display text-[clamp(1.8rem,7vw,3.2rem)] font-bold leading-[0.95] tracking-tight text-pv-text">
-                READY TO <span className="text-pv-emerald">WIN?</span>
-              </h2>
-              <p className="mt-5 text-sm sm:text-base text-pv-muted max-w-[620px] mx-auto leading-relaxed">
-                Don&apos;t just talk. Stake your claim and let the AI settle the score.
-              </p>
-              <div className="mt-6 flex justify-center">
-                <Link href="/vs/create" className="block w-full sm:w-auto">
-                  <Button variant="primary" className="w-full sm:w-auto px-8">
-                    ISSUE A CLAIM
+          <div className="group relative w-full overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface/80 px-6 py-10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)] backdrop-blur-xl sm:p-10 md:p-12 lg:p-14">
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-[0.14] transition-opacity duration-700 group-hover:opacity-[0.2]"
+              aria-hidden
+            >
+              <div className="h-full w-full bg-gradient-to-l from-pv-emerald/40 via-pv-emerald/10 to-transparent" />
+            </div>
+            <div
+              className="pointer-events-none absolute -right-20 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-pv-emerald/20 blur-3xl"
+              aria-hidden
+            />
+
+            <div className="relative z-10 flex flex-col items-start gap-7 text-left sm:gap-8 md:flex-row md:items-end md:justify-between md:gap-10">
+              <div className="max-w-xl">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pv-emerald opacity-40" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-pv-emerald" />
+                  </span>
+                  <span className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-pv-muted">
+                    Launch a challenge
+                  </span>
+                </div>
+
+                <h2 className="font-display text-[clamp(1.9rem,7vw,3.1rem)] font-bold leading-[0.95] tracking-tight text-pv-text">
+                  READY TO <span className="text-pv-emerald">WIN?</span>
+                </h2>
+                <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-pv-muted sm:text-base">
+                  Set the terms, lock your stake, and share the link. When the outcome is provable, PROVEN settles it on-chain.
+                </p>
+              </div>
+
+              <div className="w-full md:w-auto">
+                <Link href="/vs/create" className="block w-full md:w-auto">
+                  <Button
+                    variant="primary"
+                    className="w-full md:w-auto px-8 font-display text-xs font-bold uppercase tracking-[0.2em]"
+                  >
+                    CREATE A CHALLENGE
                   </Button>
                 </Link>
               </div>
