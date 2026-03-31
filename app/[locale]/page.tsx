@@ -339,32 +339,42 @@ export default function HomePage() {
         <Stage
           glow="both"
           grid
-          className="!rounded-none mb-6 sm:mb-8 relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]"
+          className="mb-6 sm:mb-8 relative w-full"
         >
           {/* Full atmospheric backdrop — shifted right so left robot clears the text panel */}
-          <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 z-0 overflow-hidden">
             {/* Mobile-first hero image */}
-            <Image
-              src="/HeroMobile-2jpeg.jpeg"
-              alt=""
-              fill
-              priority
-              quality={85}
-              className="object-cover opacity-[0.62] scale-[1.08] object-[50%_65%] sm:hidden"
-              sizes="100vw"
-            />
+            <div className="relative h-full w-full sm:hidden" style={{ transform: "scaleX(-1)" }}>
+              <Image
+                src="/HeroMobile-2jpeg.jpeg"
+                alt=""
+                fill
+                priority
+                quality={85}
+                className="object-cover opacity-[0.62] scale-[1.08] object-[50%_49%]"
+                sizes="100vw"
+              />
+            </div>
             {/* Desktop/tablet hero image */}
-            <Image
-              src="/Hero.jpg"
-              alt=""
-              fill
-              priority
-              quality={85}
-              className="hidden sm:block object-cover opacity-[0.62] scale-[1.12] object-[58%_40%] sm:object-[56%_38%] lg:object-[54%_36%]"
-              sizes="100vw"
-            />
+            <div className="relative hidden h-full w-full sm:block" style={{ transform: "scaleX(-1)" }}>
+              <Image
+                src="/Hero.jpg"
+                alt=""
+                fill
+                priority
+                quality={85}
+                className="object-cover opacity-[0.62] scale-[1.03] object-[58%_23%] sm:object-[56%_23%] lg:object-[54%_21%]"
+                sizes="100vw"
+              />
+            </div>
             {/* Center scrim — keeps text readable without killing the image */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_55%_at_50%_38%,rgba(14,14,14,0.75)_0%,rgba(14,14,14,0.35)_35%,transparent_68%)]" />
+
+            {/* Feathering on edges: hides the “image boundary” against the page background */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-pv-bg/95 via-pv-bg/45 to-transparent sm:h-36" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-pv-bg via-pv-bg/45 to-transparent sm:w-32" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-pv-bg via-pv-bg/45 to-transparent sm:w-32" />
+
             {/* Bottom edge fade */}
             <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-pv-bg/70 via-pv-bg/25 to-transparent" />
           </div>
@@ -372,18 +382,6 @@ export default function HomePage() {
           {/* Text panel — centered so the backdrop stays visible */}
           <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-[1200px] items-center justify-center px-4 sm:px-6 lg:px-8 pt-[env(safe-area-inset-top,0px)]">
             <div className="w-full max-w-[640px] py-14 sm:py-16 lg:py-20 text-center">
-              <motion.div
-                className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/[0.14] bg-white/[0.04] px-3 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted/80 backdrop-blur"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.45 }}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-pv-emerald shadow-[0_0_10px_rgba(78,222,163,0.55)]" />
-                <span>{t("statsSectionTitle")}</span>
-                <span className="text-pv-muted/40">/</span>
-                <span>{t("heroExploreChallenges")}</span>
-              </motion.div>
-
               {/* Headline — 3 lines, reduced size, payoff line smaller */}
               <motion.h1
                 className="mb-6 flex flex-col gap-1 text-center font-display font-bold leading-[0.92] tracking-tight text-pv-text"
@@ -392,7 +390,7 @@ export default function HomePage() {
                 animate="visible"
               >
                 {/* Line 1: PROVE IT */}
-                <span className="block overflow-hidden text-[clamp(2.2rem,6.5vw,3.6rem)] lg:text-[clamp(2.6rem,4.5vw,4rem)]">
+                <span className="block overflow-hidden text-[clamp(3.1rem,8vw,5rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
                   {["PROVE", "IT"].map((word) => (
                     <motion.span key={word} variants={kineticLetter} className="inline-block mr-[0.25em]">
                       {word}
@@ -400,7 +398,7 @@ export default function HomePage() {
                   ))}
                 </span>
                 {/* Line 2: ON-CHAIN. */}
-                <span className="block overflow-hidden text-[clamp(2.2rem,6.5vw,3.6rem)] lg:text-[clamp(2.6rem,4.5vw,4rem)]">
+                <span className="block overflow-hidden text-[clamp(3.1rem,8vw,5rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
                   <motion.span variants={kineticLetter} className="inline-block whitespace-nowrap">
                     {t("emptyHeroTitleOnChainSegment")}
                   </motion.span>
@@ -408,7 +406,7 @@ export default function HomePage() {
                 {/* Rhythmic pause */}
                 <span className="block h-2 lg:h-3" aria-hidden />
                 {/* Line 3: WITH PROVEN. — smaller payoff/accent */}
-                <span className="block overflow-hidden text-[clamp(1.4rem,4vw,2rem)] lg:text-[clamp(1.6rem,2.8vw,2.2rem)]">
+                <span className="block overflow-hidden text-[clamp(2.4rem,6.5vw,3.8rem)] lg:text-[clamp(2.8rem,4.5vw,4.2rem)]">
                   <motion.span variants={kineticLetter} className="inline-block mr-[0.25em] font-medium text-pv-muted">
                     {t("emptyHeroTitleLine2Lead")}
                   </motion.span>
@@ -436,14 +434,6 @@ export default function HomePage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7, duration: 0.5 }}
               >
-                {/* Primary CTA — cyan neon */}
-                <Link
-                  href="/vs/create"
-                  className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-pv-cyan/40 bg-pv-cyan/[0.08] px-7 py-3.5 font-display text-[13px] font-bold uppercase tracking-[0.14em] text-pv-cyan transition-all duration-300 hover:border-pv-cyan/70 hover:bg-pv-cyan/[0.15] hover:text-white hover:shadow-[0_0_28px_-4px_rgba(93,230,255,0.5),inset_0_0_20px_-8px_rgba(93,230,255,0.15)]"
-                >
-                  <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-r from-pv-cyan/[0.12] via-transparent to-pv-cyan/[0.06]" />
-                  <span className="relative">{t("heroChallengeSomeone")}</span>
-                </Link>
                 {/* Secondary CTA — fuchsia neon */}
                 <Link
                   href="/explorer"
@@ -451,6 +441,15 @@ export default function HomePage() {
                 >
                   <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-r from-pv-fuch/[0.1] via-transparent to-pv-fuch/[0.05]" />
                   <span className="relative">{t("heroExploreChallenges")}</span>
+                </Link>
+
+                {/* Primary CTA — cyan neon */}
+                <Link
+                  href="/vs/create"
+                  className="group relative flex items-center justify-center overflow-hidden rounded-lg border border-pv-emerald/40 bg-pv-emerald/[0.08] px-7 py-3.5 font-display text-[13px] font-bold uppercase tracking-[0.14em] text-pv-emerald transition-all duration-300 hover:border-pv-emerald/70 hover:bg-pv-emerald/[0.15] hover:text-white hover:shadow-[0_0_28px_-4px_rgba(78,222,163,0.5),inset_0_0_20px_-8px_rgba(78,222,163,0.15)]"
+                >
+                  <span className="absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-r from-pv-emerald/[0.12] via-transparent to-pv-emerald/[0.06]" />
+                  <span className="relative">{t("heroChallengeSomeone")}</span>
                 </Link>
               </motion.div>
             </div>
