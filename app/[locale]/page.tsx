@@ -298,8 +298,7 @@ export default function HomePage() {
     .slice(0, 6)
     .map((vs) => ({ vs, challengersCount: undefined as number | undefined }));
   const arenaMerged = [...arenaFromData, ...fallbackArenaCards];
-  const arenaCardsRow1 = arenaMerged.slice(0, 3);
-  const arenaCardsRow2 = arenaMerged.slice(3, 5);
+  const arenaGridCards = arenaMerged.slice(0, 5);
 
   const steps = [
     {
@@ -693,8 +692,8 @@ export default function HomePage() {
         </div>
       </AnimatedItem>
 
-      {/* LIVE ARENA — tiered: MAIN EVENT (spotlight) + ACTIVE MATCHES */}
-      {arenaCardsRow1.length > 0 && (
+      {/* LIVE ARENA — 3x2 grid of active challenges */}
+      {arenaGridCards.length > 0 && (
         <AnimatedItem>
           <div className="mb-12">
             <div className="mb-10 flex items-center gap-4 sm:gap-6">
@@ -704,56 +703,18 @@ export default function HomePage() {
               <div className="h-px flex-1 bg-white/[0.12]" aria-hidden />
             </div>
 
-            {/* MAIN EVENT — first 2 items get Stage treatment */}
-            {arenaCardsRow1.length > 0 && (
-              <div className="mb-6">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-gold mb-3 block">
-                  Main Event
-                </span>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {arenaCardsRow1.slice(0, 2).map(({ vs, challengersCount }) => (
-                    <Stage key={vs.id} glow="both" className="border border-white/[0.10]">
-                      <ArenaCard
-                        vs={vs}
-                        challengersCount={challengersCount}
-                        archiveLabelShort={vs.id === -5}
-                        hideClaimStrengthPill
-                      />
-                    </Stage>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ACTIVE MATCHES — remaining items as compact rows */}
-            {(arenaCardsRow1.length > 2 || arenaCardsRow2.length > 0) && (
-              <div className="mb-4">
-                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-cyan mb-3 block">
-                  Active Matches
-                </span>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {arenaCardsRow1.slice(2).map(({ vs, challengersCount }) => (
-                    <ArenaCard
-                      key={vs.id}
-                      vs={vs}
-                      challengersCount={challengersCount}
-                      archiveLabelShort={vs.id === -5}
-                      hideClaimStrengthPill
-                    />
-                  ))}
-                  {arenaCardsRow2.map(({ vs, challengersCount }) => (
-                    <ArenaCard
-                      key={vs.id}
-                      vs={vs}
-                      challengersCount={challengersCount}
-                      archiveLabelShort={vs.id === -5}
-                      hideClaimStrengthPill
-                    />
-                  ))}
-                  <ArenaProposeCard />
-                </div>
-              </div>
-            )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {arenaGridCards.map(({ vs, challengersCount }) => (
+                <ArenaCard
+                  key={vs.id}
+                  vs={vs}
+                  challengersCount={challengersCount}
+                  archiveLabelShort={vs.id === -5}
+                  hideClaimStrengthPill
+                />
+              ))}
+              <ArenaProposeCard />
+            </div>
           </div>
         </AnimatedItem>
       )}
