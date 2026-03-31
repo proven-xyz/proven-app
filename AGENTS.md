@@ -47,6 +47,17 @@ When contract method names, arguments, or return shapes change, keep `lib/contra
   - equivalence-principle selection
   - validator logic, storage modeling, and LLM-hardening patterns
 
+- Use `$boy-scout` for:
+  - opportunistic cleanup while touching existing Python files
+  - small, proportional code-quality improvements during bug fixes or refactors
+
+- Use `$python-clean-code` for:
+  - Python refactor or cleanup requests
+  - Python clean-code reviews focused on maintainability and readability
+
+- Use `$clean-tests` for:
+  - Python test-quality cleanup
+  - improving boundary coverage, speed, and clarity in existing tests
 ## Working rules
 
 - Run `$genvm-lint` after every contract change and before any new tests.
