@@ -215,25 +215,28 @@ export default function DashboardPage() {
             {(
               [
                 {
-                  key: "active",
-                  titleKey: "overviewActiveTitle",
-                  valueKey: "overviewActiveValue",
-                  subKey: "overviewActiveSub",
+                  key: "record",
+                  title: t("record"),
+                  value: `${won}W – ${lost}L`,
+                  sub: t("record"),
+                  valueClass: "text-pv-emerald",
                   subClass: "text-pv-emerald",
                 },
                 {
-                  key: "bankroll",
-                  titleKey: "overviewBankrollTitle",
-                  valueKey: "overviewBankrollValue",
-                  subKey: "overviewBankrollSub",
-                  subClass: "text-pv-muted",
+                  key: "winRate",
+                  title: t("winRate"),
+                  value: `${winRate}%`,
+                  sub: t("winRate"),
+                  valueClass: "text-pv-emerald",
+                  subClass: "text-pv-emerald",
                 },
                 {
-                  key: "net",
-                  titleKey: "overviewNetTitle",
-                  valueKey: "overviewNetValue",
-                  subKey: "overviewNetSub",
-                  subClass: "text-pv-muted",
+                  key: "won",
+                  title: t("totalWon"),
+                  value: `${totalWon} GEN`,
+                  sub: t("totalWon"),
+                  valueClass: "text-pv-gold",
+                  subClass: "text-pv-gold",
                 },
               ] as const
             ).map((card, i) => (
@@ -254,15 +257,17 @@ export default function DashboardPage() {
                 />
                 <div className="relative z-10 flex min-h-0 flex-1 flex-col text-left">
                   <h2 className="font-display text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted sm:text-[11px]">
-                    {t(card.titleKey)}
+                    {card.title}
                   </h2>
-                  <p className="mt-3 font-mono text-3xl font-bold tabular-nums leading-none tracking-tight text-pv-text sm:text-4xl">
-                    {t(card.valueKey)}
+                  <p
+                    className={`mt-3 font-mono text-3xl font-bold tabular-nums leading-none tracking-tight text-pv-text sm:text-4xl ${card.valueClass}`}
+                  >
+                    {card.value}
                   </p>
                   <p
                     className={`mt-auto pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] sm:text-[11px] ${card.subClass}`}
                   >
-                    {t(card.subKey)}
+                    {card.sub}
                   </p>
                 </div>
               </motion.article>
