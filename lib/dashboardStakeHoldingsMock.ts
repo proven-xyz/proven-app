@@ -57,7 +57,7 @@ export const DASHBOARD_STAKE_HOLDING_META: Record<
     idCode: "#0611-F",
     marketType: "prop",
     oddsMode: "pool",
-    visibility: "private",
+    visibility: "public",
     participantCount: 2,
     maxParticipants: 2,
   },

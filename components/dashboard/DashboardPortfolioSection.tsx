@@ -172,7 +172,7 @@ function StakeHoldingRow({
       : t("holdings.visibilityPublic");
 
   return (
-    <div className="rounded-lg border border-white/[0.12] bg-pv-surface/80">
+    <div className="rounded-lg border border-white/[0.12] bg-pv-surface">
       <div className="flex items-stretch gap-3 px-3 sm:gap-4 sm:px-4">
         <div className="flex shrink-0 items-center justify-center self-center py-3 sm:py-4">
           <StakeHoldingVerifyIcon className="h-9 w-9 text-pv-emerald sm:h-10 sm:w-10" />
@@ -332,11 +332,14 @@ function StakeHoldingRow({
             <span className="inline-flex items-center rounded border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-text sm:text-[10px]">
               {visibilityLine}
             </span>
+            <span className="inline-flex items-center rounded border border-white/[0.14] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+              DEMO
+            </span>
           </div>
         </div>
         <Link
           href={detailHref}
-          className="shrink-0 self-end font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
+          className="shrink-0 self-start font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
         >
           {t("holdings.viewDetails")}
         </Link>
@@ -380,6 +383,7 @@ function StakeHoldingVSRow({
     ? new Intl.DateTimeFormat(undefined, {
         hour: "2-digit",
         minute: "2-digit",
+        hourCycle: "h23",
       }).format(createdAtDate)
     : "";
   const metaLine = createdAtDate
@@ -405,9 +409,18 @@ function StakeHoldingVSRow({
       ? t("holdings.status.open")
       : t("holdings.status.resolved");
 
-  const participantsLine = t("holdings.footerParticipants", {
-    count: participantCount,
-  });
+  const maxChallengers =
+    typeof vs.max_challengers === "number" && vs.max_challengers > 0
+      ? vs.max_challengers
+      : null;
+  const maxParticipants = maxChallengers != null ? 1 + maxChallengers : null;
+  const participantsLine =
+    isPrivate && maxParticipants != null
+      ? t("holdings.footerParticipantsCapped", {
+          current: participantCount,
+          max: maxParticipants,
+        })
+      : t("holdings.footerParticipants", { count: participantCount });
 
   const visibilityLine = isPrivate
     ? t("holdings.visibilityPrivate")
@@ -432,7 +445,7 @@ function StakeHoldingVSRow({
   const detailHref = `/vs/${vs.id}`;
 
   return (
-    <div className="rounded-lg border border-white/[0.12] bg-pv-surface/80">
+    <div className="rounded-lg border border-white/[0.12] bg-pv-surface">
       <div className="flex items-stretch gap-3 px-3 sm:gap-4 sm:px-4">
         <div className="flex shrink-0 items-center justify-center self-center py-3 sm:py-4">
           <StakeHoldingVerifyIcon className="h-9 w-9 text-pv-emerald sm:h-10 sm:w-10" />
@@ -577,7 +590,7 @@ function StakeHoldingVSRow({
         </div>
         <Link
           href={detailHref}
-          className="shrink-0 self-end font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
+          className="shrink-0 self-start font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
         >
           {t("holdings.viewDetails")}
         </Link>
@@ -663,48 +676,71 @@ function StakeHoldingsColumn({
   );
 }
 
+export function RiskAllocationProfileCard({
+  wins,
+  losses,
+  className = "",
+}: {
+  wins: number;
+  losses: number;
+  className?: string;
+}) {
+  const t = useTranslations("dashboard");
+  const riskProfile = useMemo(
+    () => toRiskProfilePct(wins, losses),
+    [wins, losses]
+  );
+
+  return (
+    <section
+      className={`rounded-lg border border-white/[0.12] bg-pv-surface p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5 ${className}`}
+      aria-label={t("holdings.riskSectionAria")}
+    >
+      <h2 className="mb-5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:text-[11px] sm:tracking-[0.2em]">
+        {t("holdings.riskTitle")}
+      </h2>
+      <div className="space-y-5">
+        {riskProfile.map((row) => (
+          <div key={row.key}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                {t(`holdings.risk.${row.key}` as never)}
+              </span>
+              <span className="font-mono text-[11px] font-bold tabular-nums text-pv-text">
+                {row.pct}%
+              </span>
+            </div>
+            <div
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
+              role="progressbar"
+              aria-valuenow={row.pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <motion.div
+                className="h-full rounded-full bg-pv-emerald"
+                initial={{ width: 0 }}
+                animate={{ width: `${row.pct}%` }}
+                transition={{ duration: 0.65, ease, delay: 0.05 }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }) {
   const t = useTranslations("dashboard");
-  const riskProfile = useMemo(() => toRiskProfilePct(wins, losses), [wins, losses]);
 
   return (
     <aside className="flex min-w-0 flex-col gap-4 lg:col-span-5 xl:col-span-4">
-      <section
-        className="rounded-lg border border-white/[0.12] bg-pv-surface p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5"
-        aria-label={t("holdings.riskSectionAria")}
-      >
-        <h2 className="mb-5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:text-[11px] sm:tracking-[0.2em]">
-          {t("holdings.riskTitle")}
-        </h2>
-        <div className="space-y-5">
-          {riskProfile.map((row) => (
-            <div key={row.key}>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                  {t(`holdings.risk.${row.key}` as never)}
-                </span>
-                <span className="font-mono text-[11px] font-bold tabular-nums text-pv-text">
-                  {row.pct}%
-                </span>
-              </div>
-              <div
-                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
-                role="progressbar"
-                aria-valuenow={row.pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <motion.div
-                  className="h-full rounded-full bg-pv-emerald"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${row.pct}%` }}
-                  transition={{ duration: 0.65, ease, delay: 0.05 }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <RiskAllocationProfileCard
+        wins={wins}
+        losses={losses}
+        className="hidden lg:block"
+      />
 
       <section
         className="rounded-lg border border-white/[0.1] bg-pv-surface/50 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5"

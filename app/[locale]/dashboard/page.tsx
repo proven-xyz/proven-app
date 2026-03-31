@@ -18,7 +18,9 @@ import {
   DEFAULT_EXPLORE_FILTERS,
 } from "@/lib/exploreFilters";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import DashboardPortfolioSection from "@/components/dashboard/DashboardPortfolioSection";
+import DashboardPortfolioSection, {
+  RiskAllocationProfileCard,
+} from "@/components/dashboard/DashboardPortfolioSection";
 import DashboardWalletGate from "@/components/dashboard/DashboardWalletGate";
 import DashboardVSFilterBar from "@/components/dashboard/DashboardVSFilterBar";
 
@@ -164,14 +166,14 @@ export default function DashboardPage() {
           className="mb-10 mt-5 pt-8 sm:mt-6 sm:pt-10"
           aria-label={t("overviewSectionAria")}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:gap-4">
+          <div className="grid items-start grid-cols-2 gap-3 lg:grid-cols-4 sm:gap-4">
             {(
               [
                 {
                   key: "wins",
                   title: "CHALLENGES WON",
                   value: `${won}`,
-                  sub: t("record"),
+                  sub: "",
                   valueClass: "text-pv-emerald",
                   subClass: "text-pv-emerald",
                 },
@@ -179,7 +181,7 @@ export default function DashboardPage() {
                   key: "lose",
                   title: "CHALLENGES LOSSES",
                   value: `${lost}`,
-                  sub: t("record"),
+                  sub: "",
                   valueClass: "text-pv-danger",
                   subClass: "text-pv-danger",
                 },
@@ -187,7 +189,7 @@ export default function DashboardPage() {
                   key: "winRate",
                   title: t("winRate"),
                   value: `${winRate}%`,
-                  sub: t("winRate"),
+                  sub: "",
                   valueClass: "text-pv-emerald",
                   subClass: "text-pv-emerald",
                 },
@@ -195,7 +197,7 @@ export default function DashboardPage() {
                   key: "won",
                   title: "TOTAL CLAIMED",
                   value: `${totalWon} GEN`,
-                  sub: t("totalWon"),
+                  sub: "",
                   valueClass: "text-pv-gold",
                   subClass: "text-pv-gold",
                 },
@@ -210,31 +212,43 @@ export default function DashboardPage() {
                   delay: 0.08 + i * 0.07,
                   ease: listItemEase,
                 }}
-                className="group relative flex min-h-[140px] flex-col overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface p-5 transition-[border-color,background-color] duration-300 hover:border-pv-emerald/28 hover:bg-[#242323] sm:min-h-[152px] sm:p-6"
+                className="group relative flex flex-col overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface p-5 transition-[border-color,background-color] duration-300 hover:border-pv-emerald/28 hover:bg-[#242323] sm:p-6"
               >
                 <div
                   className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
                   aria-hidden
                 />
-                <div className="relative z-10 flex min-h-0 flex-1 flex-col text-left">
+                <div className="relative z-10 flex flex-col text-left">
                   <h2 className="font-display text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted sm:text-[11px]">
                     {card.title}
+                    {card.key === "wins" ? (
+                      <span className="invisible sm:hidden" aria-hidden>
+                        {" "}
+                        LOSSES
+                      </span>
+                    ) : null}
                   </h2>
                   <p
                     className={`mt-3 font-mono text-3xl font-bold tabular-nums leading-none tracking-tight text-pv-text sm:text-4xl ${card.valueClass}`}
                   >
                     {card.value}
                   </p>
-                  <p
-                    className={`mt-auto pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] sm:text-[11px] ${card.subClass}`}
-                  >
-                    {card.sub}
-                  </p>
+                  {card.sub ? (
+                    <p
+                      className={`mt-auto pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] sm:text-[11px] ${card.subClass}`}
+                    >
+                      {card.sub}
+                    </p>
+                  ) : null}
                 </div>
               </motion.article>
             ))}
           </div>
         </section>
+
+        <div className="mt-2 mb-8 lg:hidden">
+          <RiskAllocationProfileCard wins={won} losses={lost} />
+        </div>
       </AnimatedItem>
 
       <AnimatedItem>
