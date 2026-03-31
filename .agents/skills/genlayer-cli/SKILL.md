@@ -5,17 +5,17 @@ description: Deploy, interact with, inspect, and debug GenLayer intelligent cont
 
 # GenLayer CLI
 
-Use this skill when a task requires the `genlayer` CLI for network selection, account management, contract deployment, contract interaction, or transaction debugging.
+Use this skill when a task requires the `genlayer` CLI for network selection, account management, deployment, contract interaction, or transaction debugging.
 
 ## When to use
 
 Use this skill for:
-- setting or checking the active GenLayer network
+- choosing or checking the active GenLayer network
 - creating, importing, switching, or funding accounts
 - deploying a contract or running deploy scripts
 - calling view methods and sending write transactions
-- inspecting schemas, code, and receipts
-- debugging failed or unexpected transactions
+- inspecting schemas, deployed code, or receipts
+- appealing or debugging failed transactions
 
 ## Core safety rules
 
@@ -28,9 +28,9 @@ genlayer network set
 genlayer network set testnet-bradbury
 ```
 
-Do **not** default to `--rpc` for built-in networks. That can bypass chain-specific configuration and break transaction polling.
+Do not default to `--rpc` for built-in networks. That can bypass network-specific configuration and break transaction polling.
 
-Built-in networks from the source skill:
+Typical built-in network names:
 - `localnet`
 - `studionet`
 - `testnet-asimov`
@@ -38,7 +38,7 @@ Built-in networks from the source skill:
 
 ### Headless and CI caveat
 
-`genlayer account unlock` depends on an OS keychain and often fails in containers or headless agents. In those cases, expect password prompts for signing commands or pipe the password through stdin when automation is needed.
+`genlayer account unlock` depends on an OS keychain and often fails in containers or headless agents. In those environments, expect password prompts for signing commands and verify automation flags against `genlayer --help` before scripting them.
 
 ## Setup
 
@@ -46,17 +46,16 @@ Built-in networks from the source skill:
 npm install -g genlayer
 ```
 
-## High-value commands
-
-### Network
+## Network configuration
 
 ```bash
 genlayer network set
+genlayer network set testnet-bradbury
 genlayer network info
 genlayer network list
 ```
 
-### Accounts
+## Account management
 
 ```bash
 genlayer account
@@ -68,20 +67,48 @@ genlayer account import --name imported --keystore ./keystore.json
 genlayer account send 0x123...abc 10gen
 ```
 
-### Deploy and interact
+For validator operations, remember the role split:
+- owner account controls validator settings and withdrawals
+- operator account signs validator activity
+- validator wallet is the on-chain contract address returned by staking
+
+## Funding testnet accounts
+
+Fresh testnet accounts usually start with zero GEN. Fund them before deploy or write operations. If the faucet requires a browser challenge, treat that step as manual and continue the scripted flow only after balance is confirmed.
+
+## Contract deployment
+
+Deploy a single contract:
 
 ```bash
 genlayer deploy --contract contracts/my_contract.py
 genlayer deploy --contract contracts/my_contract.py --args "arg1" 42
+```
 
+If the repo uses deploy scripts, prefer the repo's documented deployment flow instead of ad hoc commands.
+
+## Contract interaction
+
+Read methods:
+
+```bash
 genlayer call 0x123...abc get_data --args "key1"
-genlayer write 0x123...abc set_data --args "hello"
+```
 
+Write methods:
+
+```bash
+genlayer write 0x123...abc set_data --args "hello"
+```
+
+Inspect a deployed contract:
+
+```bash
 genlayer schema 0x123...abc
 genlayer code 0x123...abc
 ```
 
-### Receipts and debugging
+## Transaction debugging
 
 ```bash
 genlayer receipt <txHash>
@@ -91,15 +118,12 @@ genlayer receipt <txHash> --status FINALIZED
 genlayer appeal <txHash>
 ```
 
-## Recommended debugging workflow
-
 When a deploy or write call behaves unexpectedly:
-
 1. Fetch the receipt, preferably with stdout and stderr.
-2. Confirm the contract schema and method signatures.
-3. Read the deployed code if the local and deployed code may differ.
+2. Confirm the deployed schema and method signatures.
+3. Read the deployed code if local and deployed sources may differ.
 4. Run a read call to inspect current state.
-5. Appeal only when the receipt indicates a result worth challenging.
+5. Appeal only when the receipt shows a result worth challenging.
 
 ## Local Studio management
 
@@ -110,8 +134,12 @@ genlayer up --reset-db
 genlayer stop
 ```
 
-For validator-heavy local work, localnet validator management commands from the original skill can be used from the reference file.
+Use these when the task is ordinary local environment setup or reset, not full validator operations.
 
-## Funding note
+## Recommended workflow
 
-Fresh testnet accounts start with zero GEN. The original source skill points to the GenLayer testnet faucet and notes that faucet claiming is manual because of Cloudflare Turnstile. See `references/original-claude-skill.md`.
+1. Check or set the active network first.
+2. Confirm the active account before any write or deploy.
+3. Use repo-native deploy scripts when they exist.
+4. After every write, inspect the receipt before assuming success.
+5. If the issue is contract behavior rather than CLI usage, move to `$genvm-lint`, `$direct-tests`, or `$integration-tests` as appropriate.
