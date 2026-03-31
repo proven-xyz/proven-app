@@ -22,9 +22,19 @@ Direct mode is still the first stop for most logic. Move to integration tests wh
 - consensus behavior matters
 - the contract depends on real external calls
 - the bug only appears outside the in-memory runner
-- you need pre-deployment confidence
+- you need pre-deployment confidence in the target environment
 
 ## Running tests
+
+In this repo, prefer the wrappers:
+
+```bash
+npm run test:integration:localnet
+npm run test:integration:studionet
+npm run contract:stage
+```
+
+Raw pytest or gltest invocations are still useful for one-off debugging:
 
 ```bash
 gltest tests/integration/ -v -s
@@ -33,9 +43,9 @@ gltest tests/integration/ -v -s --network studionet
 gltest tests/integration/ -v -s --network testnet_bradbury
 ```
 
-During development, keep `-v -s` so failures and logs stay visible.
+During development, keep `-v -s` enabled so failures and logs stay visible.
 
-## Core pattern
+## Test pattern
 
 ```python
 from gltest import get_contract_factory
@@ -52,41 +62,53 @@ def test_full_flow():
     assert result == "hello"
 ```
 
-## Mental model
+## Key differences from direct mode
 
-### Write methods
+- integration tests exercise real transaction flow instead of only in-memory logic
+- write calls return receipts that reflect consensus execution
+- environment configuration becomes part of the debugging surface
+- tests are slower, so keep them narrow and purposeful
 
-Use `.transact()` and assert on the returned transaction receipt.
+## Write vs read calls
 
-### Read methods
+Use `.transact()` for write methods and assert on the returned receipt.
 
-Use `.call()` and assert on the returned value.
-
-## Environment guidance
-
-From the original skill:
-- **GLSim** is the lightest real-environment option and good for quick iteration.
-- **Local Studio** gives full GenVM behavior.
-- **Hosted Studio** avoids local setup but may be rate-limited.
-- **Testnet Bradbury** is the real network and requires funded accounts.
+Use `.call()` for read methods and assert on the returned value.
 
 ## Configuration
 
-See the `gltest.config.yaml` pattern in `references/original-claude-skill.md`. At minimum, confirm:
+Check `gltest.config.yaml` before assuming the environment is correct. At minimum confirm:
 - contract path
 - target network name
-- available test accounts for the chosen network
+- funded accounts for the chosen network
+- any environment-specific URLs or credentials required by the test
 
-## Common recovery steps
+## Environments
 
-- If transactions are mysteriously missing, clear `.gltest_cache`.
-- During development, run a single test node or one test function at a time.
-- For validator-like objects in test context, convert them to dicts if serialization becomes an issue.
+Choose the cheapest environment that can reproduce the issue:
+- GLSim for the lightest real-environment smoke coverage
+- local Studio for fuller local GenVM behavior
+- hosted Studio when local setup is not available
+- testnet when lower-cost environments are insufficient
+
+## Common issues
+
+### Transaction not found
+
+If transactions appear to vanish, clear any stale local test cache and re-run a single focused test before widening scope.
+
+### Slow tests
+
+Run one test file or one test function at a time during debugging. Avoid turning every direct-mode scenario into an integration case.
+
+### JSON serialization
+
+If test helpers return validator-like objects, convert them into plain dictionaries or primitive values before asserting or serializing them.
 
 ## Recommended workflow
 
 1. Run `$genvm-lint` on modified contracts first.
-2. Keep the integration test narrow and purposeful.
+2. Keep the integration test narrow and tied to one real behavior.
 3. Start with the cheapest environment that reproduces the issue.
 4. Move to testnet only when lower-cost environments are insufficient.
 5. Summarize whether the failure was contract logic, environment config, or external dependency behavior.
