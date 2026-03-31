@@ -376,6 +376,12 @@ function StakeHoldingVSRow({
   const participantCount = 1 + getVSChallengerCount(vs);
   const isPrivate = isVSPrivate(vs);
 
+  const titleLine = vs.question?.trim()
+    ? vs.question
+    : isPrivate
+      ? `${t("privateBadge")} VS #${vs.id}`
+      : `VS #${vs.id}`;
+
   const status: "open" | "accepted" | "resolved" =
     vs.state === "open" || vs.state === "accepted" ? vs.state : "resolved";
 
@@ -428,7 +434,7 @@ function StakeHoldingVSRow({
         >
           <div className="min-w-0 flex-1">
             <h3 className="font-display text-[13px] font-bold uppercase leading-snug tracking-tight text-pv-text sm:text-sm">
-              {vs.question}
+              {titleLine}
             </h3>
             <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-pv-muted sm:text-[11px]">
               {metaLine}
