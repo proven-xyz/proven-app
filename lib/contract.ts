@@ -145,7 +145,8 @@ function isSameAddress(a: string | undefined, b: string | undefined) {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase();
 }
 
-function getConfiguredMaxChallengers(vs: VSData) {
+/** Límite configurado de rivales para el VS (por defecto 1 si no viene en datos). */
+export function getVSConfiguredMaxChallengers(vs: VSData) {
   if (typeof vs.max_challengers === "number" && vs.max_challengers > 0) {
     return vs.max_challengers;
   }
@@ -204,7 +205,7 @@ export function isVSJoinable(vs: VSData, address?: string | null) {
       return false;
     }
   }
-  return getVSChallengerCount(vs) < getConfiguredMaxChallengers(vs);
+  return getVSChallengerCount(vs) < getVSConfiguredMaxChallengers(vs);
 }
 
 export function getVSSingleWinnerPayout(vs: VSData) {

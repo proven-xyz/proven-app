@@ -13,6 +13,7 @@ import {
   getRivalryChain,
   getVS,
   getVSChallengerCount,
+  getVSConfiguredMaxChallengers,
   getVSSingleWinnerPayout,
   getVSTotalPot,
   getUserVSDirect,
@@ -58,7 +59,10 @@ import SettlementExplanationCard from "@/components/SettlementExplanationCard";
 import ResolutionTerminal from "@/components/ResolutionTerminal";
 import Confetti from "@/components/Confetti";
 import VsXmtpPanel from "@/components/xmtp/VsXmtpPanel";
-import { VS_XMTP_CHAT_ANCHOR_ID } from "@/lib/xmtp/vs-chat-eligibility";
+import {
+  VS_XMTP_CHAT_ANCHOR_ID,
+  shouldMountVsXmtpPanelOnDetailPage,
+} from "@/lib/xmtp/vs-chat-eligibility";
 import {
   ArrowLeft,
   Check,
@@ -89,12 +93,21 @@ const RIVALRY_ITEM_BASE_CLASS =
 const RIVALRY_ITEM_ACTIVE_CLASS =
   "border-pv-emerald/[0.35] bg-pv-emerald/[0.08] hover:border-pv-emerald/[0.45] hover:bg-pv-emerald/[0.12]";
 
+/** Demo ticket `-4` (1v1): preview alineado con XMTP y métrica SLOTS 1/1. */
+function isDesignPreviewOneVsOneBase(base: VSData): boolean {
+  return (
+    base.id === MOCK_CREATED_VS_ID && getVSConfiguredMaxChallengers(base) === 1
+  );
+}
+
 function buildDesignPreviewVs(
   base: VSData,
   step: number,
   resolutionSummary: string,
   resolvedOutcome: "creator" | "challengers" = "creator",
 ): VSData {
+  const oneV1 = isDesignPreviewOneVsOneBase(base);
+
   if (step <= 0) {
     return {
       ...base,
@@ -114,6 +127,25 @@ function buildDesignPreviewVs(
       opponent: DESIGN_PREVIEW_OPPONENT,
       state: "accepted",
     });
+    if (oneV1) {
+      return {
+        ...base,
+        state: "accepted",
+        opponent: DESIGN_PREVIEW_OPPONENT,
+        winner: ZERO_ADDRESS,
+        resolution_summary: "",
+        winner_side: undefined,
+        challenger_count: 1,
+        challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
+        challengers: [
+          {
+            address: DESIGN_PREVIEW_OPPONENT,
+            stake: base.stake_amount,
+            potential_payout: pot,
+          },
+        ],
+      };
+    }
     return {
       ...base,
       state: "accepted",
@@ -154,6 +186,25 @@ function buildDesignPreviewVs(
     });
 
     if (resolvedOutcome === "creator") {
+      if (oneV1) {
+        return {
+          ...base,
+          state: "resolved",
+          opponent: DESIGN_PREVIEW_OPPONENT,
+          winner: base.creator,
+          winner_side: "creator",
+          resolution_summary: resolutionSummary,
+          challenger_count: 1,
+          challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
+          challengers: [
+            {
+              address: DESIGN_PREVIEW_OPPONENT,
+              stake: base.stake_amount,
+              potential_payout: resolvedPot,
+            },
+          ],
+        };
+      }
       return {
         ...base,
         state: "resolved",
@@ -214,6 +265,26 @@ function buildDesignPreviewVs(
     opponent: DESIGN_PREVIEW_OPPONENT,
     state: "cancelled",
   });
+
+  if (oneV1) {
+    return {
+      ...base,
+      state: "cancelled",
+      opponent: DESIGN_PREVIEW_OPPONENT,
+      winner: ZERO_ADDRESS,
+      winner_side: undefined,
+      resolution_summary: "",
+      challenger_count: 1,
+      challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
+      challengers: [
+        {
+          address: DESIGN_PREVIEW_OPPONENT,
+          stake: base.stake_amount,
+          potential_payout: cancelledPot,
+        },
+      ],
+    };
+  }
 
   return {
     ...base,
@@ -1287,13 +1358,13 @@ export default function VSDetailPage() {
           </AnimatedItem>
         )}
 
-        {!isSampleVS && (
+        {shouldMountVsXmtpPanelOnDetailPage(vs) && (
           <AnimatedItem>
             <div
               id={VS_XMTP_CHAT_ANCHOR_ID}
               className="scroll-mt-[calc(3.5rem+12px)]"
             >
-              <VsXmtpPanel vs={vs} />
+              <VsXmtpPanel vs={display} />
             </div>
           </AnimatedItem>
         )}

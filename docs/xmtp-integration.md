@@ -173,7 +173,7 @@ Estas decisiones desbloquean implementación sin ambigüedad; se pueden revisar 
 |------------|-----------|
 | Reglas de negocio 1v1 | [`lib/xmtp/vs-chat-eligibility.ts`](../lib/xmtp/vs-chat-eligibility.ts) — `canOpenVsXmtpChat`, `getVsXmtpPeerAddress` |
 | UI + DM + mensajes + stream | [`components/xmtp/VsXmtpPanel.tsx`](../components/xmtp/VsXmtpPanel.tsx) |
-| Integración | [`app/[locale]/vs/[id]/page.tsx`](../app/[locale]/vs/[id]/page.tsx) — solo si `!isSampleVS` |
+| Integración | [`app/[locale]/vs/[id]/page.tsx`](../app/[locale]/vs/[id]/page.tsx) — si `shouldMountVsXmtpPanelOnDetailPage(vs)` (VS on-chain o demo 1v1 `-4`) |
 | i18n | `messages/en.json` / `es.json` → namespace **`xmtpVs`** |
 
 **Reglas de producto**
@@ -181,7 +181,7 @@ Estas decisiones desbloquean implementación sin ambigüedad; se pueden revisar 
 - Chat solo si `vs.state === "accepted"`, `opponent !== ZERO`, **`getVSChallengerCount(vs) === 1`** (no multi-challenger).
 - Peer: la otra dirección si la wallet es creator u opponent (case-insensitive).
 - **`NEXT_PUBLIC_FEATURE_XMTP`:** si está apagado, el panel no se renderiza (`null`).
-- **VS de muestra:** no se monta el panel (`!isSampleVS`).
+- **VS de muestra Explore (`-1`…`-3`):** no se monta el panel. **Demo 1v1** [`MOCK_CREATED_VS_ID`](../lib/mockVsCreate.ts) (`-4`): sí se monta (`shouldMountVsXmtpPanelOnDetailPage`); el hub `/messages` sigue excluyendo ids de muestra vía `isSampleVsIdForXmtp`.
 
 **Flujo técnico (SDK v7)**
 
