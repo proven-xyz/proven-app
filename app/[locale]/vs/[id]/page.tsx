@@ -31,6 +31,11 @@ import {
   getShareUrl,
   shortenAddress,
 } from "@/lib/constants";
+import {
+  MOCK_CREATED_VS_ID,
+  mergeMockSnapshotIntoVs,
+  readCreateMockSnapshot,
+} from "@/lib/mockVsCreate";
 import { SAMPLE_VS } from "@/lib/sampleVs";
 import { useCountdown } from "@/lib/hooks";
 import {
@@ -654,7 +659,14 @@ export default function VSDetailPage() {
 
   const fetchVS = useCallback(async () => {
     if (isSampleVS) {
-      setVS(SAMPLE_VS[vsId]);
+      let data = SAMPLE_VS[vsId];
+      if (vsId === MOCK_CREATED_VS_ID) {
+        const snap = readCreateMockSnapshot();
+        if (snap) {
+          data = mergeMockSnapshotIntoVs(data, snap);
+        }
+      }
+      setVS(data);
       setLoading(false);
       return;
     }

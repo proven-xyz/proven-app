@@ -12,8 +12,7 @@ import {
 } from "react";
 import { motion } from "framer-motion";
 import { useLocale, useMessages, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   createClaim,
@@ -41,11 +40,23 @@ import {
   generatePrivateInviteKey,
   rememberPrivateInviteKey,
 } from "@/lib/private-links";
+import {
+  clearCreateMockSnapshot,
+  MOCK_CONSENSUS_TX_HASH,
+  MOCK_CREATE_DEMO_QUERY,
+  MOCK_CREATED_VS_ID,
+  MOCK_DEMO_CREATOR_ADDRESS,
+  MOCK_WALLET_TX_HASH,
+  writeCreateMockSnapshot,
+} from "@/lib/mockVsCreate";
 import { toast } from "sonner";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, Button, Input, ListboxField } from "@/components/ui";
 import ClaimStrengthCard from "@/components/ClaimStrengthCard";
 import CreateChallengeTicket from "@/components/vs/CreateChallengeTicket";
+import CreateMockFundingOverlay, {
+  type CreateMockOverlayPhase,
+} from "@/components/vs/CreateMockFundingOverlay";
 import Confetti from "@/components/Confetti";
 import {
   Check,
@@ -55,6 +66,7 @@ import {
   Copy,
   Eye,
   FileEdit,
+  FlaskConical,
   GitBranch,
   Link2,
   SlidersHorizontal,
@@ -135,10 +147,12 @@ function formatLocalTimeInputValue(date: Date) {
 
 export default function CreatePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { address, isConnected, connect } = useWallet();
   const t = useTranslations("create");
   const tc = useTranslations("common");
   const tCat = useTranslations("categories");
+  const tVsDetail = useTranslations("vsDetail");
   const locale = useLocale();
   const DEADLINE_PRESETS = useMemo(
     () =>
@@ -201,6 +215,14 @@ export default function CreatePage() {
   const [rematchSource, setRematchSource] = useState<VSData | null>(null);
   const [hydratedFromRematch, setHydratedFromRematch] = useState(false);
   const [rematchId, setRematchId] = useState<number | null>(null);
+  const [isCreateDemoUrl, setIsCreateDemoUrl] = useState(false);
+  const [mockOverlayPhase, setMockOverlayPhase] =
+    useState<CreateMockOverlayPhase>("closed");
+  const mockFlowTimersRef = useRef<number[]>([]);
+  /** `/vs/create?demo=1`: flujo sin wallet ni contrato (no compatible con rematch). */
+  const isCreateDemoSession = isCreateDemoUrl && rematchId === null;
+  const ticketWalletAddress =
+    isCreateDemoSession && !address ? MOCK_DEMO_CREATOR_ADDRESS : address;
   /** Evita mismatch de hidratación: fechas relativas y `min` del input dependen de zona horaria y del reloj del cliente. */
   const categoryGuidance =
     CATEGORY_GUIDANCE[category as keyof typeof CATEGORY_GUIDANCE] ??
@@ -251,6 +273,34 @@ export default function CreatePage() {
   useEffect(() => {
     setMinCustomDeadlineDate(formatLocalDateInputValue(new Date()));
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const q = new URL(window.location.href).searchParams;
+    setIsCreateDemoUrl(q.get(MOCK_CREATE_DEMO_QUERY) === "1");
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      mockFlowTimersRef.current.forEach((id) => window.clearTimeout(id));
+      mockFlowTimersRef.current = [];
+    };
+  }, []);
+
+  /**
+   * Al pasar del formulario largo a la vista de éxito, la página se acorta pero el
+   * `scrollY` se mantiene: se ve el contenido “desde abajo” y luego un salto al subir.
+   * `useLayoutEffect` aplica antes del pintado; `router.replace(..., { scroll: false })`
+   * evita un segundo ajuste del App Router.
+   */
+  useLayoutEffect(() => {
+    if (created === null) {
+      return;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [created]);
 
   function applyDeadlinePreset(seconds: number) {
     const presetDate = new Date(Date.now() + seconds * 1000);
@@ -433,7 +483,7 @@ export default function CreatePage() {
   }, [hydratedFromRematch, rematchId, t]);
 
   useEffect(() => {
-    if (!created || !createdPending) {
+    if (!created || !createdPending || created < 0) {
       return;
     }
 
@@ -453,7 +503,9 @@ export default function CreatePage() {
       removePendingVS(createdId);
       setCreatedPending(false);
       setShowConfetti(true);
-      toast.success(rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded"));
+      toast.success(
+        rematchId ? t("createSuccessHeadlineRematch") : t("createSuccessHeadline"),
+      );
       setTimeout(() => setShowConfetti(false), 4000);
     }
 
@@ -570,7 +622,10 @@ export default function CreatePage() {
       toast.error(t("fillAllFields"));
       return;
     }
-    if (!isConnected || !address) {
+
+    const isDemoCreate = isCreateDemoSession;
+
+    if (!isDemoCreate && (!isConnected || !address)) {
       toast.error(t("connectWalletFirst"));
       return;
     }
@@ -629,6 +684,62 @@ export default function CreatePage() {
       invite_key: inviteKey,
     };
 
+    if (isDemoCreate) {
+      mockFlowTimersRef.current.forEach((id) => window.clearTimeout(id));
+      mockFlowTimersRef.current = [];
+
+      const creatorAddr = address ?? MOCK_DEMO_CREATOR_ADDRESS;
+      setMockOverlayPhase("loading");
+
+      const tLoad = window.setTimeout(() => {
+        setMockOverlayPhase("success");
+      }, 1500);
+      mockFlowTimersRef.current.push(tLoad);
+
+      const tDone = window.setTimeout(() => {
+        writeCreateMockSnapshot({
+          version: 1,
+          vsId: MOCK_CREATED_VS_ID,
+          inviteKey,
+          creator: creatorAddr,
+          vs: {
+            question,
+            creator_position: creatorPos,
+            opponent_position: opponentPos,
+            resolution_url: normalizedSourceUrl,
+            stake_amount: stake,
+            deadline: deadlineTimestamp,
+            created_at: Math.floor(Date.now() / 1000),
+            category,
+            market_type: marketType,
+            odds_mode: oddsMode,
+            max_challengers: normalizedMaxChallengers,
+            is_private: isPrivate,
+            settlement_rule: settlementRule.trim(),
+            handicap_line: handicapLine.trim(),
+            challenger_payout_bps:
+              oddsMode === "fixed" ? Math.round(fixedMultiple * 10000) : 0,
+          },
+        });
+        setCreated(MOCK_CREATED_VS_ID);
+        setCreatedPending(false);
+        setCreatedTxHash(MOCK_WALLET_TX_HASH);
+        setCreatedExplorerTxHash(MOCK_CONSENSUS_TX_HASH);
+        setCreatedInviteKey(inviteKey);
+        if (inviteKey) {
+          rememberPrivateInviteKey(MOCK_CREATED_VS_ID, inviteKey);
+        }
+        setMockOverlayPhase("closed");
+        mockFlowTimersRef.current = [];
+        toast.success(t("createSuccessHeadline"));
+        setShowConfetti(true);
+        window.setTimeout(() => setShowConfetti(false), 4000);
+        router.replace(pathname, { scroll: false });
+      }, 2300);
+      mockFlowTimersRef.current.push(tDone);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -641,8 +752,8 @@ export default function CreatePage() {
         result.pending
           ? t("submittedPending")
           : rematchId
-          ? t("rematchCreatedAndFunded")
-          : t("vsCreatedAndFunded")
+            ? t("createSuccessHeadlineRematch")
+            : t("createSuccessHeadline"),
       );
       if (result.claimId) {
         setCreated(result.claimId);
@@ -700,6 +811,7 @@ export default function CreatePage() {
 
   if (created) {
     const shareUrl = getShareUrl(created, createdInviteKey);
+    const isMockSuccess = created < 0;
 
     return (
       <>
@@ -722,16 +834,18 @@ export default function CreatePage() {
                     />
                   </motion.div>
                   <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald/90">
-                    {createdPending
-                      ? t("createSuccessBadgePending")
-                      : t("createSuccessBadgeLive")}
+                    {isMockSuccess
+                      ? t("mockSuccessBadge")
+                      : createdPending
+                        ? t("createSuccessBadgePending")
+                        : t("createSuccessBadgeLive")}
                   </p>
-                  <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-pv-text sm:text-3xl">
+                  <h1 className="font-display text-2xl font-bold tracking-tight text-pv-text sm:text-3xl">
                     {createdPending
                       ? t("pendingTitle")
                       : rematchId
-                        ? t("rematchCreatedAndFunded")
-                        : t("vsCreatedAndFunded")}
+                        ? t("createSuccessHeadlineRematch")
+                        : t("createSuccessHeadline")}
                   </h1>
                   <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-pv-muted sm:text-[15px]">
                     {createdPending
@@ -806,18 +920,30 @@ export default function CreatePage() {
 
                 <div className="rounded-xl border border-white/[0.08] bg-pv-bg/35 px-4 py-3.5 sm:px-5">
                   <div className="space-y-2 text-left text-xs text-pv-muted">
-                    {createdPending && createdTxHash && (
+                    {isMockSuccess && (
+                      <p className="text-[11px] leading-relaxed text-pv-muted/90">
+                        {t("mockTxDisclaimer")}
+                      </p>
+                    )}
+                    {(createdPending || isMockSuccess) && createdTxHash && (
                       <p className="font-mono leading-relaxed">
                         {t("walletTx")}:{" "}
-                        <a
-                          href={getExplorerTxUrl(createdTxHash)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-pv-emerald underline-offset-2 transition-colors hover:underline"
-                        >
-                          {createdTxHash.slice(0, 10)}…
-                          {createdTxHash.slice(-8)}
-                        </a>
+                        {isMockSuccess ? (
+                          <span className="text-pv-text/90">
+                            {createdTxHash.slice(0, 10)}…
+                            {createdTxHash.slice(-8)}
+                          </span>
+                        ) : (
+                          <a
+                            href={getExplorerTxUrl(createdTxHash)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-pv-emerald underline-offset-2 transition-colors hover:underline"
+                          >
+                            {createdTxHash.slice(0, 10)}…
+                            {createdTxHash.slice(-8)}
+                          </a>
+                        )}
                       </p>
                     )}
                     {createdExplorerTxHash &&
@@ -825,27 +951,40 @@ export default function CreatePage() {
                         createdExplorerTxHash !== createdTxHash) && (
                         <p className="font-mono leading-relaxed">
                           {createdPending ? t("consensusTx") : "Tx"}:{" "}
-                          <a
-                            href={getExplorerTxUrl(createdExplorerTxHash)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-pv-emerald underline-offset-2 transition-colors hover:underline"
-                          >
-                            {createdExplorerTxHash.slice(0, 10)}…
-                            {createdExplorerTxHash.slice(-8)}
-                          </a>
+                          {isMockSuccess ? (
+                            <span className="text-pv-text/90">
+                              {createdExplorerTxHash.slice(0, 10)}…
+                              {createdExplorerTxHash.slice(-8)}
+                            </span>
+                          ) : (
+                            <a
+                              href={getExplorerTxUrl(createdExplorerTxHash)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-pv-emerald underline-offset-2 transition-colors hover:underline"
+                            >
+                              {createdExplorerTxHash.slice(0, 10)}…
+                              {createdExplorerTxHash.slice(-8)}
+                            </a>
+                          )}
                         </p>
                       )}
-                    <p>
-                      <a
-                        href={getExplorerUrl()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-pv-emerald underline-offset-2 transition-colors hover:underline"
-                      >
-                        {t("openExplorer")}
-                      </a>
-                    </p>
+                    {isMockSuccess ? (
+                      <p className="text-[11px] leading-relaxed text-pv-muted/85">
+                        {t("mockExplorerNote")}
+                      </p>
+                    ) : (
+                      <p>
+                        <a
+                          href={getExplorerUrl()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-pv-emerald underline-offset-2 transition-colors hover:underline"
+                        >
+                          {t("openExplorer")}
+                        </a>
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -855,6 +994,7 @@ export default function CreatePage() {
                     fullWidth
                     className="rounded-xl py-3.5 font-display text-xs font-bold uppercase tracking-widest sm:w-auto sm:min-w-[10rem] sm:px-8"
                     onClick={() => {
+                      clearCreateMockSnapshot();
                       setCreated(null);
                       setCreatedPending(false);
                       setCreatedTxHash("");
@@ -889,8 +1029,18 @@ export default function CreatePage() {
     );
   }
 
+  const isFormMockBusy = mockOverlayPhase !== "closed";
+
   return (
-    <PageTransition>
+    <>
+      <CreateMockFundingOverlay
+        phase={mockOverlayPhase}
+        titleLoading={t("mockOverlayFunding")}
+        hintLoading={t("mockOverlayFundingHint")}
+        titleSuccess={t("createSuccessHeadline")}
+        subtitleSuccess={t("mockOverlaySuccessHint")}
+      />
+      <PageTransition>
       <div className="mx-auto w-full max-w-[1280px] px-4 pb-12 sm:px-6">
         <AnimatedItem>
           <div className="mb-8 w-full sm:mb-10">
@@ -1740,6 +1890,41 @@ export default function CreatePage() {
           </GlassCard>
         </AnimatedItem>
 
+            {isCreateDemoSession && (
+              <AnimatedItem>
+                <GlassCard
+                  glass
+                  glow="none"
+                  noPad
+                  className="!rounded-2xl !border-2 !border-dashed !border-white/[0.18] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+                >
+                  <div className="p-5 sm:p-6">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-4">
+                      <span
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.03] text-pv-muted"
+                        aria-hidden
+                      >
+                        <FlaskConical size={18} strokeWidth={2} />
+                      </span>
+                      <div className="min-w-0 flex-1 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                          <h3 className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
+                            {tVsDetail("sampleModeTitle")}
+                          </h3>
+                          <span className="inline-flex shrink-0 rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-pv-muted sm:text-[10px] sm:tracking-[0.22em]">
+                            {tVsDetail("sampleModeDemoBadge")}
+                          </span>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-pv-muted sm:text-xs">
+                          {t("mockModeBanner")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </GlassCard>
+              </AnimatedItem>
+            )}
+
           </div>
 
           <aside className="lg:col-span-4 text-pv-text">
@@ -1759,18 +1944,21 @@ export default function CreatePage() {
                   }
                   settlementPreview={ticketSettlementPreview}
                   stakeAmount={stake}
-                  walletAddress={address}
+                  walletAddress={ticketWalletAddress ?? undefined}
                 />
                 <ClaimStrengthCard input={claimStrengthInput} />
-                {isConnected ? (
+                {isConnected || isCreateDemoSession ? (
                   <Button
                     variant="primary"
                     onClick={handleSubmit}
-                    loading={loading}
+                    loading={loading || mockOverlayPhase === "loading"}
+                    disabled={isFormMockBusy}
                     className="rounded-2xl py-5 font-display text-sm font-bold uppercase tracking-widest"
                   >
-                    {loading ? (
-                      t("funding")
+                    {mockOverlayPhase === "loading" || loading ? (
+                      mockOverlayPhase === "loading"
+                        ? t("mockOverlayFunding")
+                        : t("funding")
                     ) : (
                       <>
                         <span>
@@ -1799,5 +1987,6 @@ export default function CreatePage() {
         </div>
       </div>
     </PageTransition>
+    </>
   );
 }

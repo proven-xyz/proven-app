@@ -1,5 +1,6 @@
 import type { VSData } from "@/lib/contract";
 import { ZERO_ADDRESS } from "@/lib/constants";
+import { buildMockCreatedVsTemplate, MOCK_CREATED_VS_ID } from "@/lib/mockVsCreate";
 
 /**
  * VS de demostración (ids negativos). La página /vs/[id] los resuelve sin llamar al contrato.
@@ -69,6 +70,7 @@ export const SAMPLE_VS: Record<number, VSData> = {
     odds_mode: "pool",
     max_challengers: 8,
   },
+  [MOCK_CREATED_VS_ID]: buildMockCreatedVsTemplate(),
 };
 
 /** Orden en Explore: Sports → Crypto → Tech (deportes, crypto, tech). */
