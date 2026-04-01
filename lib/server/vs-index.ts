@@ -29,12 +29,18 @@ import {
   type ChallengerRow,
   type ClaimRow,
 } from "@/lib/db";
+import {
+  buildVSCacheFreshness,
+  makeContractFreshness,
+  type VSCacheFreshness,
+} from "@/lib/vs-freshness";
 
 const LIST_FRESHNESS_MS = 60_000;
 const DETAIL_FRESHNESS_MS = 15_000;
 const CLAIM_SYNC_PAGE_SIZE = 50;
 const POST_WRITE_REFRESH_ATTEMPTS = 5;
 const POST_WRITE_REFRESH_DELAY_MS = 1_500;
+const BACKGROUND_REFRESH_COOLDOWN_MS = 30_000;
 
 type ReconcileResult = {
   synced: number;
@@ -42,8 +48,145 @@ type ReconcileResult = {
   stateChanges: number;
 };
 
+export type VSFeedSnapshot = {
+  items: VSData[];
+  cache: VSCacheFreshness;
+};
+
+export type VSDetailSnapshot = {
+  item: VSData | null;
+  cache: VSCacheFreshness;
+};
+
+type BackgroundTaskEntry = {
+  startedAt: number;
+  promise?: Promise<void>;
+};
+
+type VsIndexBackgroundState = {
+  feedRefresh?: BackgroundTaskEntry;
+  userRefreshes: Map<string, BackgroundTaskEntry>;
+  detailRefreshes: Map<number, BackgroundTaskEntry>;
+};
+
+declare global {
+  var __provenVsIndexBackgroundState: VsIndexBackgroundState | undefined;
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getBackgroundState(): VsIndexBackgroundState {
+  if (!globalThis.__provenVsIndexBackgroundState) {
+    globalThis.__provenVsIndexBackgroundState = {
+      userRefreshes: new Map<string, BackgroundTaskEntry>(),
+      detailRefreshes: new Map<number, BackgroundTaskEntry>(),
+    };
+  }
+
+  return globalThis.__provenVsIndexBackgroundState;
+}
+
+function isBackgroundTaskCoolingDown(startedAt?: number) {
+  return (
+    typeof startedAt === "number" &&
+    Date.now() - startedAt < BACKGROUND_REFRESH_COOLDOWN_MS
+  );
+}
+
+function refreshVsIndexInBackground() {
+  const state = getBackgroundState();
+  const entry = state.feedRefresh;
+  if (entry?.promise || isBackgroundTaskCoolingDown(entry?.startedAt)) {
+    return;
+  }
+
+  const nextEntry: BackgroundTaskEntry = {
+    startedAt: Date.now(),
+  };
+
+  nextEntry.promise = reconcileVsIndex()
+    .then(() => {})
+    .catch(() => {
+      // Serve indexed rows immediately and let refresh failures degrade quietly.
+    })
+    .finally(() => {
+      const currentState = getBackgroundState();
+      const currentEntry = currentState.feedRefresh;
+      if (currentEntry?.promise === nextEntry.promise) {
+        currentState.feedRefresh = {
+          startedAt: nextEntry.startedAt,
+        };
+      }
+    });
+
+  state.feedRefresh = nextEntry;
+}
+
+function hydrateUserClaimsInBackground(address: string) {
+  const normalizedAddress = address.toLowerCase();
+  const state = getBackgroundState();
+  const entry = state.userRefreshes.get(normalizedAddress);
+  if (entry?.promise || isBackgroundTaskCoolingDown(entry?.startedAt)) {
+    return;
+  }
+
+  const nextEntry: BackgroundTaskEntry = {
+    startedAt: Date.now(),
+  };
+
+  nextEntry.promise = hydrateUserClaimsFromContract(address)
+    .then(() => {})
+    .catch(() => {
+      // Keep serving indexed rows if Bradbury reads are currently unreliable.
+    })
+    .finally(() => {
+      const currentState = getBackgroundState();
+      const currentEntry = currentState.userRefreshes.get(normalizedAddress);
+      if (currentEntry?.promise === nextEntry.promise) {
+        currentState.userRefreshes.set(normalizedAddress, {
+          startedAt: nextEntry.startedAt,
+        });
+      }
+    });
+
+  state.userRefreshes.set(normalizedAddress, nextEntry);
+}
+
+function refreshIndexedClaimInBackground(options: {
+  claimId: number;
+  inviteKey?: string | null;
+}) {
+  const state = getBackgroundState();
+  const entry = state.detailRefreshes.get(options.claimId);
+  if (entry?.promise || isBackgroundTaskCoolingDown(entry?.startedAt)) {
+    return;
+  }
+
+  const nextEntry: BackgroundTaskEntry = {
+    startedAt: Date.now(),
+  };
+
+  nextEntry.promise = refreshIndexedClaim({
+    claimId: options.claimId,
+    inviteKey: options.inviteKey,
+  })
+    .then(() => {})
+    .catch(() => {
+      // Keep serving indexed rows if Bradbury reads are currently unreliable.
+    })
+    .finally(() => {
+      const currentState = getBackgroundState();
+      const currentEntry = currentState.detailRefreshes.get(options.claimId);
+      if (currentEntry?.promise === nextEntry.promise) {
+        currentState.detailRefreshes.set(options.claimId, {
+          startedAt: nextEntry.startedAt,
+        });
+      }
+    });
+
+  state.detailRefreshes.set(options.claimId, nextEntry);
 }
 
 function isPrivateClaim(claim: Pick<ClaimData, "visibility" | "is_private">) {
@@ -73,6 +216,50 @@ function isClaimFinal(state: string) {
 
 function isFresh(updatedAt: number, thresholdMs: number) {
   return Date.now() - updatedAt <= thresholdMs;
+}
+
+function getReferenceUpdatedAt(
+  rows: Array<Pick<ClaimRow, "updated_at" | "is_final">>,
+  fallbackUpdatedAt?: number | null
+) {
+  const mutableRows = rows.filter((row) => row.is_final === 0);
+  const mutableReference =
+    mutableRows.length > 0
+      ? Math.min(...mutableRows.map((row) => row.updated_at))
+      : null;
+  const anyReference =
+    rows.length > 0 ? Math.max(...rows.map((row) => row.updated_at)) : null;
+
+  if (typeof fallbackUpdatedAt === "number" && Number.isFinite(fallbackUpdatedAt)) {
+    if (mutableReference != null) {
+      return Math.max(fallbackUpdatedAt, mutableReference);
+    }
+
+    if (anyReference != null) {
+      return Math.max(fallbackUpdatedAt, anyReference);
+    }
+
+    return fallbackUpdatedAt;
+  }
+
+  return mutableReference ?? anyReference ?? null;
+}
+
+async function buildListCacheFreshness(rows: ClaimRow[]) {
+  const lastSyncAt = Number((await getSyncMeta("last_sync_at")) ?? "0");
+  return buildVSCacheFreshness({
+    updatedAtMs: getReferenceUpdatedAt(rows, lastSyncAt > 0 ? lastSyncAt : null),
+    freshnessWindowMs: LIST_FRESHNESS_MS,
+    source: "index",
+  });
+}
+
+function buildDetailCacheFreshness(row: ClaimRow | null) {
+  return buildVSCacheFreshness({
+    updatedAtMs: row?.updated_at ?? null,
+    freshnessWindowMs: DETAIL_FRESHNESS_MS,
+    source: "index",
+  });
 }
 
 function challengerRowsToClaimChallengers(rows: ChallengerRow[]): ClaimChallenger[] {
@@ -372,7 +559,9 @@ export async function reconcileVsIndex(): Promise<ReconcileResult> {
   };
 }
 
-export async function getVsFeed(options: { forceRefresh?: boolean } = {}) {
+export async function getVsFeedSnapshot(
+  options: { forceRefresh?: boolean } = {}
+): Promise<VSFeedSnapshot> {
   try {
     const rows = await getClaimsByFilter({
       visibility: "public",
@@ -385,29 +574,60 @@ export async function getVsFeed(options: { forceRefresh?: boolean } = {}) {
       !lastSyncAt ||
       !isFresh(lastSyncAt, LIST_FRESHNESS_MS);
 
-    if (shouldRefresh) {
+    if (options.forceRefresh || rows.length === 0) {
       await reconcileVsIndex();
       const refreshedRows = await getClaimsByFilter({
         visibility: "public",
         orderBy: "id_desc",
       });
-      return refreshedRows.map((row) => claimRowToVSData(row));
+      return {
+        items: refreshedRows.map((row) => claimRowToVSData(row)),
+        cache: buildVSCacheFreshness({
+          updatedAtMs: Date.now(),
+          freshnessWindowMs: LIST_FRESHNESS_MS,
+          source: "index",
+        }),
+      };
     }
 
-    return rows.map((row) => claimRowToVSData(row));
+    if (shouldRefresh) {
+      refreshVsIndexInBackground();
+    }
+
+    return {
+      items: rows.map((row) => claimRowToVSData(row)),
+      cache: await buildListCacheFreshness(rows),
+    };
   } catch {
     if (options.forceRefresh) {
-      return (await refreshVSIndex()).items;
+      return {
+        items: (await refreshVSIndex()).items,
+        cache: makeContractFreshness(),
+      };
     }
-    return getVsFeedFromCache();
+    return {
+      items: await getVsFeedFromCache(),
+      cache: buildVSCacheFreshness({
+        updatedAtMs: null,
+        freshnessWindowMs: LIST_FRESHNESS_MS,
+        source: "index",
+      }),
+    };
   }
 }
 
-export async function getVsDetail(vsId: number) {
+export async function getVsFeed(options: { forceRefresh?: boolean } = {}) {
+  return (await getVsFeedSnapshot(options)).items;
+}
+
+export async function getVsDetailSnapshot(vsId: number): Promise<VSDetailSnapshot> {
   try {
     const { row, challengerRows } = await loadStoredVsById(vsId);
     if (row?.visibility === "private") {
-      return null;
+      return {
+        item: null,
+        cache: buildDetailCacheFreshness(row),
+      };
     }
 
     const missingChallengerDetails =
@@ -420,7 +640,18 @@ export async function getVsDetail(vsId: number) {
       !missingChallengerDetails &&
       (row.is_final === 1 || isFresh(row.updated_at, DETAIL_FRESHNESS_MS))
     ) {
-      return claimRowToVSData(row, challengerRows);
+      return {
+        item: claimRowToVSData(row, challengerRows),
+        cache: buildDetailCacheFreshness(row),
+      };
+    }
+
+    if (row) {
+      refreshIndexedClaimInBackground({ claimId: vsId });
+      return {
+        item: claimRowToVSData(row, challengerRows),
+        cache: buildDetailCacheFreshness(row),
+      };
     }
 
     if (!row) {
@@ -435,63 +666,139 @@ export async function getVsDetail(vsId: number) {
         lastSyncAt > 0 && isFresh(lastSyncAt, LIST_FRESHNESS_MS);
 
       if (hasFreshIndex && (lastClaimCount === 0 || vsId > lastClaimCount)) {
-        return null;
+        return {
+          item: null,
+          cache: buildVSCacheFreshness({
+            updatedAtMs: lastSyncAt > 0 ? lastSyncAt : null,
+            freshnessWindowMs: LIST_FRESHNESS_MS,
+            source: "index",
+          }),
+        };
       }
     }
 
     const freshClaim = await refreshIndexedClaim({ claimId: vsId });
     if (freshClaim) {
-      return mapClaimToVS(freshClaim);
-    }
-
-    if (row) {
-      return claimRowToVSData(row, challengerRows);
+      return {
+        item: mapClaimToVS(freshClaim),
+        cache: makeContractFreshness(),
+      };
     }
   } catch {
     // Fall through to the existing cache-backed path below.
   }
 
-  return getVsByIdFromCache(vsId);
+  const fallbackItem = await getVsByIdFromCache(vsId);
+  return {
+    item: fallbackItem,
+    cache: buildVSCacheFreshness({
+      updatedAtMs: null,
+      freshnessWindowMs: DETAIL_FRESHNESS_MS,
+      source: "index",
+    }),
+  };
 }
 
-export async function getUserVs(address: string) {
+export async function getVsDetail(vsId: number) {
+  return (await getVsDetailSnapshot(vsId)).item;
+}
+
+export async function getUserVsSnapshot(
+  address: string,
+  options: { forceRefresh?: boolean } = {}
+): Promise<VSFeedSnapshot> {
   try {
     const storedEntries = await loadStoredUserVs(address);
     const storedItems = storedEntries.map((entry) => entry.vs);
+    const storedRows = storedEntries.map((entry) => entry.row);
+    const forceRefresh = options.forceRefresh === true;
     const shouldRefresh =
+      forceRefresh ||
       storedEntries.length === 0 ||
       storedEntries.some(
         ({ row }) => row.is_final === 0 && !isFresh(row.updated_at, LIST_FRESHNESS_MS)
       );
 
     if (storedItems.length > 0 && !shouldRefresh) {
-      return storedItems;
+      return {
+        items: storedItems,
+        cache: buildVSCacheFreshness({
+          updatedAtMs: getReferenceUpdatedAt(storedRows),
+          freshnessWindowMs: LIST_FRESHNESS_MS,
+          source: "index",
+        }),
+      };
+    }
+
+    if (storedItems.length > 0 && !forceRefresh) {
+      if (shouldRefresh) {
+        hydrateUserClaimsInBackground(address);
+      }
+      return {
+        items: storedItems,
+        cache: buildVSCacheFreshness({
+          updatedAtMs: getReferenceUpdatedAt(storedRows),
+          freshnessWindowMs: LIST_FRESHNESS_MS,
+          source: "index",
+        }),
+      };
     }
 
     try {
       const freshItems = await hydrateUserClaimsFromContract(address);
       if (freshItems.length > 0) {
-        return freshItems;
+        return {
+          items: freshItems,
+          cache: makeContractFreshness(),
+        };
       }
     } catch {
       if (storedItems.length > 0) {
-        return storedItems;
+        return {
+          items: storedItems,
+          cache: buildVSCacheFreshness({
+            updatedAtMs: getReferenceUpdatedAt(storedRows),
+            freshnessWindowMs: LIST_FRESHNESS_MS,
+            source: "index",
+          }),
+        };
       }
     }
 
-    return storedItems;
+    return {
+      items: storedItems,
+      cache: buildVSCacheFreshness({
+        updatedAtMs: getReferenceUpdatedAt(storedRows),
+        freshnessWindowMs: LIST_FRESHNESS_MS,
+        source: "index",
+      }),
+    };
   } catch {
     try {
       const freshItems = await hydrateUserClaimsFromContract(address);
       if (freshItems.length > 0) {
-        return freshItems;
+        return {
+          items: freshItems,
+          cache: makeContractFreshness(),
+        };
       }
     } catch {
       // Keep falling back.
     }
 
-    return getUserVsFromCache(address);
+    return {
+      items: await getUserVsFromCache(address),
+      cache: buildVSCacheFreshness({
+        updatedAtMs: null,
+        freshnessWindowMs: LIST_FRESHNESS_MS,
+        source: "index",
+      }),
+    };
   }
+}
+
+export async function getUserVs(address: string) {
+  return (await getUserVsSnapshot(address)).items;
 }
 
 export async function triggerPostWriteRefresh(options: {

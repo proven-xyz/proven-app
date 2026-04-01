@@ -1,9 +1,14 @@
-import { parseEventLogs, createPublicClient, http } from "viem";
+import { abi as genlayerAbi } from "genlayer-js";
+import { encodeFunctionData, parseEventLogs, createPublicClient, http } from "viem";
+import type { VSCacheFreshness } from "./vs-freshness";
 
 import {
   createGenlayerClient,
+  ensureGenlayerWalletChain,
   getEndpoint,
+  getGenlayerChain,
   getConsensusMainContractAddress,
+  GENLAYER_CONSENSUS_MAIN_ABI,
 } from "./genlayer";
 
 export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
@@ -128,6 +133,16 @@ export interface ClaimWriteResult extends ContractWriteResult {
   claimId: number | null;
   pending?: boolean;
   actor?: string;
+}
+
+export interface VSFeedSnapshot {
+  items: VSData[];
+  cache: VSCacheFreshness | null;
+}
+
+export interface VSDetailSnapshot {
+  item: VSData | null;
+  cache: VSCacheFreshness | null;
 }
 
 function normalizeClaimData(claim: ClaimData): ClaimData {
@@ -411,6 +426,158 @@ async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
   return evmTxHash;
 }
 
+function makeContractFreshness(): VSCacheFreshness {
+  return {
+    source: "contract",
+    status: "live",
+    lastUpdatedAt: new Date().toISOString(),
+    ageMs: 0,
+    freshnessWindowMs: 1,
+  };
+}
+
+function buildConsensusTransactionData(functionName: string, args: unknown[]) {
+  const callData = genlayerAbi.calldata.encode(
+    genlayerAbi.calldata.makeCalldataObject(functionName, args as any, undefined)
+  );
+
+  return genlayerAbi.transactions.serialize([callData, false]);
+}
+
+async function sendBrowserWriteTransaction(
+  wallet: string,
+  functionName: string,
+  args: unknown[],
+  value: bigint
+) {
+  const ethereum =
+    typeof window !== "undefined" ? (window as any).ethereum : undefined;
+
+  if (!ethereum) {
+    throw new Error("No injected wallet available");
+  }
+
+  await ensureGenlayerWalletChain(ethereum);
+
+  const chain = getGenlayerChain() as {
+    defaultConsensusMaxRotations?: number;
+    defaultNumberOfInitialValidators?: number;
+  };
+
+  const txRequest: Record<string, string> = {
+    from: wallet,
+    to: getConsensusMainContractAddress(),
+    data: encodeFunctionData({
+      abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+      functionName: "addTransaction",
+      args: [
+        wallet,
+        CONTRACT_ADDRESS,
+        BigInt(chain.defaultNumberOfInitialValidators ?? 5),
+        BigInt(chain.defaultConsensusMaxRotations ?? 3),
+        buildConsensusTransactionData(functionName, args),
+        BigInt(0),
+      ],
+    }),
+    value: `0x${value.toString(16)}`,
+  };
+
+  try {
+    const gas = await ethereum.request({
+      method: "eth_estimateGas",
+      params: [txRequest],
+    });
+    if (typeof gas === "string") {
+      txRequest.gas = gas;
+    }
+  } catch {
+    // Let the wallet estimate gas if the RPC estimate is unavailable.
+  }
+
+  try {
+    const gasPrice = await ethereum.request({
+      method: "eth_gasPrice",
+    });
+    if (typeof gasPrice === "string") {
+      txRequest.type = "0x0";
+      txRequest.gasPrice = gasPrice;
+    }
+  } catch {
+    // Some wallet providers will populate pricing fields automatically.
+  }
+
+  const evmTxHash = await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [txRequest],
+  });
+
+  if (typeof evmTxHash !== "string") {
+    throw new Error("Wallet did not return a transaction hash");
+  }
+
+  return evmTxHash;
+}
+
+export async function finalizeGenlayerTx(
+  genlayerTxId: string,
+  wallet: string
+): Promise<string> {
+  const ethereum =
+    typeof window !== "undefined" ? (window as any).ethereum : undefined;
+
+  if (!ethereum) {
+    throw new Error("No injected wallet available");
+  }
+
+  await ensureGenlayerWalletChain(ethereum);
+
+  const txRequest: Record<string, string> = {
+    from: wallet,
+    to: getConsensusMainContractAddress(),
+    data: encodeFunctionData({
+      abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+      functionName: "finalizeTransaction",
+      args: [genlayerTxId as `0x${string}`],
+    }),
+    value: "0x0",
+  };
+
+  try {
+    const gas = await ethereum.request({
+      method: "eth_estimateGas",
+      params: [txRequest],
+    });
+    if (typeof gas === "string") {
+      txRequest.gas = gas;
+    }
+  } catch {
+    // Let the wallet estimate gas if the RPC estimate is unavailable.
+  }
+
+  try {
+    const gasPrice = await ethereum.request({
+      method: "eth_gasPrice",
+    });
+    if (typeof gasPrice === "string") {
+      txRequest.type = "0x0";
+      txRequest.gasPrice = gasPrice;
+    }
+  } catch {
+    // Some wallet providers will populate pricing fields automatically.
+  }
+
+  const evmTxHash = await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [txRequest],
+  });
+
+  if (typeof evmTxHash !== "string") {
+    throw new Error("Wallet did not return a transaction hash");
+  }
+
+  return evmTxHash;
+}
+
 async function writeAndWait(
   functionName: string,
   wallet: string,
@@ -420,7 +587,9 @@ async function writeAndWait(
   const isBrowser =
     typeof window !== "undefined" && !!(window as any).ethereum;
 
-  const evmTxHash = await sendRpcWriteTransaction(wallet, functionName, args, value);
+  const evmTxHash = isBrowser
+    ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
+    : await sendRpcWriteTransaction(wallet, functionName, args, value);
 
   // --- browser (MetaMask) path: confirm at EVM level, skip consensus poll ---
   if (isBrowser) {
@@ -498,9 +667,19 @@ async function inferCreatedClaimId(wallet: string) {
   return claimCount > 0 ? claimCount : null;
 }
 
-async function readApiJson<T>(path: string): Promise<T | null> {
+async function readApiJson<T>(
+  path: string,
+  options?: {
+    timeoutMs?: number;
+  }
+): Promise<T | null> {
   try {
-    const response = await fetch(path);
+    const response = await fetch(path, {
+      signal:
+        typeof options?.timeoutMs === "number"
+          ? AbortSignal.timeout(options.timeoutMs)
+          : undefined,
+    });
     if (!response.ok) {
       return null;
     }
@@ -812,53 +991,115 @@ export async function getVS(
     viewerAddress?: string | null;
   } = {}
 ): Promise<VSData | null> {
+  const snapshot = await getVSSnapshot(vsId, options);
+  return snapshot.item;
+}
+
+export async function getVSSnapshot(
+  vsId: number,
+  options: {
+    inviteKey?: string | null;
+    viewerAddress?: string | null;
+  } = {}
+): Promise<VSDetailSnapshot> {
   const inviteKey = options.inviteKey?.trim() ?? "";
 
   if (typeof window !== "undefined") {
     const path = inviteKey
       ? `/api/vs/${vsId}?invite=${encodeURIComponent(inviteKey)}`
       : `/api/vs/${vsId}`;
-    const response = await readApiJson<{ item: VSData }>(path);
+    const response = await readApiJson<{ item: VSData; cache?: VSCacheFreshness | null }>(path);
     if (response?.item) {
-      return response.item;
+      return {
+        item: response.item,
+        cache: response.cache ?? null,
+      };
     }
 
     if (inviteKey) {
       const inviteClaim = await getClaimWithAccess(vsId, inviteKey);
       if (inviteClaim) {
-        return mapClaimToVS(inviteClaim);
+        return {
+          item: mapClaimToVS(inviteClaim),
+          cache: makeContractFreshness(),
+        };
       }
+    }
+
+    const directClaim = await getClaim(vsId);
+    if (directClaim) {
+      return {
+        item: mapClaimToVS(directClaim),
+        cache: makeContractFreshness(),
+      };
     }
 
     if (options.viewerAddress) {
       const userItems = await getUserVSDirect(options.viewerAddress);
       const found = userItems.find((item) => item.id === vsId);
       if (found) {
-        return found;
+        return {
+          item: found,
+          cache: null,
+        };
       }
     }
 
-    return null;
+    return {
+      item: null,
+      cache: null,
+    };
   }
 
   if (inviteKey) {
     const inviteClaim = await getClaimWithAccess(vsId, inviteKey);
-    return inviteClaim ? mapClaimToVS(inviteClaim) : null;
+    return {
+      item: inviteClaim ? mapClaimToVS(inviteClaim) : null,
+      cache: inviteClaim ? makeContractFreshness() : null,
+    };
   }
 
   const claim = await getClaim(vsId);
-  return claim ? mapClaimToVS(claim) : null;
+  return {
+    item: claim ? mapClaimToVS(claim) : null,
+    cache: claim ? makeContractFreshness() : null,
+  };
 }
 
 export async function getAllVSFast(): Promise<VSData[]> {
+  const snapshot = await getAllVSSnapshot();
+  return snapshot.items;
+}
+
+export async function getAllVSSnapshot(options: {
+  forceRefresh?: boolean;
+} = {}): Promise<VSFeedSnapshot> {
   if (typeof window !== "undefined") {
-    const response = await readApiJson<{ items: VSData[] }>("/api/vs");
-    return response?.items ?? [];
+    const path = options.forceRefresh ? "/api/vs?refresh=1" : "/api/vs";
+    let response = await readApiJson<{
+      items: VSData[];
+      cache?: VSCacheFreshness | null;
+    }>(path, options.forceRefresh ? { timeoutMs: 12_000 } : undefined);
+
+    if (!response && options.forceRefresh) {
+      response = await readApiJson<{
+        items: VSData[];
+        cache?: VSCacheFreshness | null;
+      }>("/api/vs");
+    }
+
+    return {
+      items: response?.items ?? [],
+      cache: response?.cache ?? null,
+    };
   }
 
   const count = await getClaimCount();
   if (count <= 0) {
-    return [];
+    return {
+      items: [],
+      cache: makeContractFreshness(),
+    };
   }
 
   const pageSize = 50;
@@ -869,19 +1110,50 @@ export async function getAllVSFast(): Promise<VSData[]> {
   );
   const results = pages.flat();
 
-  return results.sort((a, b) => b.id - a.id);
+  return {
+    items: results.sort((a, b) => b.id - a.id),
+    cache: makeContractFreshness(),
+  };
 }
 
 export async function getUserVSFast(address: string): Promise<VSData[]> {
+  const snapshot = await getUserVSSnapshot(address);
+  return snapshot.items;
+}
+
+export async function getUserVSSnapshot(
+  address: string,
+  options: {
+    forceRefresh?: boolean;
+  } = {}
+): Promise<VSFeedSnapshot> {
   if (typeof window !== "undefined") {
-    const response = await readApiJson<{ items: VSData[] }>(
-      `/api/vs/user/${encodeURIComponent(address)}`
-    );
-    return response?.items ?? [];
+    const path = options.forceRefresh
+      ? `/api/vs/user/${encodeURIComponent(address)}?refresh=1`
+      : `/api/vs/user/${encodeURIComponent(address)}`;
+    let response = await readApiJson<{
+      items: VSData[];
+      cache?: VSCacheFreshness | null;
+    }>(path, options.forceRefresh ? { timeoutMs: 12_000 } : undefined);
+
+    if (!response && options.forceRefresh) {
+      response = await readApiJson<{
+        items: VSData[];
+        cache?: VSCacheFreshness | null;
+      }>(`/api/vs/user/${encodeURIComponent(address)}`);
+    }
+
+    return {
+      items: response?.items ?? [],
+      cache: response?.cache ?? null,
+    };
   }
 
   const results = await getUserVSSummaries(address);
-  return results.sort((a, b) => b.id - a.id);
+  return {
+    items: results.sort((a, b) => b.id - a.id),
+    cache: makeContractFreshness(),
+  };
 }
 
 export async function acceptVS(

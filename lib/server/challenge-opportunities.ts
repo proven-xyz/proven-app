@@ -8,11 +8,13 @@ import type {
 } from "@/lib/claimDrafts";
 import { normalizeResolutionSource } from "@/lib/constants";
 import { getActiveChallengeOpportunities, pruneExpiredChallengeOpportunities, replaceChallengeOpportunities } from "@/lib/db";
-import { getAllVSFast, type VSData } from "@/lib/contract";
+import type { VSData } from "@/lib/contract";
 
 import { generateClaimDrafts } from "./source-claim-generator";
+import { getVsFeed } from "./vs-index";
 
 const OPPORTUNITY_TTL_MS = 24 * 60 * 60 * 1000;
+const EXISTING_CLAIMS_TIMEOUT_MS = 5000;
 
 function normalizeComparableText(value: string) {
   return value
@@ -40,6 +42,23 @@ function getCandidateScore(candidate: SourceClaimDraftCandidate) {
     qualityTier: quality.tier,
     combinedScore: quality.score + Math.round(candidate.confidenceScore / 5),
   };
+}
+
+async function getExistingClaimsSnapshot() {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<VSData[]>((resolve) => {
+    timeoutId = setTimeout(() => resolve([]), EXISTING_CLAIMS_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([getVsFeed(), timeoutPromise]);
+  } catch {
+    return [] as VSData[];
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 function pickBestCandidate(candidates: SourceClaimDraftCandidate[]) {
@@ -114,6 +133,25 @@ function getOpportunityExpiresAt(candidate: SourceClaimDraftCandidate, generated
   return Math.min(deadlineAt, generatedAt + OPPORTUNITY_TTL_MS);
 }
 
+function buildSeedOpportunities(locale: "en" | "es", existingClaims: VSData[]) {
+  return getSeedChallengeOpportunities(locale).map((seed) => {
+    const quality = getCandidateScore(seed.candidate);
+    const existingClaim = findExistingOpportunityClaim(seed.candidate, existingClaims);
+
+    return {
+      id: seed.id,
+      sourceUrl: seed.sourceUrl,
+      sourceType: seed.sourceType,
+      sourceSummary: seed.sourceSummary,
+      candidate: seed.candidate,
+      claimStrengthScore: quality.qualityScore,
+      claimStrengthTier: quality.qualityTier,
+      action: existingClaim ? "challenge" : "create",
+      existingClaimId: existingClaim?.id,
+    } satisfies ChallengeOpportunity;
+  });
+}
+
 function mapStoredRowsToResponse(rows: Awaited<ReturnType<typeof getActiveChallengeOpportunities>>) {
   const items: ChallengeOpportunity[] = rows.map((row) => ({
     id: row.id,
@@ -149,7 +187,7 @@ function mapStoredRowsToResponse(rows: Awaited<ReturnType<typeof getActiveChalle
 
 async function buildChallengeOpportunitiesForLocale(locale: "en" | "es") {
   const [existingClaims, generatedDrafts] = await Promise.all([
-    getAllVSFast().catch(() => [] as VSData[]),
+    getExistingClaimsSnapshot(),
     Promise.allSettled(
       CHALLENGE_OPPORTUNITY_SOURCES.map((source) =>
         generateClaimDrafts({
@@ -201,22 +239,7 @@ async function buildChallengeOpportunitiesForLocale(locale: "en" | "es") {
     ];
   });
 
-  const seedOpportunities = getSeedChallengeOpportunities(locale).map((seed) => {
-    const quality = getCandidateScore(seed.candidate);
-    const existingClaim = findExistingOpportunityClaim(seed.candidate, existingClaims);
-
-    return {
-      id: seed.id,
-      sourceUrl: seed.sourceUrl,
-      sourceType: seed.sourceType,
-      sourceSummary: seed.sourceSummary,
-      candidate: seed.candidate,
-      claimStrengthScore: quality.qualityScore,
-      claimStrengthTier: quality.qualityTier,
-      action: existingClaim ? "challenge" : "create",
-      existingClaimId: existingClaim?.id,
-    } satisfies ChallengeOpportunity;
-  });
+  const seedOpportunities = buildSeedOpportunities(locale, existingClaims);
 
   return dedupeOpportunities([...aiOpportunities, ...seedOpportunities]).sort((a, b) => {
     if (a.action !== b.action) {
@@ -264,10 +287,40 @@ export async function getChallengeOpportunities(options?: {
   locale?: string;
   limit?: number;
 }) {
-  const rows = await getActiveChallengeOpportunities({
-    locale: options?.locale,
-    limit: options?.limit,
+  const locale = options?.locale === "es" ? "es" : "en";
+  const limit = options?.limit;
+
+  let rows = await getActiveChallengeOpportunities({
+    locale,
+    limit,
   });
+
+  if (rows.length === 0) {
+    try {
+      const generatedAt = Date.now();
+      const existingClaims = await getExistingClaimsSnapshot();
+      const opportunities = buildSeedOpportunities(locale, existingClaims);
+
+      await replaceChallengeOpportunities({
+        locale,
+        generatedAt,
+        opportunities: opportunities.map((opportunity) => ({
+          ...opportunity,
+          expiresAt: getOpportunityExpiresAt(opportunity.candidate, generatedAt),
+        })),
+      });
+
+      rows = await getActiveChallengeOpportunities({
+        locale,
+        limit,
+      });
+    } catch (error) {
+      console.warn(
+        `Challenge opportunities seed refresh failed for locale ${locale}; returning cached rows.`,
+        error
+      );
+    }
+  }
 
   return mapStoredRowsToResponse(rows);
 }

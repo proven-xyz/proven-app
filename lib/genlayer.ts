@@ -73,6 +73,10 @@ function getChain(endpoint?: string) {
   };
 }
 
+export function getGenlayerChain() {
+  return getChain(getEndpoint());
+}
+
 export function getWalletChainParams() {
   const endpoint = getEndpoint() || DEFAULT_SERVER_ENDPOINT;
   return {

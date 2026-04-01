@@ -14,6 +14,17 @@
     "skipToContent": "Saltar al contenido",
     "vs": "VS"
   },
+  "cache": {
+    "label": "Frescura del indice",
+    "unknown": "Desconocida",
+    "live": "Actualizada",
+    "cached": "Cache",
+    "stale": "Vencida",
+    "refresh": "Actualizar",
+    "refreshing": "Actualizando",
+    "sourceIndex": "cache indexada",
+    "sourceContract": "lectura on-chain"
+  },
   "header": {
     "challenge": "+ Desafiar",
     "challengeMobile": "Desafiar",
@@ -24,6 +35,11 @@
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "walletMenu": "Wallet",
+    "wrongNetwork": "Red incorrecta",
+    "addNetwork": "Agregar red Bradbury",
+    "networkLive": "activa",
+    "networkChecking": "verificando",
+    "networkStalled": "pausada",
     "disconnect": "Desconectar",
     "mobileNavAria": "Navegación principal"
   },
@@ -40,7 +56,7 @@
     "tagline": "La verdad se demuestra. Crea el primer VS.",
     "emptyHeroTitle": "LA VERDAD QUEDA PROBADA.",
     "emptyHeroTitleLine1Lead": "PRUEBALO",
-    "emptyHeroTitleOnChainSegment": "ON-CHAIN",
+    "emptyHeroTitleOnChainSegment": "ON-CHAIN.",
     "emptyHeroTitleLine2Lead": "CON",
     "emptyHeroSubtitle": "Crea un claim, enlaza la fuente y deja que PROVEN lo resuelva.",
     "heroChallengeSomeone": "DESAFIA A ALGUIEN",
@@ -653,8 +669,16 @@
     "demoModeHint": "El modo demo enruta las escrituras por firmantes alojados en Bradbury para que los jueces vean el flujo completo sin depender de wallets inestables.",
     "connectToAccept": "Conectar Wallet para aceptar",
     "resolveVS": "Resolver VS",
+    "retryResolveVS": "Reintentar resolucion",
     "proven": "PROVEN.",
     "errorResolving": "Error al resolver",
+    "resolveFinalizing": "Finalizando on-chain. Confirma en MetaMask...",
+    "resolveLeaderTimeoutRetry": "El leader de Bradbury agotó el tiempo al resolver este VS. El claim sigue sin resolverse, así que puedes intentarlo de nuevo.",
+    "resolveValidatorsTimeoutRetry": "Los validadores de Bradbury agotaron el tiempo al resolver este VS. El claim sigue sin resolverse, así que puedes intentarlo de nuevo.",
+    "resolveExecutionFailed": "Bradbury aceptó la transacción de resolución, pero la ejecución del contrato falló.",
+    "resolveStillPending": "La resolución sigue pendiente en Bradbury. Deja esta página abierta o revisa el explorer en un momento.",
+    "resolveNowHint": "El deadline ya pasó y este claim está listo para que PROVEN lo liquide.",
+    "retryResolveHint": "Este claim sigue sin resolverse después de un intento anterior. Puedes enviar otra transacción de resolución ahora.",
     "waitingDeadline": "Esperando deadline para resolver...",
     "sendLink": "Manda este link a tu rival",
     "shareLinkLabel": "Enlace para compartir",
@@ -758,7 +782,9 @@
     "send": "Enviar",
     "sendingMessage": "Enviando…",
     "messageQueued": "Entregando…",
-    "disclaimer": "Los mensajes viajan por XMTP (cifrado E2E). No se guardan en los servidores de PROVEN."
+    "disclaimer": "Los mensajes viajan por XMTP (cifrado E2E). No se guardan en los servidores de PROVEN.",
+    "blockedByTabTitle": "Chat abierto en otra pestaña",
+    "blockedByTabDesc": "Cerrá la otra pestaña para usar el chat acá. Se reconectará automáticamente."
   },
   "messagesHub": {
     "eyebrow": "Canal privado // XMTP — claves atadas a la wallet",
@@ -781,7 +807,9 @@
     "sectionActive": "Chats activos",
     "sectionPending": "Otros duelos",
     "withPeer": "Rival {address}",
-    "badgeLive": "Chat activo",
+    "badgeLive": "Canal activo",
+    "badgeAwaiting": "Esperando evento",
+    "badgeNoComms": "Sin comms",
     "viewVs": "Ver",
     "reason": {
       "sample": "VS de demostración — el chat solo en duelos reales on-chain.",

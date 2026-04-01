@@ -6,10 +6,11 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
-  getAllVSFast,
+  getAllVSSnapshot,
   getVSChallengerCount,
   isVSJoinable,
   type VSData,
+  type VSFeedSnapshot,
 } from "@/lib/contract";
 import { mergePendingVS } from "@/lib/pending-vs";
 import {
@@ -31,6 +32,9 @@ import EmptyState from "@/components/EmptyState";
 import { ChevronDown, ListFilter, Search, X } from "lucide-react";
 import ExploreFeaturedCarousel from "@/components/explorer/ExploreFeaturedCarousel";
 import ChallengeOpportunityCard from "@/components/explorer/ChallengeOpportunityCard";
+import Stage from "@/components/Stage";
+import CacheFreshnessControls from "@/components/CacheFreshnessControls";
+import type { VSCacheFreshness } from "@/lib/vs-freshness";
 
 /** Píldoras de filtro (CATEGORIES + Quick minimum): borde tipo botón, mismo hover. */
 const filterPillBase =
@@ -45,66 +49,114 @@ export default function ExploreClient() {
   const locale = useLocale();
   const [allVS, setAllVS] = useState<VSData[]>([]);
   const [opportunities, setOpportunities] = useState<ChallengeOpportunity[]>([]);
+  const [vsFreshness, setVsFreshness] = useState<VSCacheFreshness | null>(null);
   const [loading, setLoading] = useState(true);
   const [opportunitiesLoading, setOpportunitiesLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [quickFilterMenuOpen, setQuickFilterMenuOpen] = useState(false);
   const [minDraft, setMinDraft] = useState("");
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const quickFilterMenuRef = useRef<HTMLDivElement>(null);
+  const requestIdRef = useRef(0);
   const opportunitiesEnabled =
     process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
 
   const t = useTranslations("explore");
   const tCat = useTranslations("categories");
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      if (opportunitiesEnabled) {
-        setOpportunitiesLoading(true);
+  const loadExploreData = useCallback(
+    async ({
+      forceRefresh = false,
+      showPageLoading = false,
+    }: {
+      forceRefresh?: boolean;
+      showPageLoading?: boolean;
+    } = {}) => {
+      const requestId = ++requestIdRef.current;
+
+      if (showPageLoading) {
+        setLoading(true);
+      }
+      if (forceRefresh) {
+        setRefreshing(true);
       }
 
-      try {
-        const resultsPromise = getAllVSFast();
-        const opportunitiesPromise = opportunitiesEnabled
-          ? fetch(`/api/challenge-opportunities?locale=${locale}&limit=6`, {
-              cache: "no-store",
-            })
-              .then(async (response) => {
-                const payload = (await response.json().catch(() => null)) as
-                  | ChallengeOpportunitiesResponse
-                  | { error?: { message?: string } }
-                  | null;
+      const vsPromise = getAllVSSnapshot({ forceRefresh })
+        .then((results: VSFeedSnapshot) => {
+          if (requestId === requestIdRef.current) {
+            setAllVS(mergePendingVS(results.items));
+            setVsFreshness(results.cache);
+          }
+        })
+        .catch((error) => {
+          console.error(error);
+          if (requestId === requestIdRef.current && !forceRefresh) {
+            setAllVS([]);
+            setVsFreshness(null);
+          }
+        })
+        .finally(() => {
+          if (requestId === requestIdRef.current) {
+            setLoading(false);
+          }
+        });
 
-                if (!response.ok) {
-                  const errorMessage =
-                    payload && "error" in payload ? payload.error?.message : undefined;
-                  throw new Error(errorMessage || "Unable to load challenge opportunities");
-                }
+      let opportunitiesPromise: Promise<void> = Promise.resolve();
 
-                return payload as ChallengeOpportunitiesResponse;
-              })
-          : Promise.resolve(null);
-
-        const [results, opportunityResult] = await Promise.all([
-          resultsPromise,
-          opportunitiesPromise,
-        ]);
-        setAllVS(mergePendingVS(results));
-        setOpportunities(opportunityResult?.items ?? []);
-      } catch (error) {
-        console.error(error);
+      if (!opportunitiesEnabled) {
         setOpportunities([]);
-      } finally {
-        setLoading(false);
         setOpportunitiesLoading(false);
-      }
-    }
+      } else {
+        setOpportunitiesLoading(true);
+        opportunitiesPromise = fetch(`/api/challenge-opportunities?locale=${locale}&limit=6`, {
+          cache: "no-store",
+        })
+          .then(async (response) => {
+            const payload = (await response.json().catch(() => null)) as
+              | ChallengeOpportunitiesResponse
+              | { error?: { message?: string } }
+              | null;
 
-    load();
-  }, [locale, opportunitiesEnabled]);
+            if (!response.ok) {
+              const errorMessage =
+                payload && "error" in payload ? payload.error?.message : undefined;
+              throw new Error(errorMessage || "Unable to load challenge opportunities");
+            }
+
+            return payload as ChallengeOpportunitiesResponse;
+          })
+          .then((opportunityResult) => {
+            if (requestId === requestIdRef.current) {
+              setOpportunities(opportunityResult.items ?? []);
+            }
+          })
+          .catch((error) => {
+            console.error(error);
+            if (requestId === requestIdRef.current && !forceRefresh) {
+              setOpportunities([]);
+            }
+          })
+          .finally(() => {
+            if (requestId === requestIdRef.current) {
+              setOpportunitiesLoading(false);
+            }
+          });
+      }
+
+      await Promise.allSettled([vsPromise, opportunitiesPromise]);
+
+      if (requestId === requestIdRef.current && forceRefresh) {
+        setRefreshing(false);
+      }
+    },
+    [locale, opportunitiesEnabled]
+  );
+
+  useEffect(() => {
+    void loadExploreData({ showPageLoading: true });
+  }, [loadExploreData]);
 
   const commitMinDraft = useCallback(() => {
     const raw = minDraft.trim().replace(",", ".");
@@ -288,9 +340,18 @@ export default function ExploreClient() {
               </span>
             </div>
           </div>
-          <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
-            {t("lead")}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
+              {t("lead")}
+            </span>
+            <CacheFreshnessControls
+              freshness={vsFreshness}
+              refreshing={refreshing}
+              onRefresh={() => {
+                void loadExploreData({ forceRefresh: true });
+              }}
+            />
+          </div>
         </div>
       </AnimatedItem>
 
@@ -303,7 +364,7 @@ export default function ExploreClient() {
           className="mb-8"
           aria-label={t("filtersAriaLabel")}
         >
-          <div className="rounded-lg border border-white/[0.1] bg-pv-surface p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-6">
+          <div className="rounded-xl border border-white/[0.08] bg-pv-bg/80 p-5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] sm:p-6">
             {/* Sort | filter (2+2); min 2 cols para cifras largas; búsqueda 6 cols. */}
             <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:gap-4 lg:items-end xl:gap-5">
               <div
@@ -787,25 +848,52 @@ export default function ExploreClient() {
           )
         ) : filtered.length > 0 ? (
           <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((vs) => (
-                <motion.div
-                  key={vs.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ArenaCard
-                    vs={vs}
-                    challengersCount={getVSChallengerCount(vs)}
-                    viewerAddress={address}
-                    hideQualityPills
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
+            <div>
+              {/* Featured duels — first 2 items get expanded Stage treatment */}
+              {filtered.length > 2 && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
+                  {filtered.slice(0, 2).map((vs) => (
+                    <motion.div
+                      key={vs.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.97 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.97 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Stage glow="both" className="border border-white/[0.08]">
+                        <ArenaCard
+                          vs={vs}
+                          challengersCount={getVSChallengerCount(vs)}
+                          viewerAddress={address}
+                          hideQualityPills
+                        />
+                      </Stage>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+              {/* Remaining items as compact grid */}
+              <motion.div layout className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {(filtered.length > 2 ? filtered.slice(2) : filtered).map((vs) => (
+                  <motion.div
+                    key={vs.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ArenaCard
+                      vs={vs}
+                      challengersCount={getVSChallengerCount(vs)}
+                      viewerAddress={address}
+                      hideQualityPills
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
           </AnimatePresence>
         ) : (
           <AnimatePresence mode="popLayout">

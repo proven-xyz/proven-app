@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   didUserLoseVS,
-  getUserVSFast,
+  getUserVSSnapshot,
   didUserWinVS,
   getVSUserWinAmount,
   getVSTotalPot,
@@ -21,12 +21,14 @@ import {
   DEFAULT_EXPLORE_FILTERS,
 } from "@/lib/exploreFilters";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { Badge, VSStrip } from "@/components/ui";
+import { Badge, VSStrip, LiveStat } from "@/components/ui";
 import EmptyState from "@/components/EmptyState";
 import DashboardPortfolioSection from "@/components/dashboard/DashboardPortfolioSection";
 import DashboardWalletGate from "@/components/dashboard/DashboardWalletGate";
 import DashboardVSFilterBar from "@/components/dashboard/DashboardVSFilterBar";
-import { Trophy, Flame, TrendingUp } from "lucide-react";
+import CacheFreshnessControls from "@/components/CacheFreshnessControls";
+import { Trophy, Flame, TrendingUp, Zap } from "lucide-react";
+import type { VSCacheFreshness } from "@/lib/vs-freshness";
 
 /** Alineado con píldoras de Explore (`ExploreClient`). */
 const filterPillBase =
@@ -38,7 +40,9 @@ const listItemEase = [0.25, 0.1, 0.25, 1] as const;
 export default function DashboardPage() {
   const { address, isConnected, isConnecting, connect } = useWallet();
   const [duels, setDuels] = useState<VSData[]>([]);
+  const [cacheFreshness, setCacheFreshness] = useState<VSCacheFreshness | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"all" | "active" | "done">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState(
@@ -47,26 +51,57 @@ export default function DashboardPage() {
   const [minStakeFilter, setMinStakeFilter] = useState(
     DEFAULT_EXPLORE_FILTERS.minStake
   );
+  const requestIdRef = useRef(0);
   const t = useTranslations("dashboard");
 
-  useEffect(() => {
-    async function load() {
+  const loadDuels = useCallback(
+    async ({
+      forceRefresh = false,
+      showPageLoading = false,
+    }: {
+      forceRefresh?: boolean;
+      showPageLoading?: boolean;
+    } = {}) => {
+      const requestId = ++requestIdRef.current;
+
       if (!address) {
         setLoading(false);
+        setRefreshing(false);
         return;
       }
+
+      if (showPageLoading) {
+        setLoading(true);
+      }
+      if (forceRefresh) {
+        setRefreshing(true);
+      }
+
       try {
-        const results = await getUserVSFast(address);
-        results.sort((a, b) => b.id - a.id);
-        setDuels(mergePendingVS(results, address));
+        const results = await getUserVSSnapshot(address, { forceRefresh });
+        results.items.sort((a, b) => b.id - a.id);
+        if (requestId === requestIdRef.current) {
+          setDuels(mergePendingVS(results.items, address));
+          setCacheFreshness(results.cache);
+        }
       } catch (e) {
         console.error(e);
+        if (requestId === requestIdRef.current) {
+          setCacheFreshness(null);
+        }
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
-    }
-    load();
-  }, [address]);
+    },
+    [address]
+  );
+
+  useEffect(() => {
+    void loadDuels({ showPageLoading: true });
+  }, [loadDuels]);
 
   /** Debe ejecutarse en todo render (incluso si !isConnected): no condicionar hooks tras un return. */
   const tabFiltered = useMemo(() => {
@@ -143,32 +178,27 @@ export default function DashboardPage() {
     },
   ];
 
-  const statTiles = [
-    {
-      key: "record",
-      icon: Trophy,
-      iconClass: "text-pv-emerald",
-      value: `${won}W – ${lost}L`,
-      valueClass: "text-pv-emerald",
-      label: t("record"),
-    },
-    {
-      key: "winRate",
-      icon: TrendingUp,
-      iconClass: "text-pv-emerald",
-      value: `${winRate}%`,
-      valueClass: "text-pv-text",
-      label: t("winRate"),
-    },
-    {
-      key: "totalWon",
-      icon: Flame,
-      iconClass: "text-pv-gold",
-      value: `${totalWon} GEN`,
-      valueClass: "text-pv-gold",
-      label: t("totalWon"),
-    },
-  ] as const;
+  /* ── Streak calculation ── */
+  const recentResolved = duels
+    .filter((d) => d.state === "resolved")
+    .slice(0, 20);
+  let streakType: "W" | "L" | null = null;
+  let streakCount = 0;
+  for (const d of recentResolved) {
+    const w = didUserWinVS(d, address);
+    const l = didUserLoseVS(d, address);
+    const curr = w ? "W" : l ? "L" : null;
+    if (!curr) continue;
+    if (streakType === null) {
+      streakType = curr;
+      streakCount = 1;
+    } else if (curr === streakType) {
+      streakCount++;
+    } else {
+      break;
+    }
+  }
+  const streakLabel = streakCount >= 2 ? `${streakCount}${streakType}` : null;
 
   return (
     <PageTransition>
@@ -205,6 +235,15 @@ export default function DashboardPage() {
           <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
             {t("eyebrow")}
           </span>
+          <div className="mt-3">
+            <CacheFreshnessControls
+              freshness={cacheFreshness}
+              refreshing={refreshing}
+              onRefresh={() => {
+                void loadDuels({ forceRefresh: true });
+              }}
+            />
+          </div>
         </header>
 
         <section
@@ -246,7 +285,7 @@ export default function DashboardPage() {
                   delay: 0.08 + i * 0.07,
                   ease: listItemEase,
                 }}
-                className="group relative flex min-h-[140px] flex-col overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface p-5 transition-[border-color,background-color] duration-300 hover:border-pv-emerald/28 hover:bg-[#242323] sm:min-h-[152px] sm:p-6"
+                className="group relative flex min-h-[140px] flex-col overflow-hidden rounded-2xl border border-white/[0.10] bg-pv-bg/60 p-5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] transition-[border-color,background-color] duration-300 hover:border-pv-emerald/20 sm:min-h-[152px] sm:p-6"
               >
                 <div
                   className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
@@ -293,44 +332,64 @@ export default function DashboardPage() {
       {duels.length > 0 ? (
         <AnimatedItem>
           <section
-            className="mb-6 overflow-hidden rounded-lg border border-white/[0.1] bg-pv-surface shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
+            className="mb-6 overflow-hidden rounded-2xl border border-white/[0.1] bg-pv-surface/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]"
             aria-label={t("statsSectionAria")}
           >
             <div className="grid grid-cols-3 divide-x divide-white/[0.08]">
-              {statTiles.map((tile, i) => {
-                const Icon = tile.icon;
-                return (
-                  <motion.div
-                    key={tile.key}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      duration: 0.4,
-                      delay: i * 0.06,
-                      ease: listItemEase,
-                    }}
-                    className="group relative min-w-0 bg-pv-surface px-3 py-5 text-center sm:px-4 sm:py-6"
-                  >
-                    <div
-                      className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
-                      aria-hidden
-                    />
-                    <Icon
-                      size={16}
-                      className={`inline-block ${tile.iconClass} mb-2 opacity-90`}
-                      aria-hidden
-                    />
-                    <div
-                      className={`font-mono text-base font-bold tabular-nums sm:text-lg ${tile.valueClass}`}
-                    >
-                      {tile.value}
-                    </div>
-                    <div className="mt-1 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
-                      {tile.label}
-                    </div>
-                  </motion.div>
-                );
-              })}
+              {/* Record (W-L) */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0, ease: listItemEase }}
+                className="group relative min-w-0 px-3 py-5 text-center sm:px-4 sm:py-6"
+              >
+                <div className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full" aria-hidden />
+                <Trophy size={16} className="inline-block text-pv-emerald mb-2 opacity-90" aria-hidden />
+                <div className="flex items-center justify-center gap-2">
+                  <div className="font-mono text-base font-bold tabular-nums text-pv-emerald sm:text-lg">
+                    {won}<span className="text-pv-muted/60">W</span>
+                    {" – "}
+                    {lost}<span className="text-pv-muted/60">L</span>
+                  </div>
+                  {streakLabel && (
+                    <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider ${
+                      streakType === "W"
+                        ? "border border-pv-emerald/30 bg-pv-emerald/10 text-pv-emerald"
+                        : "border border-red-400/30 bg-red-400/10 text-red-400"
+                    }`}>
+                      <Zap size={8} />
+                      {streakLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+                  {t("record")}
+                </div>
+              </motion.div>
+
+              {/* Win Rate */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.06, ease: listItemEase }}
+                className="group relative min-w-0 px-3 py-5 text-center sm:px-4 sm:py-6"
+              >
+                <div className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full" aria-hidden />
+                <TrendingUp size={16} className="inline-block text-pv-emerald mb-2 opacity-90" aria-hidden />
+                <LiveStat value={winRate} suffix="%" size="sm" color="text" label={t("winRate")} labelPosition="below" className="items-center" />
+              </motion.div>
+
+              {/* Total Winnings */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.12, ease: listItemEase }}
+                className="group relative min-w-0 px-3 py-5 text-center sm:px-4 sm:py-6"
+              >
+                <div className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full" aria-hidden />
+                <Flame size={16} className="inline-block text-pv-gold mb-2 opacity-90" aria-hidden />
+                <LiveStat value={totalWon} suffix=" GEN" size="sm" color="gold" label={t("totalWon")} labelPosition="below" className="items-center" />
+              </motion.div>
             </div>
           </section>
         </AnimatedItem>
@@ -376,7 +435,7 @@ export default function DashboardPage() {
                   }}
                 >
                   <Link href={`/vs/${vs.id}`} className="group block h-full">
-                    <article className="card relative flex h-full flex-col overflow-hidden border-white/[0.12] bg-pv-surface p-5 transition-[border-color,background-color] duration-300 hover:border-pv-emerald/30 hover:bg-[#242323] sm:p-6">
+                    <article className="card relative flex h-full flex-col overflow-hidden rounded-xl border border-white/[0.12] bg-pv-surface/80 p-5 transition-[border-color,background-color] duration-300 hover:border-pv-emerald/30 hover:bg-[#242323] sm:p-6">
                       <div
                         className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
                         aria-hidden

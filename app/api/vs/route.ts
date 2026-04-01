@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createApiError } from "@/lib/server/api-validation";
-import { getVsFeed } from "@/lib/server/vs-index";
+import { getVsFeedSnapshot } from "@/lib/server/vs-index";
 import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
@@ -20,12 +20,13 @@ export async function GET(request: Request) {
     }
 
     const shouldRefresh = refreshValue === "1";
-    const items = await getVsFeed({ forceRefresh: shouldRefresh });
+    const { items, cache } = await getVsFeedSnapshot({ forceRefresh: shouldRefresh });
 
     return NextResponse.json(
       {
         items,
         count: items.length,
+        cache,
       },
       {
         headers: VS_CACHE_HEADERS,

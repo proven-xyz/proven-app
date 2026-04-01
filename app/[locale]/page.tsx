@@ -1,12 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
-  getAllVSFast,
+  getAllVSSnapshot,
   getVSChallengerCount,
   getVSSingleWinnerPayout,
   getVSTotalPot,
@@ -25,7 +25,9 @@ import SettlementArchiveSection from "@/components/SettlementArchiveSection";
 import Stage from "@/components/Stage";
 import Artifact from "@/components/Artifact";
 import LiveStat from "@/components/LiveStat";
+import CacheFreshnessControls from "@/components/CacheFreshnessControls";
 import { kineticContainer, kineticLetter } from "@/lib/animations/rituals";
+import type { VSCacheFreshness } from "@/lib/vs-freshness";
 
 type ParsedStat = {
   prefix: string;
@@ -199,23 +201,50 @@ function AnimatedStatNumber({
 
 export default function HomePage() {
   const [allVS, setAllVS]     = useState<VSData[]>([]);
+  const [cacheFreshness, setCacheFreshness] = useState<VSCacheFreshness | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const t  = useTranslations("home");
   const tStamp = useTranslations("stamp");
 
-  useEffect(() => {
-    async function load() {
+  const loadVS = useCallback(
+    async ({
+      forceRefresh = false,
+      showPageLoading = false,
+    }: {
+      forceRefresh?: boolean;
+      showPageLoading?: boolean;
+    } = {}) => {
+      if (showPageLoading) {
+        setLoading(true);
+      }
+      if (forceRefresh) {
+        setRefreshing(true);
+      }
+
       try {
-        const results = await getAllVSFast();
-        setAllVS(mergePendingVS(results));
+        const results = await getAllVSSnapshot({ forceRefresh });
+        setAllVS(mergePendingVS(results.items));
+        setCacheFreshness(results.cache);
       } catch (e) {
         console.error("Failed to load VS:", e);
+        if (!forceRefresh) {
+          setAllVS([]);
+        }
+        setCacheFreshness(null);
       } finally {
+        if (forceRefresh) {
+          setRefreshing(false);
+        }
         setLoading(false);
       }
-    }
-    load();
-  }, []);
+    },
+    []
+  );
+
+  useEffect(() => {
+    void loadVS({ showPageLoading: true });
+  }, [loadVS]);
 
   const openVS     = allVS.filter((v) => isVSJoinable(v));
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
@@ -426,6 +455,20 @@ export default function HomePage() {
               >
                 {t("emptyHeroSubtitle")}
               </motion.p>
+              <motion.div
+                className="mb-5 flex justify-center"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.58, duration: 0.5 }}
+              >
+                <CacheFreshnessControls
+                  freshness={cacheFreshness}
+                  refreshing={refreshing}
+                  onRefresh={() => {
+                    void loadVS({ forceRefresh: true });
+                  }}
+                />
+              </motion.div>
 
               <motion.div
                 className="flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4"

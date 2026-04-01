@@ -5,7 +5,8 @@ import {
   parseInviteKey,
   parsePositiveIntegerParam,
 } from "@/lib/server/api-validation";
-import { getVsDetail, getVsWithInvite } from "@/lib/server/vs-index";
+import { getVsDetailSnapshot, getVsWithInvite } from "@/lib/server/vs-index";
+import { makeContractFreshness } from "@/lib/vs-freshness";
 import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +51,10 @@ export async function GET(
       }
 
       return NextResponse.json(
-        { item: privateItem },
+        {
+          item: privateItem,
+          cache: makeContractFreshness(),
+        },
         {
           headers: {
             "Cache-Control": "private, no-store",
@@ -59,7 +63,7 @@ export async function GET(
       );
     }
 
-    const item = await getVsDetail(vsId);
+    const { item, cache } = await getVsDetailSnapshot(vsId);
     if (!item) {
       return NextResponse.json(
         createApiError("not_found", "VS not found"),
@@ -70,7 +74,10 @@ export async function GET(
     }
 
     return NextResponse.json(
-      { item },
+      {
+        item,
+        cache,
+      },
       {
         headers: VS_CACHE_HEADERS,
       }
