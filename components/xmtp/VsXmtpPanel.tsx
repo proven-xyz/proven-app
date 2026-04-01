@@ -11,7 +11,7 @@ import {
 } from "@/lib/xmtp/vs-chat-eligibility";
 import { shortenAddress } from "@/lib/constants";
 import { Button, Input } from "@/components/ui";
-import { MessageCircle, RefreshCw } from "lucide-react";
+import { MessageCircle, RefreshCw, MonitorSmartphone } from "lucide-react";
 import { useVsXmtpThread } from "@/hooks/useVsXmtpThread";
 import { getDecodedMessageText } from "@/lib/xmtp/chat-thread";
 import {
@@ -73,6 +73,7 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
   });
 
   const isXmtpBoot = xmtpStatus === "initializing";
+  const isBlockedByTab = xmtpStatus === "blocked_by_tab";
   const isXmtpProviderError =
     xmtpStatus === "error" || (xmtpStatus === "ready" && !client);
 
@@ -225,6 +226,16 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
 
       {isXmtpBoot && (
         <p className="text-xs text-pv-muted animate-pulse">{t("initializingXmtp")}</p>
+      )}
+
+      {isBlockedByTab && (
+        <div className="rounded-lg border border-amber-400/25 bg-amber-400/[0.06] px-3 py-2 text-xs text-amber-300 mb-3">
+          <div className="flex items-center gap-2 mb-1">
+            <MonitorSmartphone size={14} aria-hidden />
+            <span className="font-semibold">{t("blockedByTabTitle")}</span>
+          </div>
+          <p className="text-amber-300/80">{t("blockedByTabDesc")}</p>
+        </div>
       )}
 
       {isXmtpProviderError && (
