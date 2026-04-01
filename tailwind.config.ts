@@ -89,6 +89,28 @@ const config: Config = {
         "spin-slow": {
           to: { transform: "rotate(360deg)" },
         },
+        /* ── Ritual system ── */
+        fuseDecay: {
+          "0%":   { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "200% 50%" },
+        },
+        phaseGlow: {
+          "0%, 100%": { opacity: "0.4" },
+          "50%":      { opacity: "1" },
+        },
+        tensionPulse: {
+          "0%, 100%": { opacity: "0.2", transform: "scaleY(0.95)" },
+          "50%":      { opacity: "0.6", transform: "scaleY(1)" },
+        },
+        sealFlash: {
+          "0%":   { opacity: "0", transform: "scale(1.8) rotate(-8deg)" },
+          "40%":  { opacity: "1", transform: "scale(0.96) rotate(-8deg)" },
+          "100%": { opacity: "1", transform: "scale(1) rotate(-8deg)" },
+        },
+        tickDown: {
+          "0%":   { opacity: "0", transform: "translateY(-8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "fade-up":    "fadeUp 0.5s ease-out both",
@@ -101,6 +123,12 @@ const config: Config = {
         shimmer:      "shimmer 2s linear infinite",
         float:        "float 3s ease-in-out infinite",
         "spin-slow":  "spin-slow 8s linear infinite",
+        /* ── Ritual system ── */
+        "fuse-decay":     "fuseDecay 2s linear infinite",
+        "phase-glow":     "phaseGlow 2s ease-in-out infinite",
+        "tension-pulse":  "tensionPulse 2.5s ease-in-out infinite",
+        "seal-flash":     "sealFlash 0.55s ease-out both",
+        "tick-down":      "tickDown 0.25s ease-out both",
       },
     },
   },

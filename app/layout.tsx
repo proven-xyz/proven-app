@@ -14,7 +14,7 @@ export default function RootLayout({
     <html
       className={`${fontDisplay.variable} ${fontBody.variable} ${fontMono.variable}`}
     >
-      <body>
+      <body className="overflow-x-hidden">
         <NextTopLoader
           color="#22D3EE"
           height={2}

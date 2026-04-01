@@ -55,7 +55,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <main
         id="main-content"
         tabIndex={-1}
-        className="mx-auto min-w-0 max-w-[1200px] overflow-x-hidden px-4 pb-8 pt-[calc(3.5rem+env(safe-area-inset-top)+1rem)] sm:px-6 sm:pb-8 sm:pt-[calc(3.5rem+env(safe-area-inset-top)+1.5rem)] lg:px-8"
+        className="mx-auto min-w-0 max-w-[1200px] px-4 pb-8 pt-[calc(3.5rem+env(safe-area-inset-top)+1rem)] sm:px-6 sm:pb-8 sm:pt-[calc(3.5rem+env(safe-area-inset-top)+1.5rem)] lg:px-8"
       >
         {children}
       </main>

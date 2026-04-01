@@ -56,6 +56,12 @@ export default function CreateChallengeTicket({
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/[0.12] bg-pv-surface/70 shadow-glow-emerald backdrop-blur-[20px] transition-all duration-200">
+      {/* Watermark — transitions from UNSIGNED to SIGNED based on wallet */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+        <span className="font-display text-[72px] sm:text-[96px] font-bold uppercase tracking-[0.15em] text-white/[0.02] rotate-[-12deg]">
+          {walletAddress ? "SIGNED" : "UNSIGNED"}
+        </span>
+      </div>
       <div
         className="absolute left-0 top-0 h-1 w-full bg-pv-emerald"
         aria-hidden
@@ -66,9 +72,9 @@ export default function CreateChallengeTicket({
             <h2 className="font-display text-lg font-bold tracking-tighter text-pv-text sm:text-xl">
               {t("challengeTicketTitle")}
             </h2>
-            <p className="mt-1 font-mono text-[10px] text-pv-muted">
-              <span className="text-pv-muted/80">{t("ticketIdLabel")}</span>{" "}
-              {draftId}
+            <p className="mt-1 font-mono text-[10px] tracking-[0.12em] text-pv-muted/60">
+              <span className="text-pv-muted/40">{t("ticketIdLabel")}</span>{" "}
+              <span className="uppercase">{draftId}</span>
             </p>
           </div>
           <Activity
