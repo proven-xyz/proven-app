@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -10,6 +10,7 @@ import {
   acceptVS,
   cancelVS,
   didUserChallengeVS,
+  finalizeGenlayerTx,
   getRivalryChain,
   getVS,
   getVSChallengerCount,
@@ -23,8 +24,9 @@ import {
   type ClaimChallenger,
   type VSData,
 } from "@/lib/contract";
-import { getExplorerTxUrl } from "@/lib/genlayer";
+import { createGenlayerClient, getExplorerTxUrl } from "@/lib/genlayer";
 import { getPendingVS } from "@/lib/pending-vs";
+import { acquireTxLock } from "@/lib/tx-lock";
 import {
   MIN_STAKE,
   ZERO_ADDRESS,
@@ -51,8 +53,11 @@ import ProvenStamp from "@/components/ProvenStamp";
 import ClaimStrengthCard from "@/components/ClaimStrengthCard";
 import SettlementExplanationCard from "@/components/SettlementExplanationCard";
 import ResolutionTerminal from "@/components/ResolutionTerminal";
-import Confetti from "@/components/Confetti";
 import VsXmtpPanel from "@/components/xmtp/VsXmtpPanel";
+import Stage from "@/components/Stage";
+import LiveDeadline from "@/components/LiveDeadline";
+import { AnimatePresence } from "framer-motion";
+import { verdictOverlay, verdictWord, verdictResult } from "@/lib/animations/rituals";
 import { VS_XMTP_CHAT_ANCHOR_ID } from "@/lib/xmtp/vs-chat-eligibility";
 import {
   ArrowLeft,
@@ -317,12 +322,16 @@ function ProgressBar({
   const progressPercent = isResolved ? 100 : ((stepIndex + 1) / total) * 100;
   const phaseCurrent = isResolved ? total : stepIndex + 1;
 
+  // Expanding timeline: active phase gets more visual weight
+  const phaseWeights = steps.map((_, i) => (i === stepIndex ? 2 : 1));
+  const totalWeight = phaseWeights.reduce((a, b) => a + b, 0);
+
   const cellClass = (isCurrent: boolean, isDone: boolean) =>
-    `flex h-full min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border px-3 py-3 text-left transition-[border-color,background-color] duration-200 sm:min-h-0 sm:py-3.5 ${
+    `flex h-full min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border px-3 py-3 text-left transition-all duration-300 sm:min-h-0 sm:py-3.5 ${
       interactive ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 " : ""
     }${
       isCurrent
-        ? "border-pv-emerald/40 bg-pv-emerald/[0.07]"
+        ? "border-pv-emerald/40 bg-pv-emerald/[0.07] shadow-glow-emerald"
         : isDone
           ? "border-pv-emerald/20 bg-pv-emerald/[0.04]"
           : "border-white/[0.06] bg-pv-bg/40"
@@ -333,29 +342,22 @@ function ProgressBar({
       className="mb-8 sm:mb-10"
       aria-label={t("progressAriaLabel")}
     >
-      <div className="rounded-lg border border-white/[0.1] bg-pv-surface p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-6">
-        <div>
-          <div
-            className="relative h-1 w-full overflow-hidden rounded-sm bg-white/[0.06]"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progressPercent)}
-            aria-valuetext={t("progressStepFraction", {
-              current: phaseCurrent,
-              total,
-            })}
-          >
-            <motion.div
-              initial={false}
-              animate={{ width: `${progressPercent}%` }}
-              transition={{
-                duration: 0.65,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="h-full rounded-sm bg-pv-emerald"
-            />
-          </div>
+      <div className="rounded-2xl border border-white/[0.08] bg-pv-surface/80 p-5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-6">
+        {/* Expanding phase bar — active phase takes proportional space */}
+        <div className="flex h-1.5 w-full gap-0.5 overflow-hidden rounded-full" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)} aria-valuetext={t("progressStepFraction", { current: phaseCurrent, total })}>
+          {steps.map((_, i) => {
+            const isDone = isResolved || i < stepIndex;
+            const isCurrent = !isResolved && i === stepIndex;
+            return (
+              <motion.div
+                key={i}
+                className={`h-full rounded-full ${isDone ? "bg-pv-emerald" : isCurrent ? "bg-pv-emerald animate-phase-glow" : "bg-white/[0.06]"}`}
+                initial={false}
+                animate={{ flex: phaseWeights[i] }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              />
+            );
+          })}
         </div>
 
         <ol className="mt-5 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-4 sm:gap-4">
@@ -584,7 +586,7 @@ export default function VSDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [resolvePhase, setResolvePhase] = useState(-1);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [showVerdict, setShowVerdict] = useState(false);
   const [challengeStake, setChallengeStake] = useState("");
   const [rivalryChain, setRivalryChain] = useState<VSData[]>([]);
   const [rivalryLoading, setRivalryLoading] = useState(false);
@@ -595,6 +597,11 @@ export default function VSDetailPage() {
   /** Solo VS de muestra (ids negativos): índice 0–4 para previsualizar diseño sin blockchain. */
   const [designLifecycleStep, setDesignLifecycleStep] = useState<number | null>(null);
   const [designResolvedOutcome, setDesignResolvedOutcome] = useState<"creator" | "challengers">("creator");
+  /** Tracks whether a resolve tx was fired so we can reveal the verdict once the state arrives. */
+  const pendingResolveRef = useRef(false);
+  const attemptedFinalizeResolveTxRef = useRef<string | null>(null);
+  const [pendingResolveTxHash, setPendingResolveTxHash] = useState<string | null>(null);
+  const [hasAttemptedResolve, setHasAttemptedResolve] = useState(false);
 
   const countdown = useCountdown(vs?.deadline || 0);
 
@@ -603,6 +610,10 @@ export default function VSDetailPage() {
   useEffect(() => {
     setDesignLifecycleStep(null);
     setDesignResolvedOutcome("creator");
+    pendingResolveRef.current = false;
+    attemptedFinalizeResolveTxRef.current = null;
+    setPendingResolveTxHash(null);
+    setHasAttemptedResolve(false);
   }, [vsId]);
 
   const displayVs = useMemo(() => {
@@ -673,6 +684,126 @@ export default function VSDetailPage() {
     const intervalId = setInterval(fetchVS, 10000);
     return () => clearInterval(intervalId);
   }, [fetchVS, isSampleVS]);
+
+  useEffect(() => {
+    if (!vs || vs.state !== "resolved" || !pendingResolveRef.current) {
+      return;
+    }
+
+    pendingResolveRef.current = false;
+    attemptedFinalizeResolveTxRef.current = null;
+    setPendingResolveTxHash(null);
+    setHasAttemptedResolve(false);
+    setShowVerdict(true);
+
+    const timer = setTimeout(() => setShowVerdict(false), 4000);
+    return () => clearTimeout(timer);
+  }, [vs]);
+
+  useEffect(() => {
+    if (!pendingResolveTxHash || isSampleVS) {
+      return;
+    }
+
+    let cancelled = false;
+    const resolveTxHash = pendingResolveTxHash as `0x${string}`;
+
+    async function watchResolveTransaction() {
+      const client = createGenlayerClient();
+
+      for (let attempt = 0; attempt < 24; attempt += 1) {
+        try {
+          const tx = await (client as any).getTransaction({ hash: resolveTxHash });
+          if (cancelled) {
+            return;
+          }
+
+          const statusName = String((tx as { statusName?: string }).statusName ?? "");
+          const executionName = String(
+            (tx as { txExecutionResultName?: string }).txExecutionResultName ?? ""
+          );
+
+          if (executionName === "FINISHED_WITH_RETURN" || statusName === "FINALIZED") {
+            attemptedFinalizeResolveTxRef.current = null;
+            setPendingResolveTxHash(null);
+            void fetchVS();
+            return;
+          }
+
+          if (executionName === "FINISHED_WITH_ERROR") {
+            pendingResolveRef.current = false;
+            attemptedFinalizeResolveTxRef.current = null;
+            setPendingResolveTxHash(null);
+            toast.error(t("resolveExecutionFailed"));
+            void fetchVS();
+            return;
+          }
+
+          if (statusName === "READY_TO_FINALIZE") {
+            if (!address) {
+              pendingResolveRef.current = false;
+              attemptedFinalizeResolveTxRef.current = null;
+              setPendingResolveTxHash(null);
+              toast.error(t("resolveLeaderTimeoutRetry"));
+              void fetchVS();
+              return;
+            }
+
+            if (attemptedFinalizeResolveTxRef.current !== resolveTxHash) {
+              attemptedFinalizeResolveTxRef.current = resolveTxHash;
+              toast(t("resolveFinalizing"));
+
+              try {
+                await finalizeGenlayerTx(resolveTxHash, address);
+              } catch {
+                pendingResolveRef.current = false;
+                attemptedFinalizeResolveTxRef.current = null;
+                setPendingResolveTxHash(null);
+                toast.error(t("resolveLeaderTimeoutRetry"));
+                void fetchVS();
+                return;
+              }
+            }
+          }
+
+          if (statusName === "LEADER_TIMEOUT") {
+            pendingResolveRef.current = false;
+            attemptedFinalizeResolveTxRef.current = null;
+            setPendingResolveTxHash(null);
+            toast.error(t("resolveLeaderTimeoutRetry"));
+            void fetchVS();
+            return;
+          }
+
+          if (statusName === "VALIDATORS_TIMEOUT") {
+            pendingResolveRef.current = false;
+            attemptedFinalizeResolveTxRef.current = null;
+            setPendingResolveTxHash(null);
+            toast.error(t("resolveValidatorsTimeoutRetry"));
+            void fetchVS();
+            return;
+          }
+        } catch {
+          // Keep polling; Bradbury receipts can briefly lag behind submission.
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        if (cancelled) {
+          return;
+        }
+      }
+
+      if (!cancelled) {
+        toast(t("resolveStillPending"));
+      }
+    }
+
+    void watchResolveTransaction();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address, fetchVS, isSampleVS, pendingResolveTxHash, t]);
 
   useEffect(() => {
     setChallengeStake("");
@@ -797,11 +928,12 @@ export default function VSDetailPage() {
     isConnected;
   const canResolve =
     !isSampleVS &&
-    vs.state === "accepted" &&
+    display.state === "accepted" &&
     countdown.expired &&
     isConnected;
   const canCancel = !isSampleVS && vs.state === "open" && isCreator;
   const hasWinner = hasVSWinner(display);
+  const showRetryResolve = canResolve && (hasAttemptedResolve || Boolean(pendingResolveTxHash));
   const challengerCount = getVSChallengerCount(display);
   const maxChallengers =
     typeof display.max_challengers === "number" && display.max_challengers > 0
@@ -860,6 +992,14 @@ export default function VSDetailPage() {
       return;
     }
 
+    let releaseLock: (() => void) | undefined;
+    try {
+      releaseLock = acquireTxLock(address);
+    } catch (lockErr: any) {
+      toast.error(lockErr.message);
+      return;
+    }
+
     setActionLoading("accept");
     try {
       const liveVS = await getVS(vsId, {
@@ -890,12 +1030,13 @@ export default function VSDetailPage() {
               amount: challengeStakeValue,
               total: getVSTotalPot(liveVS) + challengeStakeValue,
             }),
-        result.txHash ? { description: `Tx: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}` } : undefined
+        (result.explorerTxHash || result.txHash) ? { description: `Tx: ${(result.explorerTxHash || result.txHash).slice(0, 10)}...${(result.explorerTxHash || result.txHash).slice(-8)}` } : undefined
       );
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorAccepting"));
     } finally {
+      releaseLock?.();
       setActionLoading(null);
     }
   }
@@ -905,6 +1046,15 @@ export default function VSDetailPage() {
     if (!walletReady) {
       return;
     }
+
+    let releaseLock: (() => void) | undefined;
+    try {
+      releaseLock = acquireTxLock(address);
+    } catch (lockErr: any) {
+      toast.error(lockErr.message);
+      return;
+    }
+
     setActionLoading("resolve");
     setResolvePhase(0);
 
@@ -921,12 +1071,23 @@ export default function VSDetailPage() {
     try {
       const result = await resolveVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
+      setHasAttemptedResolve(true);
       toast.success(
         isPending ? t("submittedPending") : t("proven"),
-        result.txHash ? { description: `Tx: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}` } : undefined
+        (result.explorerTxHash || result.txHash) ? { description: `Tx: ${(result.explorerTxHash || result.txHash).slice(0, 10)}...${(result.explorerTxHash || result.txHash).slice(-8)}` } : undefined
       );
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 4000);
+
+      if (isPending) {
+        // Consensus hasn't finished — don't reveal the verdict yet.
+        // A useEffect watches vs.state and will auto-reveal once the
+        // data transitions to "resolved" (with a winner).
+        pendingResolveRef.current = true;
+        setPendingResolveTxHash(result.explorerTxHash || result.txHash || null);
+      } else {
+        setPendingResolveTxHash(null);
+        setShowVerdict(true);
+        setTimeout(() => setShowVerdict(false), 4000);
+      }
       fetchVS();
 
       // Asegura que la terminal tenga tiempo de mostrar la última línea aunque la tx
@@ -937,13 +1098,15 @@ export default function VSDetailPage() {
       }
     } catch (err: any) {
       toast.error(err.message || t("errorResolving"));
+    } finally {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      setResolvePhase(-1);
+      releaseLock?.();
+      setActionLoading(null);
     }
-    clearTimeout(t1);
-    clearTimeout(t2);
-    clearTimeout(t3);
-    clearTimeout(t4);
-    setResolvePhase(-1);
-    setActionLoading(null);
   }
 
   async function handleCancel() {
@@ -951,24 +1114,59 @@ export default function VSDetailPage() {
     if (!walletReady) {
       return;
     }
+
+    let releaseLock: (() => void) | undefined;
+    try {
+      releaseLock = acquireTxLock(address);
+    } catch (lockErr: any) {
+      toast.error(lockErr.message);
+      return;
+    }
+
     setActionLoading("cancel");
     try {
       const result = await cancelVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
       toast.success(
         isPending ? t("submittedPending") : t("cancelledToast"),
-        result.txHash ? { description: `Tx: ${result.txHash.slice(0, 10)}...${result.txHash.slice(-8)}` } : undefined
+        (result.explorerTxHash || result.txHash) ? { description: `Tx: ${(result.explorerTxHash || result.txHash).slice(0, 10)}...${(result.explorerTxHash || result.txHash).slice(-8)}` } : undefined
       );
       fetchVS();
     } catch (err: any) {
       toast.error(err.message || t("errorCancelling"));
+    } finally {
+      releaseLock?.();
+      setActionLoading(null);
     }
-    setActionLoading(null);
   }
 
   return (
     <>
-      <Confetti active={showConfetti} />
+      {/* Verdict Reveal Overlay — finality moment */}
+      <AnimatePresence>
+        {showVerdict && (
+          <motion.div
+            variants={verdictOverlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-pv-bg/90 backdrop-blur-sm"
+          >
+            <motion.div
+              variants={verdictWord}
+              className="font-display text-[clamp(3rem,15vw,8rem)] font-bold uppercase text-pv-emerald drop-shadow-[0_0_40px_rgba(78,222,163,0.4)]"
+            >
+              PROVEN.
+            </motion.div>
+            <motion.div
+              variants={verdictResult}
+              className="mt-4 font-mono text-sm text-pv-muted"
+            >
+              {winnerTitle}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <PageTransition>
         <div className="relative z-[1] mx-auto w-full max-w-[1280px] px-4 pb-16 pt-2 sm:px-6 sm:pb-20 sm:pt-4">
           <div className="mx-auto w-full min-w-0">
@@ -1071,17 +1269,8 @@ export default function VSDetailPage() {
         {(display.state !== "resolved" || resolvePhase !== -1) &&
           actionLoading !== "resolve" && (
           <AnimatedItem>
-            <GlassCard
-              glass
-              glow="none"
-              noPad
-              className="mb-6 !rounded-2xl border border-white/[0.12] sm:mb-8"
-            >
+            <Stage glow="both" className="mb-6 border border-white/[0.10] sm:mb-8">
               <div className="relative">
-                <div
-                  className="rivalry-card-ambient pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-2xl"
-                  aria-hidden
-                />
                 <div className="relative z-[1]">
               <div className="p-5 sm:p-8">
                 <div className="mb-5 flex items-center justify-between sm:mb-6">
@@ -1193,9 +1382,15 @@ export default function VSDetailPage() {
                       {t("deadline")}
                     </p>
                     <div className="mt-auto min-w-0 pt-2">
-                      <CountdownTimer
+                      <LiveDeadline
                         deadline={display.deadline}
-                        className="block w-full max-w-full break-words text-sm leading-tight sm:text-base lg:text-lg"
+                        phase={
+                          display.state === "open" ? "open"
+                            : display.state === "accepted" ? "locked"
+                            : display.state === "resolved" ? "proven"
+                            : undefined
+                        }
+                        compact
                       />
                     </div>
                   </div>
@@ -1233,7 +1428,7 @@ export default function VSDetailPage() {
               </div>
                 </div>
               </div>
-            </GlassCard>
+            </Stage>
           </AnimatedItem>
         )}
 
@@ -1446,9 +1641,21 @@ export default function VSDetailPage() {
               )}
 
               {canResolve && actionLoading !== "resolve" && (
-                <Button variant="emerald" onClick={handleResolve}>
-                  {t("resolveVS")}
-                </Button>
+                <GlassCard glass className="!rounded-2xl border border-pv-emerald/20">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-pv-text">
+                        {showRetryResolve ? t("retryResolveVS") : t("resolveVS")}
+                      </div>
+                      <p className="mt-1 text-sm text-pv-muted">
+                        {showRetryResolve ? t("retryResolveHint") : t("resolveNowHint")}
+                      </p>
+                    </div>
+                    <Button variant="emerald" onClick={handleResolve}>
+                      {showRetryResolve ? t("retryResolveVS") : t("resolveVS")}
+                    </Button>
+                  </div>
+                </GlassCard>
               )}
 
               {vs.state === "accepted" && !countdown.expired && actionLoading !== "resolve" && (

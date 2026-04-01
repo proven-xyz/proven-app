@@ -24,6 +24,7 @@ import {
 } from "@/lib/contract";
 import { getExplorerTxUrl, getExplorerUrl } from "@/lib/genlayer";
 import { removePendingVS, savePendingVS, type PendingVS } from "@/lib/pending-vs";
+import { acquireTxLock } from "@/lib/tx-lock";
 import {
   CATEGORY_GUIDANCE,
   DEADLINE_PRESET_IDS,
@@ -46,7 +47,7 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { GlassCard, Button, Input, ListboxField } from "@/components/ui";
 import ClaimStrengthCard from "@/components/ClaimStrengthCard";
 import CreateChallengeTicket from "@/components/vs/CreateChallengeTicket";
-import Confetti from "@/components/Confetti";
+import { sealStamp } from "@/lib/animations/rituals";
 import {
   Check,
   ChevronDown,
@@ -187,7 +188,7 @@ export default function CreatePage() {
   const [createdExplorerTxHash, setCreatedExplorerTxHash] = useState("");
   const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [showSealStamp, setShowSealStamp] = useState(false);
   const [draftResult, setDraftResult] = useState<SourceClaimDraftResponse | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState("");
@@ -445,9 +446,9 @@ export default function CreatePage() {
 
       removePendingVS(createdId);
       setCreatedPending(false);
-      setShowConfetti(true);
+      setShowSealStamp(true);
       toast.success(rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded"));
-      setTimeout(() => setShowConfetti(false), 4000);
+      setTimeout(() => setShowSealStamp(false), 4000);
     }
 
     void syncCreatedClaim();
@@ -622,6 +623,14 @@ export default function CreatePage() {
       invite_key: inviteKey,
     };
 
+    let releaseLock: (() => void) | undefined;
+    try {
+      releaseLock = acquireTxLock(address);
+    } catch (lockErr: any) {
+      toast.error(lockErr.message);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -671,12 +680,13 @@ export default function CreatePage() {
         router.push("/dashboard");
       }
       if (!result.pending) {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 4000);
+        setShowSealStamp(true);
+        setTimeout(() => setShowSealStamp(false), 4000);
       }
     } catch (err: any) {
       toast.error(err.message || t("errorCreating"));
     } finally {
+      releaseLock?.();
       setLoading(false);
     }
   }
@@ -696,23 +706,19 @@ export default function CreatePage() {
 
     return (
       <>
-        <Confetti active={showConfetti} />
         <PageTransition>
           <div className="mx-auto w-full max-w-lg px-4 pb-16 pt-4 sm:px-6 sm:pb-20 sm:pt-8 md:max-w-xl">
             <AnimatedItem>
               <div className="space-y-8 sm:space-y-10">
                 <header className="text-center">
+                  {/* Seal stamp — "ISSUED" lock-in animation */}
                   <motion.div
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-pv-emerald/35 bg-pv-emerald/[0.08] shadow-[0_0_28px_-10px_rgba(78,222,163,0.5)]"
+                    variants={sealStamp}
+                    initial="hidden"
+                    animate="visible"
+                    className="mx-auto mb-5 inline-flex items-center justify-center rounded-xl border-[3px] border-pv-emerald bg-pv-emerald/[0.05] px-8 py-2 font-display text-lg font-bold uppercase tracking-widest text-pv-emerald shadow-glow-emerald sm:text-xl"
                   >
-                    <Check
-                      className="size-7 text-pv-emerald"
-                      strokeWidth={2.5}
-                      aria-hidden
-                    />
+                    ISSUED
                   </motion.div>
                   <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald/90">
                     {createdPending
@@ -1131,11 +1137,13 @@ export default function CreatePage() {
                 {t("challengeSectionTitle")}
               </h2>
             </div>
+            {/* Claim canvas — the visual centerpiece */}
             <div className="relative">
+              <div className="absolute inset-0 rounded-2xl pointer-events-none bg-gradient-to-br from-pv-cyan/[0.03] via-transparent to-pv-fuch/[0.03]" />
               <textarea
                 id={challengeQuestionFieldId}
-                rows={4}
-                className="min-h-[120px] w-full resize-none rounded-xl border border-white/[0.15] bg-transparent p-6 font-display text-lg leading-snug tracking-tight text-pv-text outline-none transition-all placeholder:text-pv-muted/50 focus:border-pv-emerald/60 focus:ring-1 focus:ring-pv-emerald/40 sm:text-xl"
+                rows={5}
+                className="min-h-[160px] w-full resize-none rounded-2xl border border-white/[0.12] bg-pv-bg/40 p-6 sm:p-8 font-display text-xl leading-snug tracking-tight text-pv-text outline-none transition-all placeholder:text-pv-muted/30 focus:border-pv-emerald/50 focus:ring-1 focus:ring-pv-emerald/30 focus:shadow-glow-emerald sm:text-2xl md:text-[26px]"
                 placeholder={challengePlaceholder}
                 aria-labelledby={challengeQuestionHeadingId}
                 value={question}
@@ -1152,22 +1160,25 @@ export default function CreatePage() {
                 : verificationQuestionHint.trim() || t("questionStrengthHint")}
             </p>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2.5">
+            {/* Opposition split — Side A (cyan/left) vs Side B (fuchsia/right) */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-0">
+              {/* Side A — Creator / Cyan */}
+              <div className="relative flex flex-col gap-4 md:pr-4 md:border-r md:border-white/[0.06]">
+                <div className="absolute inset-0 pointer-events-none rounded-xl opacity-60" style={{ background: creatorPos ? "radial-gradient(ellipse 80% 60% at 0% 50%, rgba(93,230,255,0.06), transparent 70%)" : "none" }} />
+                <div className="relative flex items-center gap-2.5">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-cyan/10 text-pv-cyan"
                     aria-hidden
                   >
                     <User size={16} strokeWidth={2} />
                   </span>
-                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-emerald sm:tracking-[0.2em]">
+                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-cyan sm:tracking-[0.2em]">
                     {t("ibet")}
                   </span>
                 </div>
                 <input
                   type="text"
-                  className="w-full rounded-xl border border-white/[0.12] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-colors placeholder:text-pv-muted/55 focus:border-pv-emerald/50 focus:ring-1 focus:ring-pv-emerald/20"
+                  className="relative w-full rounded-xl border border-pv-cyan/[0.15] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-all placeholder:text-pv-muted/55 focus:border-pv-cyan/40 focus:ring-1 focus:ring-pv-cyan/20 focus:shadow-glow"
                   placeholder={creatorPosPlaceholder}
                   value={creatorPos}
                   onChange={(event) => setCreatorPos(event.target.value)}
@@ -1175,21 +1186,23 @@ export default function CreatePage() {
                   aria-label={t("ibet")}
                 />
               </div>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2.5">
+              {/* Side B — Opponent / Fuchsia */}
+              <div className="relative flex flex-col gap-4 md:pl-4">
+                <div className="absolute inset-0 pointer-events-none rounded-xl opacity-60" style={{ background: opponentPos ? "radial-gradient(ellipse 80% 60% at 100% 50%, rgba(248,172,255,0.06), transparent 70%)" : "none" }} />
+                <div className="relative flex items-center gap-2.5">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-fuch/10 text-pv-fuch"
                     aria-hidden
                   >
                     <Users size={16} strokeWidth={2} />
                   </span>
-                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-muted sm:tracking-[0.2em]">
+                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-fuch sm:tracking-[0.2em]">
                     {isOneToMany ? t("challengerSideBets") : t("rivalBets")}
                   </span>
                 </div>
                 <input
                   type="text"
-                  className="w-full rounded-xl border border-white/[0.12] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-colors placeholder:text-pv-muted/55 focus:border-pv-emerald/50 focus:ring-1 focus:ring-pv-emerald/20"
+                  className="relative w-full rounded-xl border border-pv-fuch/[0.15] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-all placeholder:text-pv-muted/55 focus:border-pv-fuch/40 focus:ring-1 focus:ring-pv-fuch/20 focus:shadow-glow-fuch"
                   placeholder={opponentPosPlaceholder}
                   value={opponentPos}
                   onChange={(event) => setOpponentPos(event.target.value)}

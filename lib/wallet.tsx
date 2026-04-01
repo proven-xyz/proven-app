@@ -1,26 +1,44 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { ensureGenlayerWalletChain } from "./genlayer";
+import { ensureGenlayerWalletChain, getWalletChainParams } from "./genlayer";
+
+const BRADBURY_CHAIN_ID = "0x107d"; // 4221
 
 interface WalletCtx {
   address: string | null;
   isConnected: boolean;
   isConnecting: boolean;
+  isCorrectNetwork: boolean;
   connect: () => Promise<void>;
   disconnect: () => void;
+  switchNetwork: () => Promise<void>;
   error: string | null;
 }
 
 const Ctx = createContext<WalletCtx>({
-  address: null, isConnected: false, isConnecting: false,
-  connect: async () => {}, disconnect: () => {}, error: null,
+  address: null, isConnected: false, isConnecting: false, isCorrectNetwork: true,
+  connect: async () => {}, disconnect: () => {}, switchNetwork: async () => {}, error: null,
 });
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [chainId, setChainId] = useState<string | null>(null);
+
+  const isCorrectNetwork = chainId === null || chainId === BRADBURY_CHAIN_ID;
+
+  const switchNetwork = useCallback(async () => {
+    const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;
+    if (!ethereum) return;
+    try {
+      await ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [getWalletChainParams()],
+      });
+    } catch { /* user rejected */ }
+  }, []);
 
   const connect = useCallback(async () => {
     setIsConnecting(true);
@@ -46,20 +64,33 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).ethereum) {
       const eth = (window as any).ethereum;
-      const handler = (accs: string[]) => setAddress(accs.length > 0 ? accs[0] : null);
-      eth.on("accountsChanged", handler);
+
+      const handleAccounts = (accs: string[]) => setAddress(accs.length > 0 ? accs[0] : null);
+      const handleChainChanged = (id: string) => setChainId(id);
+
+      eth.on("accountsChanged", handleAccounts);
+      eth.on("chainChanged", handleChainChanged);
+
       eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
         if (accs.length > 0) setAddress(accs[0]);
       }).catch((err: unknown) => {
         console.warn("Failed to restore wallet session", err);
         setError((current) => current ?? "error");
       });
-      return () => eth.removeListener("accountsChanged", handler);
+
+      eth.request({ method: "eth_chainId" }).then((id: string) => {
+        setChainId(id);
+      }).catch(() => {});
+
+      return () => {
+        eth.removeListener("accountsChanged", handleAccounts);
+        eth.removeListener("chainChanged", handleChainChanged);
+      };
     }
   }, []);
 
   return (
-    <Ctx.Provider value={{ address, isConnected: !!address, isConnecting, connect, disconnect, error }}>
+    <Ctx.Provider value={{ address, isConnected: !!address, isConnecting, isCorrectNetwork, connect, disconnect, switchNetwork, error }}>
       {children}
     </Ctx.Provider>
   );

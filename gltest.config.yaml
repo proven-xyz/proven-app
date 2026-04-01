@@ -4,10 +4,6 @@ networks:
     url: "http://127.0.0.1:4000/api"
     leader_only: false
   studionet: {}
-  testnet_bradbury:
-    accounts:
-      - "${ACCOUNT_PRIVATE_KEY_1}"
-      - "${ACCOUNT_PRIVATE_KEY_2}"
 paths:
   contracts: "contracts"
 environment: .env
