@@ -164,6 +164,10 @@ export default function CreatePage() {
   const [deadlinePreset, setDeadlinePreset] = useState<number | null>(null);
   const [customDeadlineDate, setCustomDeadlineDate] = useState("");
   const [customDeadlineTime, setCustomDeadlineTime] = useState("");
+  /** Solo en cliente: evita hydration mismatch (servidor vs zona horaria local). */
+  const [minCustomDeadlineDate, setMinCustomDeadlineDate] = useState<
+    string | undefined
+  >(undefined);
   const [stake, setStake] = useState(5);
   const [customStakeDraft, setCustomStakeDraft] = useState("");
   const [customStakeFocused, setCustomStakeFocused] = useState(false);
@@ -243,7 +247,10 @@ export default function CreatePage() {
     }
     return `${customDeadlineDate}T${customDeadlineTime}`;
   }, [customDeadlineDate, customDeadlineTime]);
-  const minCustomDeadlineDate = formatLocalDateInputValue(new Date());
+
+  useEffect(() => {
+    setMinCustomDeadlineDate(formatLocalDateInputValue(new Date()));
+  }, []);
 
   function applyDeadlinePreset(seconds: number) {
     const presetDate = new Date(Date.now() + seconds * 1000);
