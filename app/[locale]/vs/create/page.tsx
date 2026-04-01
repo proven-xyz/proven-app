@@ -94,6 +94,8 @@ const VISIBILITY_TOGGLE_OPTIONS = [
 
 const STAKE_PRESET_AMOUNTS = [MIN_STAKE, 5, 10, 25] as const;
 const SOURCE_DRAFTS_ENABLED = process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
+const CLAIM_MODERATION_ENABLED =
+  process.env.NEXT_PUBLIC_FEATURE_CLAIM_MODERATION === "1";
 
 function isPresetStakeAmount(value: number): boolean {
   return (STAKE_PRESET_AMOUNTS as readonly number[]).includes(value);
@@ -153,6 +155,7 @@ export default function CreatePage() {
   const tc = useTranslations("common");
   const tCat = useTranslations("categories");
   const tVsDetail = useTranslations("vsDetail");
+  const tQuality = useTranslations("quality");
   const locale = useLocale();
   const DEADLINE_PRESETS = useMemo(
     () =>
@@ -211,6 +214,16 @@ export default function CreatePage() {
   const [draftError, setDraftError] = useState("");
   const [lastDraftedUrl, setLastDraftedUrl] = useState("");
   const [sourceSeedUrl, setSourceSeedUrl] = useState("");
+  const [moderationLoading, setModerationLoading] = useState(false);
+  const [moderationMessageKey, setModerationMessageKey] = useState("");
+  const [moderationBlocked, setModerationBlocked] = useState(false);
+  const [moderationDecision, setModerationDecision] =
+    useState<"allow" | "review" | "block" | "">("");
+  const [moderationCooldownUntilMs, setModerationCooldownUntilMs] = useState(0);
+  const [moderationAttempted, setModerationAttempted] = useState(false);
+  const [moderationApprovedAtMs, setModerationApprovedAtMs] = useState(0);
+  const [submitLocked, setSubmitLocked] = useState(false);
+  const lastModerationKeyRef = useRef("");
   const [isApplyingDraft, startApplyingDraft] = useTransition();
   const [rematchSource, setRematchSource] = useState<VSData | null>(null);
   const [hydratedFromRematch, setHydratedFromRematch] = useState(false);
@@ -363,6 +376,230 @@ export default function CreatePage() {
     },
     [category, creatorPos, customDeadline, opponentPos, question, settlementRule, url]
   );
+
+  const moderationKey = useMemo(() => {
+    const parts = [
+      question.trim(),
+      creatorPos.trim(),
+      opponentPos.trim(),
+      category.trim(),
+      settlementRule.trim(),
+      normalizedSourceUrl.trim(),
+    ];
+    return parts.join("|");
+  }, [
+    category,
+    creatorPos,
+    normalizedSourceUrl,
+    opponentPos,
+    question,
+    settlementRule,
+  ]);
+
+  const moderationInputReady = useMemo(() => {
+    return (
+      question.trim().length > 0 &&
+      creatorPos.trim().length > 0 &&
+      opponentPos.trim().length > 0 &&
+      category.trim().length > 0 &&
+      settlementRule.trim().length > 0 &&
+      normalizedSourceUrl.trim().length > 0
+    );
+  }, [category, creatorPos, normalizedSourceUrl, opponentPos, question, settlementRule]);
+
+  const isModerationApproved = useMemo(() => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return true;
+    }
+    return moderationDecision === "allow";
+  }, [moderationDecision]);
+
+  const requestModeration = useCallback(
+    async (key: string) => {
+      if (!CLAIM_MODERATION_ENABLED) {
+        return { decision: "" as const, violationCodes: [] as string[] };
+      }
+
+      if (!moderationInputReady) {
+        setModerationLoading(false);
+        setModerationBlocked(false);
+        setModerationMessageKey("");
+        setModerationDecision("");
+        setModerationAttempted(false);
+        lastModerationKeyRef.current = "";
+        return { decision: "" as const, violationCodes: [] as string[] };
+      }
+
+      // Local cooldown: never hit the server during backoff.
+      if (moderationCooldownUntilMs && Date.now() < moderationCooldownUntilMs) {
+        const seconds = Math.max(
+          1,
+          Math.ceil((moderationCooldownUntilMs - Date.now()) / 1000)
+        );
+        setModerationDecision("review");
+        setModerationBlocked(true);
+        setModerationMessageKey(`rate_limited:${seconds}`);
+        return { decision: "review" as const, violationCodes: ["rate_limited"] };
+      }
+
+      if (key === lastModerationKeyRef.current) {
+        return {
+          decision: moderationDecision || (moderationBlocked ? "block" : "allow"),
+          violationCodes: [],
+        };
+      }
+
+      setModerationLoading(true);
+      setModerationMessageKey("");
+
+      try {
+        setModerationAttempted(true);
+        const response = await fetch("/api/claim-moderation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            locale,
+            input: {
+              question,
+              creator_position: creatorPos,
+              opponent_position: opponentPos,
+              category,
+              settlement_rule: settlementRule,
+              resolution_url: normalizedSourceUrl,
+            },
+          }),
+        });
+
+        const payload = (await response.json().catch(() => null)) as
+          | {
+              decision?: "allow" | "review" | "block";
+              violationCodes?: string[];
+            }
+          | { error?: { message?: string } }
+          | null;
+
+        if (response.status === 429) {
+          const retryAfter = Number.parseInt(
+            response.headers.get("retry-after") || "",
+            10
+          );
+          const seconds =
+            Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 35;
+          setModerationDecision("review");
+          setModerationBlocked(true);
+          setModerationCooldownUntilMs(Date.now() + seconds * 1000);
+          setModerationMessageKey(`rate_limited:${seconds}`);
+          lastModerationKeyRef.current = key;
+          return { decision: "review" as const, violationCodes: ["rate_limited"] };
+        }
+
+        if (!response.ok) {
+          const errorMessage =
+            payload && "error" in payload ? payload.error?.message : undefined;
+          throw new Error(errorMessage || "Unable to moderate claim");
+        }
+
+        const decision =
+          payload && "decision" in payload ? payload.decision : "review";
+        const codes =
+          payload && "violationCodes" in payload && Array.isArray(payload.violationCodes)
+            ? payload.violationCodes
+            : [];
+
+        lastModerationKeyRef.current = key;
+        setModerationDecision(decision || "review");
+        setModerationBlocked(decision === "block");
+        const topCode = typeof codes[0] === "string" ? codes[0] : "";
+        setModerationMessageKey(topCode);
+        if ((decision || "review") === "allow") {
+          setModerationApprovedAtMs(Date.now());
+        }
+        return { decision: decision || "review", violationCodes: codes };
+      } catch (err: any) {
+        lastModerationKeyRef.current = "";
+        setModerationBlocked(false);
+        setModerationMessageKey("");
+        setModerationDecision("");
+        setModerationAttempted(true);
+        return { decision: "" as const, violationCodes: [] as string[] };
+      } finally {
+        setModerationLoading(false);
+      }
+    },
+    [
+      category,
+      creatorPos,
+      locale,
+      moderationInputReady,
+      moderationBlocked,
+      moderationDecision,
+      moderationMessageKey,
+      moderationCooldownUntilMs,
+      normalizedSourceUrl,
+      opponentPos,
+      question,
+      settlementRule,
+    ]
+  );
+
+  useEffect(() => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return;
+    }
+
+    // If the user edits the claim after a moderation attempt, require an explicit re-check.
+    if (!moderationAttempted) {
+      return;
+    }
+
+    // Never reset while a moderation request is in-flight.
+    if (moderationLoading) {
+      return;
+    }
+
+    // Only reset after we have a known "last moderated" key.
+    if (!lastModerationKeyRef.current) {
+      return;
+    }
+
+    if (moderationKey === lastModerationKeyRef.current) {
+      return;
+    }
+
+    setModerationLoading(false);
+    setModerationBlocked(false);
+    setModerationDecision("");
+    setModerationMessageKey("");
+    setModerationCooldownUntilMs(0);
+    setModerationApprovedAtMs(0);
+    setModerationAttempted(false);
+  }, [moderationAttempted, moderationKey, moderationLoading]);
+
+  useEffect(() => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return;
+    }
+
+    if (!moderationCooldownUntilMs || Date.now() >= moderationCooldownUntilMs) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      const remaining = moderationCooldownUntilMs - Date.now();
+      if (remaining <= 0) {
+        window.clearInterval(intervalId);
+        // Keep a stable, non-key message so we don't flip to a generic "blocked by policy".
+        setModerationMessageKey("rate_limited:0");
+        return;
+      }
+      const seconds = Math.max(1, Math.ceil(remaining / 1000));
+      setModerationMessageKey(`rate_limited:${seconds}`);
+    }, 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, [moderationCooldownUntilMs]);
   const lastRecommendedTemplateRef = useRef(recommendedSettlementTemplate);
   const initializedRecommendedTemplateRef = useRef(false);
 
@@ -618,6 +855,13 @@ export default function CreatePage() {
   }, [requestSourceDrafts, sourceSeedUrl]);
 
   async function handleSubmit() {
+    if (submitLocked) {
+      return;
+    }
+
+    setSubmitLocked(true);
+    let unlockOnExit = true;
+    try {
     if (!question || !creatorPos || !opponentPos) {
       toast.error(t("fillAllFields"));
       return;
@@ -661,6 +905,36 @@ export default function CreatePage() {
     if (requiresExplicitSettlementRule && settlementRule.trim().length < 16) {
       toast.error(t("settlementRuleRequired"));
       return;
+    }
+
+    if (CLAIM_MODERATION_ENABLED) {
+      // Run moderation only when the user explicitly tries to publish.
+      const mod = await requestModeration(moderationKey);
+      if (mod.decision !== "allow") {
+        const top = typeof mod.violationCodes?.[0] === "string" ? mod.violationCodes[0] : "";
+        // Keep toast consistent with the Moderation card messaging.
+        if (top && top !== "rate_limited") {
+          toast.error(
+            tQuality(`moderationBlockedByCode.${top}` as any) ||
+              tQuality("moderationBlockedGeneric")
+          );
+        } else {
+          toast.error(tQuality("moderationBlockedGeneric"));
+        }
+        return;
+      }
+
+      // Give the Moderation card time to render the "allowed" state
+      // before the transaction/loading UI takes over.
+      await new Promise<void>((resolve) => {
+        const startedAt = moderationApprovedAtMs || Date.now();
+        const minMs = 650;
+        const elapsed = Date.now() - startedAt;
+        const waitMs = Math.max(0, minMs - elapsed);
+        window.requestAnimationFrame(() => {
+          window.setTimeout(() => resolve(), waitMs);
+        });
+      });
     }
 
     const normalizedMaxChallengers = Math.max(1, Math.min(100, Math.floor(maxChallengers)));
@@ -741,6 +1015,7 @@ export default function CreatePage() {
     }
 
     setLoading(true);
+    unlockOnExit = false;
 
     try {
       const result =
@@ -796,6 +1071,11 @@ export default function CreatePage() {
       toast.error(err.message || t("errorCreating"));
     } finally {
       setLoading(false);
+    }
+    } finally {
+      if (unlockOnExit) {
+        setSubmitLocked(false);
+      }
     }
   }
 
@@ -1946,13 +2226,37 @@ export default function CreatePage() {
                   stakeAmount={stake}
                   walletAddress={ticketWalletAddress ?? undefined}
                 />
-                <ClaimStrengthCard input={claimStrengthInput} />
+                <ClaimStrengthCard
+                  input={claimStrengthInput}
+                  moderation={
+                    CLAIM_MODERATION_ENABLED
+                      ? {
+                          status: moderationLoading
+                            ? "checking"
+                            : moderationAttempted && moderationInputReady && !isModerationApproved
+                              ? "blocked"
+                              : moderationDecision === "allow"
+                                ? "allowed"
+                                : "idle",
+                          message:
+                            moderationAttempted && moderationInputReady && !isModerationApproved
+                              ? moderationMessageKey
+                              : undefined,
+                        }
+                      : undefined
+                  }
+                />
                 {isConnected || isCreateDemoSession ? (
                   <Button
                     variant="primary"
                     onClick={handleSubmit}
-                    loading={loading || mockOverlayPhase === "loading"}
-                    disabled={isFormMockBusy}
+                    loading={submitLocked || moderationLoading || loading || mockOverlayPhase === "loading"}
+                    disabled={
+                      isFormMockBusy ||
+                      moderationLoading ||
+                      loading ||
+                      submitLocked
+                    }
                     className="rounded-2xl py-5 font-display text-sm font-bold uppercase tracking-widest"
                   >
                     {mockOverlayPhase === "loading" || loading ? (

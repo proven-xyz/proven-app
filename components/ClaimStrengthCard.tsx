@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { CheckCircle2, CircleDashed } from "lucide-react";
+import { CheckCircle2, CircleDashed, ShieldAlert, ShieldCheck, ShieldX } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { computeClaimQuality, type ClaimQualityInput } from "@/lib/claimQuality";
@@ -9,6 +9,10 @@ import { GlassCard } from "@/components/ui";
 
 type ClaimStrengthCardProps = {
   input: ClaimQualityInput;
+  moderation?: {
+    status: "idle" | "checking" | "allowed" | "blocked";
+    message?: string;
+  };
   compact?: boolean;
   className?: string;
 };
@@ -22,11 +26,51 @@ const tierClasses = {
 
 export default function ClaimStrengthCard({
   input,
+  moderation,
   compact = false,
   className = "",
 }: ClaimStrengthCardProps) {
   const t = useTranslations("quality");
+  const safeT = useMemo(() => {
+    return (key: string, values?: Record<string, any>, fallback?: string) => {
+      const has = (t as any)?.has;
+      if (typeof has === "function") {
+        try {
+          if (!has(key)) {
+            return fallback ?? "";
+          }
+        } catch {
+          // ignore `has` failures and fall back to try/catch translation below
+        }
+      }
+      try {
+        // next-intl throws on missing messages; we never want UI to crash for that.
+        return values ? (t as any)(key, values) : (t as any)(key);
+      } catch {
+        return fallback ?? "";
+      }
+    };
+  }, [t]);
   const result = useMemo(() => computeClaimQuality(input), [input]);
+  const moderationMessage = useMemo(() => {
+    if (!moderation) return "";
+    if (typeof moderation.message !== "string" || !moderation.message.trim()) {
+      return "";
+    }
+    const raw = moderation.message.trim();
+    if (raw.startsWith("rate_limited:")) {
+      const seconds = Number.parseInt(raw.split(":")[1] || "", 10);
+      return Number.isFinite(seconds) && seconds > 0
+        ? safeT("moderationRateLimited", { seconds }, `Moderation rate-limited. Retry in ${seconds}s.`)
+        : safeT("moderationUnavailable", undefined, "Moderation temporarily unavailable.");
+    }
+
+    return safeT(
+      `moderationBlockedByCode.${raw}`,
+      undefined,
+      safeT("moderationBlockedGeneric", undefined, "Blocked by policy.")
+    );
+  }, [moderation, safeT]);
 
   return (
     <GlassCard
@@ -99,6 +143,43 @@ export default function ClaimStrengthCard({
             </li>
           ))}
         </ul>
+
+        {moderation ? (
+          <div className="rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2">
+            <div className="flex items-start gap-2 text-xs leading-relaxed">
+              {moderation.status === "allowed" ? (
+                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-pv-emerald" aria-hidden />
+              ) : moderation.status === "blocked" ? (
+                <ShieldX size={14} className="mt-0.5 shrink-0 text-amber-300" aria-hidden />
+              ) : (
+                <ShieldAlert size={14} className="mt-0.5 shrink-0 text-pv-muted" aria-hidden />
+              )}
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                  {safeT("moderationLabel", undefined, "Moderation")}
+                </div>
+                <div
+                  className={
+                    moderation.status === "checking"
+                      ? "text-amber-200 animate-pulse"
+                      : moderation.status === "blocked"
+                        ? "text-amber-200"
+                        : "text-pv-muted"
+                  }
+                >
+                  {moderationMessage ||
+                    (moderation.status === "checking"
+                      ? safeT("moderationAnalyzing", undefined, "Analyzing with AI…")
+                      : moderation.status === "allowed"
+                        ? safeT("moderationAllowed", undefined, "Allowed by policy.")
+                        : moderation.status === "blocked"
+                          ? safeT("moderationBlockedGeneric", undefined, "Blocked by policy.")
+                          : safeT("moderationIdle", undefined, "Complete the claim to run a policy check."))}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </GlassCard>
   );
