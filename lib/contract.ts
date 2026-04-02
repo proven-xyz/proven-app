@@ -6,6 +6,7 @@ import {
   createGenlayerClient,
   ensureGenlayerWalletChain,
   getEndpoint,
+  getConfiguredNetworkAlias,
   getGenlayerChain,
   getConsensusMainContractAddress,
   GENLAYER_CONSENSUS_MAIN_ABI,
@@ -25,6 +26,17 @@ function genToWei(gen: number): bigint {
     throw new Error("GEN amounts must be whole numbers");
   }
   return BigInt(gen) * GEN_UNIT;
+}
+
+function normalizeWriteValueForNetwork(value: bigint): bigint {
+  const network = getConfiguredNetworkAlias();
+
+  // Studio does not support native token transfers, so keep stakes logical-only there.
+  if (network === "studionet" || network === "localnet") {
+    return BigInt(0);
+  }
+
+  return value;
 }
 
 export interface ClaimChallenger {
@@ -330,7 +342,31 @@ export function mapClaimToVS(rawClaim: ClaimData): VSData {
 }
 
 function extractGenlayerTxIdFromLogs(logs: unknown[]): string | null {
-  // Bradbury emits CreatedTransaction(bytes32,uint256), not NewTransaction
+  // Studio and newer networks emit NewTransaction(bytes32,address,address).
+  const NEW_TX_ABI = [
+    {
+      anonymous: false,
+      inputs: [
+        { indexed: true, internalType: "bytes32", name: "txId", type: "bytes32" },
+        { indexed: true, internalType: "address", name: "recipient", type: "address" },
+        { indexed: true, internalType: "address", name: "activator", type: "address" },
+      ],
+      name: "NewTransaction",
+      type: "event",
+    },
+  ] as const;
+
+  const newTransactionEvents = parseEventLogs({
+    abi: NEW_TX_ABI,
+    eventName: "NewTransaction",
+    logs: logs as any,
+  });
+
+  if (newTransactionEvents.length > 0 && (newTransactionEvents[0] as any).args?.txId) {
+    return (newTransactionEvents[0] as any).args.txId as string;
+  }
+
+  // Bradbury also emits CreatedTransaction(bytes32,uint256).
   const CREATED_TX_ABI = [
     {
       anonymous: false,
@@ -402,6 +438,34 @@ function extractGenlayerTxIdFromLogs(logs: unknown[]): string | null {
   return null;
 }
 
+function getConsensusAddTransactionArgs(wallet: string, functionName: string, args: unknown[]) {
+  const chain = getGenlayerChain() as {
+    defaultConsensusMaxRotations?: number;
+    defaultNumberOfInitialValidators?: number;
+  };
+  const calldata = buildConsensusTransactionData(functionName, args);
+  const addTransactionInput = (GENLAYER_CONSENSUS_MAIN_ABI as any[]).find(
+    (entry) => entry?.type === "function" && entry?.name === "addTransaction"
+  ) as { inputs?: Array<{ name?: string; type?: string }> } | undefined;
+  const inputCount = Array.isArray(addTransactionInput?.inputs)
+    ? addTransactionInput.inputs.length
+    : 0;
+
+  const baseArgs = [
+    wallet,
+    CONTRACT_ADDRESS,
+    BigInt(chain.defaultNumberOfInitialValidators ?? 5),
+    BigInt(chain.defaultConsensusMaxRotations ?? 3),
+    calldata,
+  ];
+
+  if (inputCount >= 6) {
+    return [...baseArgs, BigInt(0)];
+  }
+
+  return baseArgs;
+}
+
 async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
   const endpoint = getEndpoint();
   const rpcUrl = endpoint || "https://rpc-bradbury.genlayer.com";
@@ -459,25 +523,13 @@ async function sendBrowserWriteTransaction(
 
   await ensureGenlayerWalletChain(ethereum);
 
-  const chain = getGenlayerChain() as {
-    defaultConsensusMaxRotations?: number;
-    defaultNumberOfInitialValidators?: number;
-  };
-
   const txRequest: Record<string, string> = {
     from: wallet,
     to: getConsensusMainContractAddress(),
     data: encodeFunctionData({
       abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
       functionName: "addTransaction",
-      args: [
-        wallet,
-        CONTRACT_ADDRESS,
-        BigInt(chain.defaultNumberOfInitialValidators ?? 5),
-        BigInt(chain.defaultConsensusMaxRotations ?? 3),
-        buildConsensusTransactionData(functionName, args),
-        BigInt(0),
-      ],
+      args: getConsensusAddTransactionArgs(wallet, functionName, args) as any,
     }),
     value: `0x${value.toString(16)}`,
   };
@@ -584,12 +636,13 @@ async function writeAndWait(
   args: unknown[],
   value: bigint
 ): Promise<ContractWriteResult & { pending?: boolean }> {
+  const runtimeValue = normalizeWriteValueForNetwork(value);
   const isBrowser =
     typeof window !== "undefined" && !!(window as any).ethereum;
 
   const evmTxHash = isBrowser
-    ? await sendBrowserWriteTransaction(wallet, functionName, args, value)
-    : await sendRpcWriteTransaction(wallet, functionName, args, value);
+    ? await sendBrowserWriteTransaction(wallet, functionName, args, runtimeValue)
+    : await sendRpcWriteTransaction(wallet, functionName, args, runtimeValue);
 
   // --- browser (MetaMask) path: confirm at EVM level, skip consensus poll ---
   if (isBrowser) {
