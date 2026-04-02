@@ -11,6 +11,23 @@ import HeaderNetworkStatus from "@/components/HeaderNetworkStatus";
 import { Menu, X } from "lucide-react";
 import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
 
+function shortenNetworkName(networkName: string) {
+  return networkName
+    .replace(/^GenLayer\s+/i, "")
+    .replace(/\s+Testnet(?:\s+Chain)?$/i, "")
+    .trim();
+}
+
+function formatAddNetworkLabel(template: string, networkName: string) {
+  if (/Bradbury Network/i.test(template)) {
+    return template.replace(/Bradbury Network/gi, `${networkName} Network`);
+  }
+  if (/Bradbury/i.test(template)) {
+    return template.replace(/Bradbury/gi, networkName);
+  }
+  return `${template} ${networkName}`.trim();
+}
+
 function WalletAccountMenu({
   address,
   open,
@@ -27,6 +44,10 @@ function WalletAccountMenu({
   buttonClassName: string;
 }) {
   const t = useTranslations("header");
+  const addNetworkLabel = formatAddNetworkLabel(
+    t("addNetwork"),
+    shortenNetworkName(getWalletChainParams().chainName)
+  );
 
   async function handleAddNetwork() {
     const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;
@@ -68,7 +89,7 @@ function WalletAccountMenu({
               onClick={handleAddNetwork}
               className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text"
             >
-              {t("addNetwork")}
+              {addNetworkLabel}
             </button>
             <button
               type="button"

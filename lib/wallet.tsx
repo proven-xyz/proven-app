@@ -3,8 +3,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { ensureGenlayerWalletChain, getWalletChainParams } from "./genlayer";
 
-const BRADBURY_CHAIN_ID = "0x107d"; // 4221
-
 interface WalletCtx {
   address: string | null;
   isConnected: boolean;
@@ -26,8 +24,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
+  const expectedChainId = getWalletChainParams().chainId.toLowerCase();
 
-  const isCorrectNetwork = chainId === null || chainId === BRADBURY_CHAIN_ID;
+  const isCorrectNetwork =
+    chainId === null || chainId.toLowerCase() === expectedChainId;
 
   const switchNetwork = useCallback(async () => {
     const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;

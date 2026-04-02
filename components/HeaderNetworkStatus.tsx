@@ -3,6 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { getConfiguredNetworkName } from "@/lib/genlayer";
 
 type NetworkProbeStatus = "checking" | "connected" | "stalled";
 
@@ -33,8 +34,9 @@ export default function HeaderNetworkStatus({
   const t = useTranslations("header");
   const requestRef = useRef(0);
   const busyRef = useRef(false);
+  const defaultNetworkName = shortenNetworkName(getConfiguredNetworkName());
   const [status, setStatus] = useState<NetworkProbeStatus>("checking");
-  const [networkName, setNetworkName] = useState("Bradbury");
+  const [networkName, setNetworkName] = useState(defaultNetworkName);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
 
@@ -66,7 +68,7 @@ export default function HeaderNetworkStatus({
       const nextNetworkName =
         typeof payload.networkName === "string" && payload.networkName.trim()
           ? shortenNetworkName(payload.networkName)
-          : "Bradbury";
+          : defaultNetworkName;
       setNetworkName(nextNetworkName);
       setCheckedAt(payload.checkedAt ?? null);
       setLatencyMs(typeof payload.latencyMs === "number" ? payload.latencyMs : null);
@@ -89,6 +91,7 @@ export default function HeaderNetworkStatus({
       requestRef.current += 1;
       busyRef.current = false;
       setStatus("checking");
+      setNetworkName(defaultNetworkName);
       setCheckedAt(null);
       setLatencyMs(null);
       return;
@@ -104,7 +107,7 @@ export default function HeaderNetworkStatus({
       requestRef.current += 1;
       busyRef.current = false;
     };
-  }, [enabled]);
+  }, [defaultNetworkName, enabled]);
 
   const isStalled = status === "stalled";
   const isChecking = status === "checking";
