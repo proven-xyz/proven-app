@@ -310,9 +310,11 @@ function claimRowToClaimData(
     handicap_line: row.handicap_line ?? "",
     settlement_rule: row.settlement_rule ?? "",
     max_challengers: row.max_challengers,
-    created_at: 0,
     visibility: row.visibility as ClaimData["visibility"],
     is_private: row.visibility === "private",
+    resolve_attempts: 0,
+    creator_requested_resolve: false,
+    challenger_requested_resolve: false,
     challengers: challengers.length > 0 ? challengers : undefined,
     first_challenger: row.first_challenger,
     challenger_addresses: challengerAddresses,
@@ -637,8 +639,9 @@ export async function getVsDetailSnapshot(vsId: number): Promise<VSDetailSnapsho
 
     if (
       row &&
+      row.is_final === 1 &&
       !missingChallengerDetails &&
-      (row.is_final === 1 || isFresh(row.updated_at, DETAIL_FRESHNESS_MS))
+      isFresh(row.updated_at, DETAIL_FRESHNESS_MS)
     ) {
       return {
         item: claimRowToVSData(row, challengerRows),
@@ -646,8 +649,15 @@ export async function getVsDetailSnapshot(vsId: number): Promise<VSDetailSnapsho
       };
     }
 
+    const freshClaim = await refreshIndexedClaim({ claimId: vsId });
+    if (freshClaim) {
+      return {
+        item: mapClaimToVS(freshClaim),
+        cache: makeContractFreshness(),
+      };
+    }
+
     if (row) {
-      refreshIndexedClaimInBackground({ claimId: vsId });
       return {
         item: claimRowToVSData(row, challengerRows),
         cache: buildDetailCacheFreshness(row),
@@ -675,14 +685,6 @@ export async function getVsDetailSnapshot(vsId: number): Promise<VSDetailSnapsho
           }),
         };
       }
-    }
-
-    const freshClaim = await refreshIndexedClaim({ claimId: vsId });
-    if (freshClaim) {
-      return {
-        item: mapClaimToVS(freshClaim),
-        cache: makeContractFreshness(),
-      };
     }
   } catch {
     // Fall through to the existing cache-backed path below.

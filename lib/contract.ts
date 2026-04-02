@@ -11,6 +11,7 @@ import {
   getConsensusMainContractAddress,
   GENLAYER_CONSENSUS_MAIN_ABI,
 } from "./genlayer";
+import { normalizeCategoryId } from "./constants";
 
 export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x0000000000000000000000000000000000000000") as any;
@@ -58,9 +59,10 @@ export interface ClaimData {
   available_creator_liability: number;
   deadline: number;
   state: "open" | "active" | "resolved" | "cancelled";
-  winner_side: "creator" | "challengers" | "draw" | "unresolvable" | "";
+  winner_side: "creator" | "challengers" | "draw" | "";
   resolution_summary: string;
   confidence: number;
+  resolve_attempts?: number;
   category: string;
   parent_id: number;
   challenger_count: number;
@@ -70,9 +72,11 @@ export interface ClaimData {
   handicap_line: string;
   settlement_rule: string;
   max_challengers: number;
-  created_at: number;
+  created_at?: number;
   visibility?: "public" | "private";
   is_private?: boolean;
+  creator_requested_resolve?: boolean;
+  challenger_requested_resolve?: boolean;
   challengers?: ClaimChallenger[];
   first_challenger?: string;
   challenger_addresses?: string[];
@@ -92,7 +96,7 @@ export interface VSData {
   state: "open" | "accepted" | "resolved" | "cancelled";
   winner: string;
   resolution_summary: string;
-  created_at: number;
+  created_at?: number;
   category: string;
   challengers?: ClaimChallenger[];
   counter_position?: string;
@@ -114,6 +118,9 @@ export interface VSData {
   is_private?: boolean;
   total_pot?: number;
   challenger_addresses?: string[];
+  resolve_attempts?: number;
+  creator_requested_resolve?: boolean;
+  challenger_requested_resolve?: boolean;
 }
 
 export interface CreateClaimParams {
@@ -160,9 +167,20 @@ export interface VSDetailSnapshot {
 function normalizeClaimData(claim: ClaimData): ClaimData {
   const challengerAddresses =
     claim.challenger_addresses ?? claim.challengers?.map((challenger) => challenger.address) ?? [];
+  const winnerSide =
+    claim.winner_side === "creator" ||
+    claim.winner_side === "challengers" ||
+    claim.winner_side === "draw"
+      ? claim.winner_side
+      : "";
 
   return {
     ...claim,
+    category: normalizeCategoryId(claim.category),
+    winner_side: winnerSide,
+    resolve_attempts: claim.resolve_attempts ?? 0,
+    creator_requested_resolve: Boolean(claim.creator_requested_resolve),
+    challenger_requested_resolve: Boolean(claim.challenger_requested_resolve),
     first_challenger: claim.first_challenger ?? challengerAddresses[0] ?? ZERO_ADDRESS,
     challenger_addresses: challengerAddresses,
   };
@@ -835,52 +853,128 @@ export async function getClaimCount(): Promise<number> {
   }
 }
 
-export async function getUserClaims(address: string): Promise<number[]> {
-  try {
-    return await readContractValue<number[]>("get_user_claims", [address]);
-  } catch {
+async function getAllClaimSummaries(pageSize = 50): Promise<ClaimData[]> {
+  const count = await getClaimCount();
+  if (count <= 0) {
     return [];
   }
+
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil(count / pageSize) }, (_, index) =>
+      getClaimSummaries(index * pageSize + 1, pageSize)
+    )
+  );
+
+  return pages.flat();
+}
+
+export async function getUserClaims(address: string): Promise<number[]> {
+  const claims = await getUserClaimSummaries(address);
+  return claims.map((claim) => claim.id);
 }
 
 export async function getOpenClaims(): Promise<number[]> {
-  try {
-    return await readContractValue<number[]>("get_open_claims", []);
-  } catch {
-    return [];
-  }
+  const claims = await getOpenClaimSummaries();
+  return claims.map((claim) => claim.id);
 }
 
 export async function getRivalryChain(claimId: number): Promise<number[]> {
-  try {
-    return await readContractValue<number[]>("get_rivalry_chain", [claimId]);
-  } catch {
+  const allClaims = await getAllClaimSummaries();
+  const byId = new Map(allClaims.map((claim) => [claim.id, claim]));
+  const seedClaim = byId.get(claimId) ?? (await getClaim(claimId));
+  if (!seedClaim) {
     return [];
   }
+
+  byId.set(seedClaim.id, seedClaim);
+
+  let rootId = seedClaim.id;
+  let parentId = seedClaim.parent_id;
+  const visited = new Set<number>([seedClaim.id]);
+
+  while (parentId > 0 && !visited.has(parentId)) {
+    const parentClaim = byId.get(parentId) ?? (await getClaim(parentId));
+    if (!parentClaim) {
+      break;
+    }
+
+    byId.set(parentClaim.id, parentClaim);
+    visited.add(parentClaim.id);
+    rootId = parentClaim.id;
+    parentId = parentClaim.parent_id;
+  }
+
+  const childrenByParent = new Map<number, number[]>();
+  for (const claim of Array.from(byId.values())) {
+    if (claim.parent_id <= 0) {
+      continue;
+    }
+
+    const siblings = childrenByParent.get(claim.parent_id) ?? [];
+    siblings.push(claim.id);
+    childrenByParent.set(claim.parent_id, siblings);
+  }
+
+  const chain = [rootId];
+  const chainedIds = new Set(chain);
+  let cursor = rootId;
+
+  while (true) {
+    const nextId = (childrenByParent.get(cursor) ?? [])
+      .filter((id) => !chainedIds.has(id))
+      .sort((a, b) => a - b)[0];
+
+    if (!nextId) {
+      break;
+    }
+
+    chain.push(nextId);
+    chainedIds.add(nextId);
+    cursor = nextId;
+  }
+
+  return chain;
 }
 
 export async function getUserClaimSummaries(address: string): Promise<ClaimData[]> {
-  try {
-    const claims = await readContractValue<ClaimData[]>("get_user_claim_summaries", [
-      address,
-    ]);
-    return claims.map(normalizeClaimData);
-  } catch {
-    const ids = await getUserClaims(address);
-    const claims = await Promise.all(ids.map((id) => getClaim(id)));
-    return claims.filter((claim): claim is ClaimData => claim !== null);
+  const allSummaries = await getAllClaimSummaries();
+  if (allSummaries.length === 0) {
+    return [];
   }
+
+  const creatorClaims = allSummaries.filter((claim) => isSameAddress(claim.creator, address));
+  const challengerCandidates = allSummaries.filter(
+    (claim) => claim.challenger_count > 0 && !isSameAddress(claim.creator, address)
+  );
+
+  const challengerClaims = challengerCandidates.length
+    ? await Promise.all(challengerCandidates.map((claim) => getClaim(claim.id)))
+    : [];
+
+  const challengerMatches = challengerClaims.filter((claim): claim is ClaimData => {
+    if (!claim) {
+      return false;
+    }
+
+    return (claim.challenger_addresses ?? []).some((entry) => isSameAddress(entry, address));
+  });
+
+  const merged = new Map<number, ClaimData>();
+  for (const claim of creatorClaims) {
+    merged.set(claim.id, claim);
+  }
+  for (const claim of challengerMatches) {
+    merged.set(claim.id, claim);
+  }
+
+  return Array.from(merged.values()).sort((a, b) => b.id - a.id);
 }
 
 export async function getOpenClaimSummaries(): Promise<ClaimData[]> {
-  try {
-    const claims = await readContractValue<ClaimData[]>("get_open_claim_summaries", []);
-    return claims.map(normalizeClaimData);
-  } catch {
-    const ids = await getOpenClaims();
-    const claims = await Promise.all(ids.map((id) => getClaim(id)));
-    return claims.filter((claim): claim is ClaimData => claim !== null);
-  }
+  const allClaims = await getAllClaimSummaries();
+  return allClaims
+    .filter((claim) => claim.state === "open" || claim.state === "active")
+    .sort((a, b) => b.id - a.id);
 }
 
 export async function getVSSummaries(
@@ -1022,7 +1116,30 @@ export async function resolveClaim(
   claimId: number,
   inviteKey = ""
 ) {
-  const result = await writeAndWait("resolve_claim", wallet, [claimId], BigInt(0));
+  const result = await writeAndWait("request_resolve", wallet, [claimId], BigInt(0));
+  void requestIndexedClaimRefresh(claimId, inviteKey);
+  return result;
+}
+
+export async function requestResolveClaim(
+  wallet: string,
+  claimId: number,
+  inviteKey = ""
+) {
+  return resolveClaim(wallet, claimId, inviteKey);
+}
+
+export async function resetResolveRequest(
+  wallet: string,
+  claimId: number,
+  inviteKey = ""
+) {
+  const result = await writeAndWait(
+    "reset_resolve_request",
+    wallet,
+    [claimId],
+    BigInt(0)
+  );
   void requestIndexedClaimRefresh(claimId, inviteKey);
   return result;
 }
@@ -1220,6 +1337,14 @@ export async function acceptVS(
 
 export async function resolveVS(wallet: string, vsId: number, inviteKey = "") {
   return resolveClaim(wallet, vsId, inviteKey);
+}
+
+export async function requestResolveVS(wallet: string, vsId: number, inviteKey = "") {
+  return requestResolveClaim(wallet, vsId, inviteKey);
+}
+
+export async function resetVSResolveRequest(wallet: string, vsId: number, inviteKey = "") {
+  return resetResolveRequest(wallet, vsId, inviteKey);
 }
 
 export async function cancelVS(wallet: string, vsId: number, inviteKey = "") {

@@ -64,7 +64,6 @@ export default function ExploreClient() {
     process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
 
   const t = useTranslations("explore");
-  const tCat = useTranslations("categories");
 
   const loadExploreData = useCallback(
     async ({
@@ -695,16 +694,6 @@ export default function ExploreClient() {
                           {t(labelKey)}
                         </button>
                       ))}
-                      <button
-                        type="button"
-                        aria-pressed={cat === "clima"}
-                        onClick={() => updateFilters({ cat: "clima" })}
-                        className={`${filterPillBase} ${
-                          cat === "clima" ? filterPillActive : filterPillInactive
-                        }`}
-                      >
-                        <span className="uppercase">{tCat("clima")}</span>
-                      </button>
                     </div>
                   </div>
                   <div className="min-w-0">

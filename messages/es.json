@@ -318,6 +318,16 @@
     "ticketSignatureNote": "La inicializacion requiere firma del smart contract",
     "ticketSettlementFallback": "Anade una regla de settlement o usa el valor por categoria en Avanzado.",
     "guidance": {
+      "sports": {
+        "sourceHint": "Usa la pagina oficial del partido, liga, o scoreboard del evento exacto que quieres resolver.",
+        "questionHint": "Nombra los equipos, la competencia, y el periodo directamente en el claim.",
+        "settlementTemplate": "Resuelve esto contra el resultado final oficial del evento enlazado. Aclara si cuentan tiempo extra, penales, u overtime."
+      },
+      "weather": {
+        "sourceHint": "Usa una fuente de clima que nombre claramente la ubicacion y la fecha medidas.",
+        "questionHint": "Nombra la ciudad o region y el dia exacto que se va a juzgar.",
+        "settlementTemplate": "Resuelve esto usando el clima reportado para la ubicacion y fecha nombradas en la fuente enlazada. Usa exactamente la condicion de precipitacion o temperatura escrita aqui."
+      },
       "deportes": {
         "sourceHint": "Usa la pagina oficial del partido, liga, o scoreboard del evento exacto que quieres resolver.",
         "questionHint": "Nombra los equipos, la competencia, y el periodo directamente en el claim.",
@@ -332,6 +342,11 @@
         "sourceHint": "Usa una pagina de precio que siga mostrando el activo y el valor cotizado en el momento de settlement.",
         "questionHint": "Nombra el activo, el umbral, y el deadline de forma explicita.",
         "settlementTemplate": "Resuelve esto usando el spot price visible en la fuente enlazada al momento del deadline. Aplica cualquier umbral o linea exactamente como fue escrito."
+      },
+      "culture": {
+        "sourceHint": "Prefiere la publicacion oficial, la pagina del premio, o la fuente primaria de entretenimiento detras del claim.",
+        "questionHint": "Ancla el claim a un lanzamiento, premio, ranking, o publicacion concretos.",
+        "settlementTemplate": "Resuelve esto solo con la fuente oficial o autoritativa enlazada. No infieras mas alla del resultado publicado exacto."
       },
       "tech": {
         "sourceHint": "Usa un blog oficial del producto, comunicado de prensa, o changelog que siga reflejando el hecho anunciado al momento del settlement.",
@@ -363,6 +378,9 @@
     "advancedMinPresets": "Mínimo rápido",
     "catSports": "DEPORTES",
     "catCrypto": "CRIPTO",
+    "catWeather": "CLIMA",
+    "catCulture": "CULTURA",
+    "catCustom": "CUSTOM",
     "catTech": "TECH",
     "catEsports": "ESPORTS",
     "catPolitics": "POLÍTICA",
@@ -669,6 +687,7 @@
     "demoModeHint": "El modo demo enruta las escrituras por firmantes alojados en Bradbury para que los jueces vean el flujo completo sin depender de wallets inestables.",
     "connectToAccept": "Conectar Wallet para aceptar",
     "resolveVS": "Resolver VS",
+    "requestResolveVS": "Pedir resolucion",
     "retryResolveVS": "Reintentar resolucion",
     "proven": "PROVEN.",
     "errorResolving": "Error al resolver",
@@ -680,6 +699,24 @@
     "resolveNowHint": "El deadline ya pasó y este claim está listo para que PROVEN lo liquide.",
     "retryResolveHint": "Este claim sigue sin resolverse después de un intento anterior. Puedes enviar otra transacción de resolución ahora.",
     "waitingDeadline": "Esperando deadline para resolver...",
+    "requestResolveHint": "Envia tu solicitud de resolucion. Cuando ambas partes acepten, PROVEN ejecutara el juez.",
+    "requestResolveReadyHint": "La otra parte ya pidio resolver. Tu solicitud disparara a PROVEN ahora.",
+    "requestResolveStored": "Tu solicitud de resolucion se guardo onchain.",
+    "requestResolveTriggered": "Ambas partes aceptaron. PROVEN esta resolviendo este claim ahora.",
+    "resolutionStatusTitle": "Estado de resolucion",
+    "resolutionStatusHint": "Ambos participantes deben pedir resolucion despues del deadline antes de que PROVEN liquide el claim.",
+    "creatorRequestedLabel": "Solicitud del creador",
+    "challengerRequestedLabel": "Solicitud del retador",
+    "requestedStatus": "Solicitada",
+    "pendingStatus": "Pendiente",
+    "resolveAttemptsLabel": "Intentos de resolucion",
+    "latestResolutionNote": "Ultima nota de resolucion",
+    "waitingOtherResolveRequest": "Esperando a que la otra parte pida la resolucion.",
+    "participantsMustRequestResolve": "Solo el creador o el retador pueden pedir resolucion.",
+    "resetResolveRequest": "Resetear solicitud",
+    "resetResolveRequestHint": "Usa esto si un intento anterior se quedo trabado y ambos lados necesitan reintentar limpio.",
+    "resetResolveRequestSuccess": "Las solicitudes de resolucion fueron reseteadas.",
+    "resetResolveRequestError": "Error al resetear la solicitud de resolucion",
     "sendLink": "Manda este link a tu rival",
     "shareLinkLabel": "Enlace para compartir",
     "cancelVS": "Cancelar VS",
@@ -746,10 +783,13 @@
     "error": "Error al conectar"
   },
   "categories": {
+    "sports": "Deportes",
+    "weather": "Clima",
     "deportes": "Deportes",
     "clima": "Clima",
     "crypto": "Crypto",
     "tech": "Tech",
+    "culture": "Cultura",
     "cultura": "Cultura",
     "custom": "Custom"
   },

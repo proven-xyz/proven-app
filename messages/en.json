@@ -312,6 +312,16 @@
     "ticketSignatureNote": "Initialization requires smart contract signature",
     "ticketSettlementFallback": "Add a settlement rule or use the category default from the Advanced section.",
     "guidance": {
+      "sports": {
+        "sourceHint": "Use the official match, league, or scoreboard page for the exact event you want to settle.",
+        "questionHint": "Name the teams, competition, and timeframe directly in the claim.",
+        "settlementTemplate": "Resolve this against the official final result of the linked event. State whether extra time, penalties, or overtime count."
+      },
+      "weather": {
+        "sourceHint": "Use a weather source that clearly names the location and date being measured.",
+        "questionHint": "Name the city or region and the exact day being judged.",
+        "settlementTemplate": "Resolve this using the weather reported for the named location and date on the linked source. Use the exact precipitation or temperature condition written here."
+      },
       "deportes": {
         "sourceHint": "Use the official match, league, or scoreboard page for the exact event you want to settle.",
         "questionHint": "Name the teams, competition, and timeframe directly in the claim.",
@@ -326,6 +336,11 @@
         "sourceHint": "Use a price page that will still show the asset and quoted value at settlement time.",
         "questionHint": "Name the asset, threshold, and deadline explicitly.",
         "settlementTemplate": "Resolve this using the visible spot price on the linked source at the deadline time. Apply any threshold or line exactly as written."
+      },
+      "culture": {
+        "sourceHint": "Prefer the official publication, awards page, or primary entertainment source behind the claim.",
+        "questionHint": "Anchor the claim to a concrete release, award, ranking, or publication event.",
+        "settlementTemplate": "Resolve this only from the linked official or authoritative source. Do not infer beyond the exact published result."
       },
       "tech": {
         "sourceHint": "Use an official product blog, press release, or changelog that will still reflect the announced fact at settlement.",
@@ -357,6 +372,9 @@
     "advancedMinPresets": "Quick minimum",
     "catSports": "SPORTS",
     "catCrypto": "CRYPTO",
+    "catWeather": "WEATHER",
+    "catCulture": "CULTURE",
+    "catCustom": "CUSTOM",
     "catTech": "TECH",
     "catEsports": "ESPORTS",
     "catPolitics": "POLITIC",
@@ -663,6 +681,7 @@
     "submittedPending": "Transaction submitted to Bradbury. The arena will refresh automatically.",
     "connectToAccept": "Connect Wallet to accept",
     "resolveVS": "Resolve VS",
+    "requestResolveVS": "Request resolution",
     "retryResolveVS": "Retry Resolve",
     "proven": "PROVEN.",
     "errorResolving": "Error resolving",
@@ -672,8 +691,26 @@
     "resolveExecutionFailed": "Bradbury accepted the resolve transaction, but contract execution failed.",
     "resolveStillPending": "Resolution is still pending on Bradbury. Keep this page open or check the explorer in a moment.",
     "resolveNowHint": "The deadline has passed and this claim is ready for PROVEN to settle.",
+    "requestResolveHint": "Submit your side's resolve request. Once both sides agree, PROVEN will run the judge.",
+    "requestResolveReadyHint": "The other side already requested resolution. Your request will trigger PROVEN now.",
+    "requestResolveStored": "Your resolve request was saved onchain.",
+    "requestResolveTriggered": "Both sides agreed. PROVEN is resolving this claim now.",
     "retryResolveHint": "This claim is still unresolved after a previous resolve attempt. You can submit another resolve transaction now.",
     "waitingDeadline": "Waiting for deadline to resolve...",
+    "resolutionStatusTitle": "Resolution status",
+    "resolutionStatusHint": "Both participants must request resolution after the deadline before PROVEN can settle the claim.",
+    "creatorRequestedLabel": "Creator request",
+    "challengerRequestedLabel": "Challenger request",
+    "requestedStatus": "Requested",
+    "pendingStatus": "Pending",
+    "resolveAttemptsLabel": "Resolve attempts",
+    "latestResolutionNote": "Latest resolution note",
+    "waitingOtherResolveRequest": "Waiting for the other participant to request resolution.",
+    "participantsMustRequestResolve": "Only the creator or challenger can request resolution.",
+    "resetResolveRequest": "Reset resolve request",
+    "resetResolveRequestHint": "Use this if a previous resolve attempt stalled and both sides need to retry cleanly.",
+    "resetResolveRequestSuccess": "Resolve requests reset.",
+    "resetResolveRequestError": "Error resetting resolve request",
     "sendLink": "Send this link to your rival",
     "shareLinkLabel": "Share link",
     "cancelVS": "Cancel VS",
@@ -740,10 +777,13 @@
     "error": "Connection error"
   },
   "categories": {
+    "sports": "Sports",
+    "weather": "Weather",
     "deportes": "Sports",
     "clima": "Weather",
     "crypto": "Crypto",
     "tech": "Tech",
+    "culture": "Culture",
     "cultura": "Culture",
     "custom": "Custom"
   },

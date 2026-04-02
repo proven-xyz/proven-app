@@ -5,9 +5,9 @@ export const EXPLORE_PRIMARY_CATEGORY_ROW: {
   id: CategoryId;
   labelKey: string;
 }[] = [
-  { id: "deportes", labelKey: "catSports" },
+  { id: "sports", labelKey: "catSports" },
   { id: "crypto", labelKey: "catCrypto" },
-  { id: "tech", labelKey: "catTech" },
-  { id: "cultura", labelKey: "catEsports" },
-  { id: "custom", labelKey: "catPolitics" },
+  { id: "weather", labelKey: "catWeather" },
+  { id: "culture", labelKey: "catCulture" },
+  { id: "custom", labelKey: "catCustom" },
 ];

@@ -20,7 +20,8 @@ import {
   hasVSWinner,
   isVSJoinable,
   isVSPrivate,
-  resolveVS,
+  requestResolveVS,
+  resetVSResolveRequest,
   type ClaimChallenger,
   type VSData,
 } from "@/lib/contract";
@@ -75,10 +76,6 @@ import {
 /** Dirección ficticia para previsualizar fases accepted / verifying / proven en VS de muestra (sin blockchain). */
 const DESIGN_PREVIEW_OPPONENT =
   "0x2222222222222222222222222222222222222222";
-const DESIGN_PREVIEW_SECOND_CHALLENGER =
-  "0x3333333333333333333333333333333333333333";
-const DESIGN_PREVIEW_THIRD_CHALLENGER =
-  "0x4444444444444444444444444444444444444444";
 
 /** Misma silueta que la píldora «{addr} challenges you» (fucsia, pill redondeada). */
 const DUEL_STATUS_FUCHSIA_PILL_CLASS =
@@ -121,25 +118,11 @@ function buildDesignPreviewVs(
       winner: ZERO_ADDRESS,
       resolution_summary: "",
       winner_side: undefined,
-      challenger_count: 3,
-      challenger_addresses: [
-        DESIGN_PREVIEW_OPPONENT,
-        DESIGN_PREVIEW_SECOND_CHALLENGER,
-        DESIGN_PREVIEW_THIRD_CHALLENGER,
-      ],
+      challenger_count: 1,
+      challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
       challengers: [
         {
           address: DESIGN_PREVIEW_OPPONENT,
-          stake: base.stake_amount,
-          potential_payout: pot,
-        },
-        {
-          address: DESIGN_PREVIEW_SECOND_CHALLENGER,
-          stake: base.stake_amount,
-          potential_payout: pot,
-        },
-        {
-          address: DESIGN_PREVIEW_THIRD_CHALLENGER,
           stake: base.stake_amount,
           potential_payout: pot,
         },
@@ -161,25 +144,11 @@ function buildDesignPreviewVs(
         winner: base.creator,
         winner_side: "creator",
         resolution_summary: resolutionSummary,
-        challenger_count: 3,
-        challenger_addresses: [
-          DESIGN_PREVIEW_OPPONENT,
-          DESIGN_PREVIEW_SECOND_CHALLENGER,
-          DESIGN_PREVIEW_THIRD_CHALLENGER,
-        ],
+        challenger_count: 1,
+        challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
         challengers: [
           {
             address: DESIGN_PREVIEW_OPPONENT,
-            stake: base.stake_amount,
-            potential_payout: resolvedPot,
-          },
-          {
-            address: DESIGN_PREVIEW_SECOND_CHALLENGER,
-            stake: base.stake_amount,
-            potential_payout: resolvedPot,
-          },
-          {
-            address: DESIGN_PREVIEW_THIRD_CHALLENGER,
             stake: base.stake_amount,
             potential_payout: resolvedPot,
           },
@@ -187,8 +156,6 @@ function buildDesignPreviewVs(
       };
     }
 
-    // Preview "lost": winner_side = challengers.
-    // Usamos challenger_count=1 para que getVSSingleWinnerPayout devuelva un payout y la tarjeta se vea completa.
     return {
       ...base,
       state: "resolved",
@@ -222,25 +189,11 @@ function buildDesignPreviewVs(
     winner: ZERO_ADDRESS,
     winner_side: undefined,
     resolution_summary: "",
-    challenger_count: 3,
-    challenger_addresses: [
-      DESIGN_PREVIEW_OPPONENT,
-      DESIGN_PREVIEW_SECOND_CHALLENGER,
-      DESIGN_PREVIEW_THIRD_CHALLENGER,
-    ],
+    challenger_count: 1,
+    challenger_addresses: [DESIGN_PREVIEW_OPPONENT],
     challengers: [
       {
         address: DESIGN_PREVIEW_OPPONENT,
-        stake: base.stake_amount,
-        potential_payout: cancelledPot,
-      },
-      {
-        address: DESIGN_PREVIEW_SECOND_CHALLENGER,
-        stake: base.stake_amount,
-        potential_payout: cancelledPot,
-      },
-      {
-        address: DESIGN_PREVIEW_THIRD_CHALLENGER,
         stake: base.stake_amount,
         potential_payout: cancelledPot,
       },
@@ -601,7 +554,7 @@ export default function VSDetailPage() {
   const pendingResolveRef = useRef(false);
   const attemptedFinalizeResolveTxRef = useRef<string | null>(null);
   const [pendingResolveTxHash, setPendingResolveTxHash] = useState<string | null>(null);
-  const [hasAttemptedResolve, setHasAttemptedResolve] = useState(false);
+  const [, setHasAttemptedResolve] = useState(false);
 
   const countdown = useCountdown(vs?.deadline || 0);
 
@@ -926,21 +879,43 @@ export default function VSDetailPage() {
     !missingPrivateInvite &&
     isVSJoinable(vs, address) &&
     isConnected;
-  const canResolve =
+  const canCancel = !isSampleVS && vs.state === "open" && isCreator;
+  const hasWinner = hasVSWinner(display);
+  const creatorRequestedResolve = Boolean(display.creator_requested_resolve);
+  const challengerRequestedResolve = Boolean(display.challenger_requested_resolve);
+  const isParticipant = isCreator || isOpponent;
+  const userRequestedResolve = isCreator
+    ? creatorRequestedResolve
+    : isOpponent
+      ? challengerRequestedResolve
+      : false;
+  const counterpartyRequestedResolve = isCreator
+    ? challengerRequestedResolve
+    : isOpponent
+      ? creatorRequestedResolve
+      : false;
+  const canRequestResolve =
     !isSampleVS &&
     display.state === "accepted" &&
     countdown.expired &&
-    isConnected;
-  const canCancel = !isSampleVS && vs.state === "open" && isCreator;
-  const hasWinner = hasVSWinner(display);
-  const showRetryResolve = canResolve && (hasAttemptedResolve || Boolean(pendingResolveTxHash));
+    isConnected &&
+    isParticipant &&
+    !userRequestedResolve;
+  const canResetResolveRequest =
+    !isSampleVS &&
+    display.state === "accepted" &&
+    countdown.expired &&
+    isConnected &&
+    isParticipant &&
+    (creatorRequestedResolve || challengerRequestedResolve);
+  const willTriggerResolution = canRequestResolve && counterpartyRequestedResolve;
+  const showRetryResolve = canRequestResolve && (display.resolve_attempts ?? 0) > 0;
   const challengerCount = getVSChallengerCount(display);
   const maxChallengers =
     typeof display.max_challengers === "number" && display.max_challengers > 0
       ? display.max_challengers
       : 1;
   const hasAnyChallenger = challengerCount > 0;
-  const isOneToMany = maxChallengers > 1;
   const isOpen = !hasAnyChallenger;
   const pool = getVSTotalPot(display);
   const challengers = formatChallengers(display);
@@ -956,9 +931,7 @@ export default function VSDetailPage() {
       ? tStamp("lost")
       : isDesignSampleWin
         ? tStamp("youWon")
-        : display.winner_side === "challengers" && challengerCount > 1
-          ? tStamp("challengersWon")
-          : tStamp("won", { address: shortenAddress(display.winner) });
+        : tStamp("won", { address: shortenAddress(display.winner) });
   const provenResultTone = isDesignSampleLost ? "lost" : isDesignSampleWin ? "win" : undefined;
   const winnerAmountLabel =
     !hasWinner
@@ -1056,54 +1029,98 @@ export default function VSDetailPage() {
     }
 
     setActionLoading("resolve");
-    setResolvePhase(0);
+    if (willTriggerResolution) {
+      setResolvePhase(0);
+    }
 
     // La terminal escribe letra por letra (muy lento). Sincronizamos el avance de fase
     // para que se puedan ver TODAS las líneas (incl. "Fetching results..." y "Issuing verdict").
     // Si el tx on-chain tarda menos, mantenemos la terminal visible hasta terminar la animación.
-    const t1 = setTimeout(() => setResolvePhase(1), 2600);
-    const t2 = setTimeout(() => setResolvePhase(2), 4600);
-    const t3 = setTimeout(() => setResolvePhase(3), 6500);
-    const t4 = setTimeout(() => setResolvePhase(4), 8400);
+    const t1 = willTriggerResolution ? setTimeout(() => setResolvePhase(1), 2600) : null;
+    const t2 = willTriggerResolution ? setTimeout(() => setResolvePhase(2), 4600) : null;
+    const t3 = willTriggerResolution ? setTimeout(() => setResolvePhase(3), 6500) : null;
+    const t4 = willTriggerResolution ? setTimeout(() => setResolvePhase(4), 8400) : null;
     const ANIM_TOTAL_MS = 9600;
     const startedAt = Date.now();
 
     try {
-      const result = await resolveVS(address!, vsId, inviteKey);
+      const result = await requestResolveVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
-      setHasAttemptedResolve(true);
+      setHasAttemptedResolve(willTriggerResolution);
       toast.success(
-        isPending ? t("submittedPending") : t("proven"),
+        willTriggerResolution
+          ? isPending
+            ? t("submittedPending")
+            : t("requestResolveTriggered")
+          : t("requestResolveStored"),
         (result.explorerTxHash || result.txHash) ? { description: `Tx: ${(result.explorerTxHash || result.txHash).slice(0, 10)}...${(result.explorerTxHash || result.txHash).slice(-8)}` } : undefined
       );
 
-      if (isPending) {
+      if (willTriggerResolution && isPending) {
         // Consensus hasn't finished — don't reveal the verdict yet.
         // A useEffect watches vs.state and will auto-reveal once the
         // data transitions to "resolved" (with a winner).
         pendingResolveRef.current = true;
         setPendingResolveTxHash(result.explorerTxHash || result.txHash || null);
-      } else {
+      } else if (willTriggerResolution) {
         setPendingResolveTxHash(null);
         setShowVerdict(true);
         setTimeout(() => setShowVerdict(false), 4000);
+      } else {
+        setPendingResolveTxHash(null);
       }
-      fetchVS();
+      void fetchVS();
 
       // Asegura que la terminal tenga tiempo de mostrar la última línea aunque la tx
       // se confirme rápido.
       const elapsed = Date.now() - startedAt;
-      if (elapsed < ANIM_TOTAL_MS) {
+      if (willTriggerResolution && elapsed < ANIM_TOTAL_MS) {
         await new Promise((r) => setTimeout(r, ANIM_TOTAL_MS - elapsed));
       }
     } catch (err: any) {
       toast.error(err.message || t("errorResolving"));
     } finally {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
-      setResolvePhase(-1);
+      if (t1) clearTimeout(t1);
+      if (t2) clearTimeout(t2);
+      if (t3) clearTimeout(t3);
+      if (t4) clearTimeout(t4);
+      if (willTriggerResolution) {
+        setResolvePhase(-1);
+      }
+      releaseLock?.();
+      setActionLoading(null);
+    }
+  }
+
+  async function handleResetResolveRequest() {
+    const walletReady = isConnected && !!address;
+    if (!walletReady) {
+      return;
+    }
+
+    let releaseLock: (() => void) | undefined;
+    try {
+      releaseLock = acquireTxLock(address);
+    } catch (lockErr: any) {
+      toast.error(lockErr.message);
+      return;
+    }
+
+    setActionLoading("resetResolve");
+    try {
+      const result = await resetVSResolveRequest(address!, vsId, inviteKey);
+      toast.success(
+        t("resetResolveRequestSuccess"),
+        (result.explorerTxHash || result.txHash)
+          ? {
+              description: `Tx: ${(result.explorerTxHash || result.txHash).slice(0, 10)}...${(result.explorerTxHash || result.txHash).slice(-8)}`,
+            }
+          : undefined
+      );
+      void fetchVS();
+    } catch (err: any) {
+      toast.error(err.message || t("resetResolveRequestError"));
+    } finally {
       releaseLock?.();
       setActionLoading(null);
     }
@@ -1256,7 +1273,7 @@ export default function VSDetailPage() {
           </>
         )}
 
-        {(actionLoading === "resolve" ||
+        {((actionLoading === "resolve" && willTriggerResolution) ||
           (isSampleVS && designLifecycleStep === 2)) && (
           <AnimatedItem>
             <ResolutionTerminal
@@ -1527,11 +1544,7 @@ export default function VSDetailPage() {
                     <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
                       {t("format")}
                     </div>
-                    <div className="font-semibold">
-                      {isOneToMany
-                        ? t("oneToManySummary", { count: maxChallengers })
-                        : t("headToHeadSummary")}
-                    </div>
+                    <div className="font-semibold">{t("headToHeadSummary")}</div>
                   </div>
                   <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
                     <div className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
@@ -1614,10 +1627,6 @@ export default function VSDetailPage() {
                     >
                       {actionLoading === "accept"
                         ? t("accepting")
-                        : isOneToMany
-                        ? t("joinAndStake", {
-                            amount: hasValidChallengeStake ? challengeStakeValue : vs.stake_amount,
-                          })
                         : t("acceptAndStake", {
                             amount: hasValidChallengeStake ? challengeStakeValue : vs.stake_amount,
                           })}
@@ -1626,8 +1635,6 @@ export default function VSDetailPage() {
                   <p className="text-xs text-pv-muted mt-3">
                     {fixedPayoutPreview !== null
                       ? t("challengeStakeHintFixed", { payout: fixedPayoutPreview })
-                      : isOneToMany
-                      ? t("challengeStakeHintPool")
                       : t("challengeStakeHintHeadToHead")}
                   </p>
                   <p className="text-xs text-pv-muted mt-2">
@@ -1640,21 +1647,111 @@ export default function VSDetailPage() {
                 <Button onClick={connect}>{t("connectToAccept")}</Button>
               )}
 
-              {canResolve && actionLoading !== "resolve" && (
+              {display.state === "accepted" && countdown.expired && (
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12]">
+                  <div className="space-y-4">
+                    <div>
+                      <div className="text-sm font-semibold text-pv-text">
+                        {t("resolutionStatusTitle")}
+                      </div>
+                      <p className="mt-1 text-sm text-pv-muted">
+                        {t("resolutionStatusHint")}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                          {t("creatorRequestedLabel")}
+                        </div>
+                        <div className="mt-1 font-semibold">
+                          {creatorRequestedResolve ? t("requestedStatus") : t("pendingStatus")}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                          {t("challengerRequestedLabel")}
+                        </div>
+                        <div className="mt-1 font-semibold">
+                          {challengerRequestedResolve ? t("requestedStatus") : t("pendingStatus")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                        {t("resolveAttemptsLabel")}
+                      </div>
+                      <div className="mt-1 font-semibold">{display.resolve_attempts ?? 0}</div>
+                    </div>
+                    {display.resolution_summary ? (
+                      <div className="rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                          {t("latestResolutionNote")}
+                        </div>
+                        <p className="mt-2 text-sm leading-relaxed text-pv-text/90">
+                          {display.resolution_summary}
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                </GlassCard>
+              )}
+
+              {canRequestResolve && actionLoading !== "resolve" && (
                 <GlassCard glass className="!rounded-2xl border border-pv-emerald/20">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-pv-text">
-                        {showRetryResolve ? t("retryResolveVS") : t("resolveVS")}
+                        {showRetryResolve ? t("retryResolveVS") : t("requestResolveVS")}
                       </div>
                       <p className="mt-1 text-sm text-pv-muted">
-                        {showRetryResolve ? t("retryResolveHint") : t("resolveNowHint")}
+                        {willTriggerResolution
+                          ? t("requestResolveReadyHint")
+                          : showRetryResolve
+                            ? t("retryResolveHint")
+                            : t("requestResolveHint")}
                       </p>
                     </div>
                     <Button variant="emerald" onClick={handleResolve}>
-                      {showRetryResolve ? t("retryResolveVS") : t("resolveVS")}
+                      {showRetryResolve ? t("retryResolveVS") : t("requestResolveVS")}
                     </Button>
                   </div>
+                </GlassCard>
+              )}
+
+              {canResetResolveRequest && actionLoading !== "resetResolve" && (
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12]">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-pv-text">
+                        {t("resetResolveRequest")}
+                      </div>
+                      <p className="mt-1 text-sm text-pv-muted">
+                        {t("resetResolveRequestHint")}
+                      </p>
+                    </div>
+                    <Button variant="ghost" onClick={handleResetResolveRequest}>
+                      {t("resetResolveRequest")}
+                    </Button>
+                  </div>
+                </GlassCard>
+              )}
+
+              {display.state === "accepted" &&
+                countdown.expired &&
+                isParticipant &&
+                userRequestedResolve &&
+                !counterpartyRequestedResolve &&
+                actionLoading !== "resolve" && (
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12] text-center">
+                  <p className="text-sm text-pv-muted">{t("waitingOtherResolveRequest")}</p>
+                </GlassCard>
+              )}
+
+              {display.state === "accepted" &&
+                countdown.expired &&
+                !isParticipant && (
+                <GlassCard glass className="!rounded-2xl border border-white/[0.12] text-center">
+                  <p className="text-sm text-pv-muted">{t("participantsMustRequestResolve")}</p>
                 </GlassCard>
               )}
 
@@ -1664,7 +1761,7 @@ export default function VSDetailPage() {
                 </GlassCard>
               )}
 
-              {(vs.state === "open" || (isOneToMany && isVSJoinable(vs))) &&
+              {vs.state === "open" &&
                 isCreator && (
                 <GlassCard
                   glass
@@ -1677,9 +1774,7 @@ export default function VSDetailPage() {
                       <Share2 size={14} className="shrink-0 text-pv-cyan" aria-hidden />
                       {isPrivateVS
                         ? t("sendPrivateLink")
-                        : isOneToMany
-                          ? t("sendLinkToChallengers")
-                          : t("sendLink")}
+                        : t("sendLink")}
                     </div>
                     {isPrivateVS && !inviteKey ? (
                       <p className="text-sm text-pv-muted">{t("privateLinkUnavailable")}</p>

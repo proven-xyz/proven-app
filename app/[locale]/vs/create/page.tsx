@@ -32,6 +32,7 @@ import {
   MIN_STAKE,
   PREFILLS,
   getShareUrl,
+  normalizeCategoryId,
   normalizeResolutionSource,
 } from "@/lib/constants";
 import type {
@@ -174,9 +175,9 @@ export default function CreatePage() {
   const [fixedOddsMultiple, setFixedOddsMultiple] = useState("2.00");
   const [handicapLine, setHandicapLine] = useState("");
   const [settlementRule, setSettlementRule] = useState("");
-  const [maxChallengers, setMaxChallengers] = useState(1);
+  const [, setMaxChallengers] = useState(1);
   /** Texto del 4º slot (custom); vacío cuando el valor coincide con preset 1/2/5 para mostrar placeholder "–". */
-  const [maxChallengersSlotDraft, setMaxChallengersSlotDraft] = useState("");
+  const [, setMaxChallengersSlotDraft] = useState("");
   const [visibility, setVisibility] =
     useState<CreateClaimParams["visibility"]>("public");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -226,7 +227,7 @@ export default function CreatePage() {
   const verificationQuestionHint = t(
     `guidance.${guidanceKey}.questionHint`,
   );
-  const isOneToMany = maxChallengers > 1;
+  const isOneToMany = false;
   const isPrivate = visibility === "private";
   const presetStakeHighlight =
     isPresetStakeAmount(stake) &&
@@ -391,7 +392,7 @@ export default function CreatePage() {
       setOpponentPos(source.counter_position ?? source.opponent_position);
       setUrl(source.resolution_url);
       setStake(source.creator_stake ?? source.stake_amount);
-      setCategory(source.category || "custom");
+      setCategory(normalizeCategoryId(source.category || "custom"));
       setMarketType(source.market_type ?? "binary");
       setOddsMode(source.odds_mode ?? "pool");
       setFixedOddsMultiple(
@@ -402,16 +403,11 @@ export default function CreatePage() {
       setHandicapLine(source.handicap_line ?? "");
       setSettlementRule(source.settlement_rule ?? "");
       setVisibility(source.is_private ? "private" : "public");
-      const mc =
-        source.max_challengers && source.max_challengers > 0
-          ? source.max_challengers
-          : 1;
-      setMaxChallengers(mc);
-      setMaxChallengersSlotDraft([1, 2, 5].includes(mc) ? "" : String(mc));
+      setMaxChallengers(1);
+      setMaxChallengersSlotDraft("");
       setAdvancedOpen(
         (source.market_type ?? "binary") !== "binary" ||
           (source.odds_mode ?? "pool") !== "pool" ||
-          (source.max_challengers ?? 1) > 1 ||
           Boolean(source.handicap_line) ||
           Boolean(source.settlement_rule)
       );
@@ -461,8 +457,9 @@ export default function CreatePage() {
   }, [address, created, createdInviteKey, createdPending, rematchId, t]);
 
   function prefill(catId: string) {
-    setCategory(catId);
-    const prefillValues = PREFILLS[catId];
+    const normalizedCategory = normalizeCategoryId(catId);
+    setCategory(normalizedCategory);
+    const prefillValues = PREFILLS[normalizedCategory];
     if (prefillValues) {
       setQuestion(prefillValues.q);
       setCreatorPos(prefillValues.a);
@@ -527,7 +524,7 @@ export default function CreatePage() {
       setCreatorPos(candidate.sideA);
       setOpponentPos(candidate.sideB);
       setUrl(candidate.primaryResolutionSource);
-      setCategory(candidate.category);
+      setCategory(normalizeCategoryId(candidate.category));
       setMarketType("binary");
       setOddsMode("pool");
       setFixedOddsMultiple("2.00");
@@ -602,7 +599,7 @@ export default function CreatePage() {
       return;
     }
 
-    const normalizedMaxChallengers = Math.max(1, Math.min(100, Math.floor(maxChallengers)));
+    const normalizedMaxChallengers = 1;
     const inviteKey = isPrivate ? generatePrivateInviteKey() : "";
     const params: CreateClaimParams = {
       question,
@@ -1017,7 +1014,7 @@ export default function CreatePage() {
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="rounded-full border border-pv-cyan/25 bg-pv-cyan/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-cyan">
-                                  {tCat(candidate.category)}
+                                  {tCat(normalizeCategoryId(candidate.category))}
                                 </span>
                                 <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                                   {candidate.confidenceScore}/100
@@ -1574,83 +1571,6 @@ export default function CreatePage() {
 
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                      {t("maxChallengers")}
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[1, 2, 5].map((value) => (
-                        <motion.button
-                          key={value}
-                          type="button"
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => {
-                            setMaxChallengers(value);
-                            setMaxChallengersSlotDraft("");
-                          }}
-                          aria-pressed={maxChallengers === value}
-                          className={`min-h-[2.75rem] min-w-0 rounded-lg border px-1.5 py-2 font-display text-[11px] font-bold leading-tight transition-[border-color,background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg sm:min-h-[3rem] sm:px-2 sm:py-2.5 sm:text-xs ${
-                            maxChallengers === value
-                              ? "border-pv-emerald bg-pv-emerald/[0.12] text-pv-emerald shadow-[0_0_16px_-8px_rgba(78,222,163,0.3)]"
-                              : "border border-white/[0.12] bg-pv-surface text-pv-muted hover:border-pv-emerald/35 hover:text-pv-emerald"
-                          }`}
-                        >
-                          {value}
-                        </motion.button>
-                      ))}
-                      <div
-                        className={`flex min-h-[2.75rem] min-w-0 items-center justify-center rounded-lg border px-1.5 py-2 transition-[border-color,background-color,color,box-shadow] sm:min-h-[3rem] sm:px-2 sm:py-2.5 ${
-                          [1, 2, 5].includes(maxChallengers)
-                            ? "border border-white/[0.12] bg-pv-surface"
-                            : "border-pv-emerald bg-pv-emerald/[0.12] text-pv-emerald shadow-[0_0_16px_-8px_rgba(78,222,163,0.3)]"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="off"
-                          aria-label={t("maxChallengers")}
-                          placeholder={t("maxChallengersCustomPlaceholder")}
-                          className="w-full min-w-0 bg-transparent text-center font-display text-xs font-bold tabular-nums text-inherit outline-none placeholder:font-normal placeholder:text-pv-muted/45 focus:outline-none sm:text-sm"
-                          value={maxChallengersSlotDraft}
-                          onChange={(event) => {
-                            const raw = event.target.value.replace(/\D/g, "");
-                            setMaxChallengersSlotDraft(raw);
-                            if (raw === "") {
-                              setMaxChallengers(1);
-                              return;
-                            }
-                            const n = parseInt(raw, 10);
-                            if (Number.isFinite(n) && n >= 1 && n <= 100) {
-                              setMaxChallengers(n);
-                            }
-                          }}
-                          onBlur={() => {
-                            const raw = maxChallengersSlotDraft.replace(/\D/g, "");
-                            if (raw === "") {
-                              setMaxChallengers(1);
-                              setMaxChallengersSlotDraft("");
-                              return;
-                            }
-                            const n = parseInt(raw, 10);
-                            if (!Number.isFinite(n) || n < 1) {
-                              setMaxChallengers(1);
-                              setMaxChallengersSlotDraft("");
-                              return;
-                            }
-                            const clamped = Math.min(100, Math.max(1, n));
-                            setMaxChallengers(clamped);
-                            if ([1, 2, 5].includes(clamped)) {
-                              setMaxChallengersSlotDraft("");
-                            } else {
-                              setMaxChallengersSlotDraft(String(clamped));
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("handicapLine")}
                     </label>
                     <input
@@ -1747,11 +1667,7 @@ export default function CreatePage() {
                   draftId={ticketDraftId}
                   marketTypeLabel={t(`marketTypes.${marketType}`)}
                   oddsModeLabel={t(`oddsModes.${oddsMode}`)}
-                  formatLabel={
-                    isOneToMany
-                      ? t("oneToManySummary", { count: maxChallengers })
-                      : t("headToHeadSummary")
-                  }
+                  formatLabel={t("headToHeadSummary")}
                   visibilityLabel={
                     isPrivate ? t("visibilityPrivate") : t("visibilityPublic")
                   }

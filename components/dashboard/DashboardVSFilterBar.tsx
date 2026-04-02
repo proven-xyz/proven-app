@@ -51,7 +51,6 @@ export default function DashboardVSFilterBar({
 }: DashboardVSFilterBarProps) {
   const tDash = useTranslations("dashboard");
   const tExplore = useTranslations("explore");
-  const tCat = useTranslations("categories");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   return (
@@ -180,18 +179,6 @@ export default function DashboardVSFilterBar({
                     {tExplore(labelKey)}
                   </button>
                 ))}
-                <button
-                  type="button"
-                  aria-pressed={categoryFilter === "clima"}
-                  onClick={() => onCategoryChange("clima")}
-                  className={`${advancedFilterPillBase} ${
-                    categoryFilter === "clima"
-                      ? advancedPillActive
-                      : advancedPillInactive
-                  }`}
-                >
-                  <span className="uppercase">{tCat("clima")}</span>
-                </button>
               </div>
             </div>
             <div className="min-w-0">

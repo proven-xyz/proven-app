@@ -7,7 +7,6 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
   getAllVSSnapshot,
-  getVSChallengerCount,
   getVSSingleWinnerPayout,
   getVSTotalPot,
   hasVSWinner,
@@ -261,9 +260,9 @@ export default function HomePage() {
         state: "open" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 8,
+        max_challengers: 1,
       },
-      challengersCount: 7,
+      challengersCount: 0,
     },
     {
       vs: {
@@ -271,13 +270,13 @@ export default function HomePage() {
         question: "GPT-5 Announced by OpenAI before June",
         stake_amount: 4,
         opponent: ZERO_ADDRESS,
-        category: "tech",
+        category: "custom",
         state: "open" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 20,
+        max_challengers: 1,
       },
-      challengersCount: 13,
+      challengersCount: 0,
     },
     {
       vs: {
@@ -285,13 +284,13 @@ export default function HomePage() {
         question: "Lakers win the western conference",
         stake_amount: 8,
         opponent: ZERO_ADDRESS,
-        category: "deportes",
+        category: "sports",
         state: "open" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 8,
+        max_challengers: 1,
       },
-      challengersCount: 4,
+      challengersCount: 0,
     },
     {
       vs: {
@@ -303,9 +302,9 @@ export default function HomePage() {
         state: "accepted" as const,
         market_type: "binary" as const,
         odds_mode: "fixed" as const,
-        max_challengers: 5,
+        max_challengers: 1,
       },
-      challengersCount: 3,
+      challengersCount: 1,
     },
     {
       vs: {
@@ -317,9 +316,9 @@ export default function HomePage() {
         state: "resolved" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 15,
+        max_challengers: 1,
       },
-      challengersCount: 11,
+      challengersCount: 1,
     },
   ];
 
@@ -867,11 +866,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
               {decidedResolvedVS.slice(0, 4).map((vs) => {
                 const payout = getVSSingleWinnerPayout(vs);
-                const winnerLabel =
-                  vs.winner_side === "challengers" &&
-                  getVSChallengerCount(vs) > 1
-                    ? tStamp("challengersWon")
-                    : tStamp("won", { address: shortenAddress(vs.winner) });
+                const winnerLabel = tStamp("won", { address: shortenAddress(vs.winner) });
 
                 return (
                 <Link key={vs.id} href={`/vs/${vs.id}`} className="block group">
