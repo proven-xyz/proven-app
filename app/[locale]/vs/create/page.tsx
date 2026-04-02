@@ -245,7 +245,14 @@ export default function CreatePage() {
     }
     return `${customDeadlineDate}T${customDeadlineTime}`;
   }, [customDeadlineDate, customDeadlineTime]);
-  const minCustomDeadlineDate = formatLocalDateInputValue(new Date());
+
+  /** `min` en type="date" no puede calcularse en SSR: servidor vs navegador = distinto día calendario → hydration mismatch. */
+  const [customDateInputMin, setCustomDateInputMin] = useState<
+    string | undefined
+  >(undefined);
+  useLayoutEffect(() => {
+    setCustomDateInputMin(formatLocalDateInputValue(new Date()));
+  }, []);
 
   function applyDeadlinePreset(seconds: number) {
     const presetDate = new Date(Date.now() + seconds * 1000);
@@ -1410,7 +1417,7 @@ export default function CreatePage() {
                   <Input
                     type="date"
                     label={`${t("exactDate")} *`}
-                    min={minCustomDeadlineDate}
+                    min={customDateInputMin}
                     value={customDeadlineDate}
                     onChange={(event) => {
                       setDeadlinePreset(null);
