@@ -223,7 +223,7 @@ export default function Header() {
               href="/explorer"
               className="btn-compact-primary px-4 py-1.5 text-[12px] focus-ring sm:text-[13px]"
             >
-              {t("explore")}
+              {t("launchApp")}
             </Link>
           </div>
         ) : (

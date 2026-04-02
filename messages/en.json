@@ -29,7 +29,8 @@
     "challenge": "+ Issue Claim",
     "challengeMobile": "Issue",
     "explore": "Arena",
-    "myVS": "Record",
+    "launchApp": "Launch App",
+    "myVS": "Dashboard",
     "messages": "Messages",
     "messagesMobile": "Messages",
     "openMenu": "Open menu",
@@ -58,9 +59,9 @@
     "emptyHeroTitleLine1Lead": "PROVE IT",
     "emptyHeroTitleOnChainSegment": "ON-CHAIN.",
     "emptyHeroTitleLine2Lead": "WITH",
-    "emptyHeroSubtitle": "Issue a claim, link the source, and let PROVEN settle it.",
-    "heroChallengeSomeone": "ISSUE A CLAIM",
-    "heroExploreChallenges": "ENTER THE ARENA",
+    "emptyHeroSubtitle": "Stand behind your claim and PROVEN settles it on-chain.",
+    "heroChallengeSomeone": "CHALLENGE SOMEONE",
+    "heroExploreChallenges": "EXPLORE CHALLENGES",
     "challengeSomeone": "Issue a Claim",
     "connectWalletToStart": "Connect Wallet to start",
     "exploreOpenVS": "Enter the Arena",
@@ -508,7 +509,7 @@
     }
   },
   "dashboard": {
-    "title": "CAREER RECORD",
+    "title": "MY DASHBOARD",
     "total": "{count} total",
     "new": "+ New",
     "record": "Record (W-L)",
@@ -544,6 +545,10 @@
     "overviewNetTitle": "Net profit",
     "overviewNetValue": "$120.73",
     "overviewNetSub": "18% ROI recorded",
+    "overviewWinsTitle": "Challenges won",
+    "overviewLossesTitle": "Challenges lost",
+    "overviewWinRateTitle": "Win rate",
+    "overviewTotalClaimedTitle": "Total claimed",
     "holdings": {
       "sectionAria": "Stake holdings",
       "sectionTitle": "Active Exposure",
@@ -583,6 +588,9 @@
       "poolPill": {
         "closed": "Closed"
       },
+      "demoBadge": "Sample",
+      "vsTitlePrivate": "Private challenge {id}",
+      "vsTitleOpen": "Challenge {id}",
       "items": {
         "canelo": {
           "title": "Pereira vs Canelo · Over 7 rounds",

@@ -6,15 +6,79 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { ChevronDown, Compass } from "lucide-react";
 import {
-  DASHBOARD_RISK_PROFILE_MOCK,
   DASHBOARD_STAKE_HOLDING_IDS,
   DASHBOARD_STAKE_HOLDING_META,
   dashboardStakeHoldingDetailHref,
   getDashboardHoldingFooterPoolPill,
   type DashboardStakeHoldingId,
 } from "@/lib/dashboardStakeHoldingsMock";
+import {
+  type VSData,
+  getVSChallengerCount,
+  getVSTotalPot,
+  isVSPrivate,
+} from "@/lib/contract";
 
 const ease = [0.25, 0.1, 0.25, 1] as const;
+
+type RiskProfileKey = "conservative" | "moderate" | "aggressive";
+
+function clamp01(n: number) {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function toRiskProfilePct(wins: number, losses: number): Array<{ key: RiskProfileKey; pct: number }> {
+  const safeWins = Number.isFinite(wins) && wins > 0 ? wins : 0;
+  const safeLosses = Number.isFinite(losses) && losses > 0 ? losses : 0;
+  const total = safeWins + safeLosses;
+
+  // Start at 0% across the board until the user has results.
+  if (total <= 0) {
+    return [
+      { key: "conservative", pct: 0 },
+      { key: "moderate", pct: 0 },
+      { key: "aggressive", pct: 0 },
+    ];
+  }
+
+  const wr = clamp01(safeWins / total); // 0..1
+
+  // Map win-rate to a stable 3-bucket distribution that always sums to 100.
+  // - conservative rises as wr -> 1
+  // - aggressive rises as wr -> 0
+  // - moderate peaks around wr ~= 0.5
+  const conservativeRaw = clamp01((wr - 0.4) / 0.6);
+  const aggressiveRaw = clamp01((0.6 - wr) / 0.6);
+  const moderateRaw = clamp01(1 - Math.abs(wr - 0.5) * 2);
+
+  const sum = conservativeRaw + moderateRaw + aggressiveRaw;
+  const norm = sum > 0 ? 1 / sum : 0;
+
+  const raw = [
+    { key: "conservative" as const, v: conservativeRaw * norm },
+    { key: "moderate" as const, v: moderateRaw * norm },
+    { key: "aggressive" as const, v: aggressiveRaw * norm },
+  ];
+
+  // Round and force sum == 100 (fix rounding drift by adjusting the max bucket).
+  const rounded = raw.map((r) => ({ key: r.key, pct: Math.round(r.v * 100) }));
+  const roundedSum = rounded.reduce((acc, r) => acc + r.pct, 0);
+  const drift = 100 - roundedSum;
+
+  if (drift !== 0) {
+    let bestIdx = 0;
+    for (let i = 1; i < raw.length; i += 1) {
+      if (raw[i].v > raw[bestIdx].v) bestIdx = i;
+    }
+    rounded[bestIdx] = {
+      ...rounded[bestIdx],
+      pct: Math.max(0, Math.min(100, rounded[bestIdx].pct + drift)),
+    };
+  }
+
+  return rounded;
+}
 
 /** Campos traducidos usados para la búsqueda (misma `q` que el filtro VS del dashboard). */
 const HOLDING_SEARCH_FIELDS = [
@@ -268,6 +332,261 @@ function StakeHoldingRow({
             <span className="inline-flex items-center rounded border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-text sm:text-[10px]">
               {visibilityLine}
             </span>
+            <span className="inline-flex items-center rounded border border-white/[0.14] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+              {t("holdings.demoBadge")}
+            </span>
+          </div>
+        </div>
+        <Link
+          href={detailHref}
+          className="shrink-0 self-end font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
+        >
+          {t("holdings.viewDetails")}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function StakeHoldingVSRow({
+  vs,
+  isOpen,
+  onToggle,
+}: {
+  vs: VSData;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const t = useTranslations("dashboard");
+  const tCat = useTranslations("categories");
+  const tDetail = useTranslations("vsDetail");
+
+  const marketLabel = vs.market_type
+    ? tDetail(`marketTypes.${vs.market_type}` as never)
+    : "";
+  const oddsLabel = vs.odds_mode
+    ? tDetail(`oddsModes.${vs.odds_mode}` as never)
+    : "";
+
+  const createdAtDate =
+    typeof vs.deadline === "number" && vs.deadline > 0
+      ? new Date(vs.deadline * 1000)
+      : null;
+  const dateStamp = createdAtDate
+    ? new Intl.DateTimeFormat(undefined, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(createdAtDate)
+    : "";
+  const timeStamp = createdAtDate
+    ? new Intl.DateTimeFormat(undefined, {
+        hour: "2-digit",
+        minute: "2-digit",
+        hourCycle: "h23",
+      }).format(createdAtDate)
+    : "";
+  const metaLine = createdAtDate
+    ? `${tCat(vs.category as never)} — ${dateStamp} ${timeStamp}`
+    : tCat(vs.category as never);
+
+  const participantCount = 1 + getVSChallengerCount(vs);
+  const isPrivate = isVSPrivate(vs);
+
+  const idLabel = `#${vs.id}`;
+  const titleLine = vs.question?.trim()
+    ? vs.question
+    : isPrivate
+      ? t("holdings.vsTitlePrivate", { id: idLabel })
+      : t("holdings.vsTitleOpen", { id: idLabel });
+
+  const status: "open" | "accepted" | "resolved" =
+    vs.state === "open" || vs.state === "accepted" ? vs.state : "resolved";
+
+  const footerStatusLabel =
+    status === "accepted"
+      ? t("holdings.status.accepted")
+      : status === "open"
+      ? t("holdings.status.open")
+      : t("holdings.status.resolved");
+
+  const maxChallengers =
+    typeof vs.max_challengers === "number" && vs.max_challengers > 0
+      ? vs.max_challengers
+      : null;
+  const maxParticipants = maxChallengers != null ? 1 + maxChallengers : null;
+  const participantsLine =
+    isPrivate && maxParticipants != null
+      ? t("holdings.footerParticipantsCapped", {
+          current: participantCount,
+          max: maxParticipants,
+        })
+      : t("holdings.footerParticipants", { count: participantCount });
+
+  const visibilityLine = isPrivate
+    ? t("holdings.visibilityPrivate")
+    : t("holdings.visibilityPublic");
+
+  const userStake =
+    typeof vs.creator_stake === "number" && vs.creator_stake > 0
+      ? vs.creator_stake
+      : vs.stake_amount;
+  const totalPot = getVSTotalPot(vs);
+  const winEstimate = totalPot;
+  const returnMultiple =
+    userStake > 0 ? Math.round((winEstimate / userStake) * 100) / 100 : 0;
+
+  const stakeDisplay = `${userStake} GEN`;
+  const winEstimateDisplay = `${winEstimate} GEN`;
+  const returnMultipleDisplay =
+    returnMultiple > 0 ? `${returnMultiple.toFixed(2)}×` : "—";
+
+  const panelId = `holding-vs-panel-${vs.id}`;
+  const buttonId = `holding-vs-trigger-${vs.id}`;
+  const detailHref = `/vs/${vs.id}`;
+
+  return (
+    <div className="rounded-lg border border-white/[0.12] bg-pv-surface/80">
+      <div className="flex items-stretch gap-3 px-3 sm:gap-4 sm:px-4">
+        <div className="flex shrink-0 items-center justify-center self-center py-3 sm:py-4">
+          <StakeHoldingVerifyIcon className="h-9 w-9 text-pv-emerald sm:h-10 sm:w-10" />
+        </div>
+        <button
+          id={buttonId}
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls={panelId}
+          onClick={onToggle}
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 py-3 pr-3 text-left sm:py-4 sm:pr-4"
+        >
+          <div className="min-w-0 flex-1">
+            <h3 className="font-display text-[13px] font-bold uppercase leading-snug tracking-tight text-pv-text sm:text-sm">
+              {titleLine}
+            </h3>
+            <p className="mt-1 font-mono text-[10px] font-medium uppercase tracking-[0.12em] text-pv-muted sm:text-[11px]">
+              {metaLine}
+            </p>
+          </div>
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.12] bg-white/[0.04] text-pv-muted transition-[transform,color,border-color] duration-300 ${
+              isOpen ? "text-pv-emerald border-pv-emerald/25" : ""
+            }`}
+          >
+            <ChevronDown
+              size={18}
+              className={`transition-transform duration-300 ${
+                isOpen ? "-rotate-180" : ""
+              }`}
+              aria-hidden
+            />
+          </span>
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isOpen ? (
+          <motion.div
+            id={panelId}
+            role="region"
+            aria-labelledby={buttonId}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease }}
+            className="overflow-hidden border-t border-white/[0.08]"
+          >
+            <div className="space-y-4 px-3 pb-4 pt-3 sm:space-y-5 sm:px-4 sm:pb-5 sm:pt-4">
+              <div
+                className="flex flex-wrap items-center gap-2"
+                role="group"
+                aria-label={t("holdings.chipsGroupAria")}
+              >
+                <span className="inline-flex shrink-0 items-center rounded-md border border-white/[0.1] bg-white/[0.03] px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-pv-text">
+                  {tCat(vs.category as never)}
+                </span>
+                <span className="inline-flex min-w-0 items-center rounded-md bg-white/[0.03] px-2 py-1 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-pv-muted ring-1 ring-white/[0.1]">
+                  ID #{vs.id}
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-2 border-b border-white/[0.06] pb-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-6 sm:gap-y-1">
+                <p className="min-w-0 flex-1 sm:max-w-[14rem]">
+                  <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                    {t("holdings.marketTypeShort")}
+                  </span>
+                  <span className="mt-0.5 block font-display text-xs font-bold uppercase leading-snug tracking-tight text-pv-text sm:text-[13px]">
+                    {marketLabel}
+                  </span>
+                </p>
+                <p className="min-w-0 flex-1 sm:max-w-[14rem]">
+                  <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                    {t("holdings.oddsModeShort")}
+                  </span>
+                  <span className="mt-0.5 block font-display text-xs font-bold uppercase leading-snug tracking-tight text-pv-text sm:text-[13px]">
+                    {oddsLabel}
+                  </span>
+                </p>
+              </div>
+
+              <div className="space-y-2 text-left">
+                <p className="text-sm font-semibold leading-snug text-pv-text sm:text-[15px] sm:leading-relaxed">
+                  {vs.creator_position}
+                </p>
+                <p className="text-xs leading-relaxed text-pv-muted sm:text-[13px]">
+                  {vs.opponent_position}
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-[0.2em] text-pv-muted sm:mb-3 sm:text-[11px] sm:tracking-[0.22em]">
+                  {t("holdings.positionSummaryLabel")}
+                </p>
+                <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:max-w-2xl sm:grid-cols-3 sm:gap-2.5">
+                  <div className={HOLDING_STAT_CELL}>
+                    <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                      {t("holdings.yourStake")}
+                    </span>
+                    <span className="mt-1 block font-mono text-sm font-bold tabular-nums text-pv-text sm:text-base">
+                      {stakeDisplay}
+                    </span>
+                  </div>
+                  <div
+                    className={`${HOLDING_STAT_CELL} border-pv-emerald/20 bg-pv-emerald/[0.06]`}
+                  >
+                    <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                      {t("holdings.winEstimate")}
+                    </span>
+                    <span className="mt-1 block font-mono text-sm font-bold tabular-nums text-pv-emerald sm:text-base">
+                      {winEstimateDisplay}
+                    </span>
+                  </div>
+                  <div className={HOLDING_STAT_CELL}>
+                    <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                      {t("holdings.returnMultiple")}
+                    </span>
+                    <span className="mt-1 block font-mono text-sm font-bold tabular-nums text-pv-text sm:text-base">
+                      {returnMultipleDisplay}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <div className="flex flex-col gap-3 border-t border-white/[0.06] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:px-4 sm:py-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-2 sm:gap-x-4">
+          <span className="inline-flex items-center rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+            {footerStatusLabel}
+          </span>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-4">
+            <span className="font-mono text-[10px] font-semibold tabular-nums text-pv-text sm:text-[11px]">
+              {participantsLine}
+            </span>
+            <span className="inline-flex items-center rounded border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-text sm:text-[10px]">
+              {visibilityLine}
+            </span>
           </div>
         </div>
         <Link
@@ -286,11 +605,13 @@ function StakeHoldingsColumn({
   setOpenId,
   headerExtra,
   stakeHoldingsSearchQuery,
+  featuredVS,
 }: {
-  openId: DashboardStakeHoldingId | null;
-  setOpenId: (id: DashboardStakeHoldingId | null) => void;
+  openId: DashboardStakeHoldingId | "featured" | null;
+  setOpenId: (id: DashboardStakeHoldingId | "featured" | null) => void;
   headerExtra?: ReactNode;
   stakeHoldingsSearchQuery: string;
+  featuredVS?: VSData | null;
 }) {
   const t = useTranslations("dashboard");
 
@@ -303,13 +624,18 @@ function StakeHoldingsColumn({
   );
 
   useEffect(() => {
-    if (openId !== null && !visibleHoldingIds.includes(openId)) {
+    if (
+      openId !== null &&
+      openId !== "featured" &&
+      !visibleHoldingIds.includes(openId)
+    ) {
       setOpenId(null);
     }
   }, [openId, visibleHoldingIds, setOpenId]);
 
-  const showSearchEmpty =
+  const mockSearchEmpty =
     stakeHoldingsSearchQuery.trim().length > 0 && visibleHoldingIds.length === 0;
+  const listIsEmpty = !featuredVS && mockSearchEmpty;
 
   return (
     <section
@@ -320,7 +646,7 @@ function StakeHoldingsColumn({
         {t("holdings.sectionTitle")}
       </h2>
       {headerExtra ? <div className="mb-4">{headerExtra}</div> : null}
-      {showSearchEmpty ? (
+      {listIsEmpty ? (
         <p
           className="rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm"
           role="status"
@@ -329,61 +655,103 @@ function StakeHoldingsColumn({
         </p>
       ) : (
         <div className="flex flex-col gap-3 sm:gap-4">
-          {visibleHoldingIds.map((id) => (
-            <StakeHoldingRow
-              key={id}
-              id={id}
-              isOpen={openId === id}
-              onToggle={() => setOpenId(openId === id ? null : id)}
+          {featuredVS ? (
+            <StakeHoldingVSRow
+              vs={featuredVS}
+              isOpen={openId === "featured"}
+              onToggle={() =>
+                setOpenId(openId === "featured" ? null : "featured")
+              }
             />
-          ))}
+          ) : null}
+          {mockSearchEmpty ? (
+            <p
+              className="rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm"
+              role="status"
+            >
+              {t("holdings.searchEmpty")}
+            </p>
+          ) : (
+            visibleHoldingIds.map((id) => (
+              <StakeHoldingRow
+                key={id}
+                id={id}
+                isOpen={openId === id}
+                onToggle={() => setOpenId(openId === id ? null : id)}
+              />
+            ))
+          )}
         </div>
       )}
     </section>
   );
 }
 
-function RiskAndActionsColumn() {
+export function RiskAllocationProfileCard({
+  wins,
+  losses,
+  className = "",
+}: {
+  wins: number;
+  losses: number;
+  className?: string;
+}) {
+  const t = useTranslations("dashboard");
+  const riskProfile = useMemo(
+    () => toRiskProfilePct(wins, losses),
+    [wins, losses]
+  );
+
+  return (
+    <section
+      className={`rounded-lg border border-white/[0.12] bg-pv-surface p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5 ${className}`}
+      aria-label={t("holdings.riskSectionAria")}
+    >
+      <h2 className="mb-5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:text-[11px] sm:tracking-[0.2em]">
+        {t("holdings.riskTitle")}
+      </h2>
+      <div className="space-y-5">
+        {riskProfile.map((row) => (
+          <div key={row.key}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                {t(`holdings.risk.${row.key}` as never)}
+              </span>
+              <span className="font-mono text-[11px] font-bold tabular-nums text-pv-text">
+                {row.pct}%
+              </span>
+            </div>
+            <div
+              className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
+              role="progressbar"
+              aria-valuenow={row.pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <motion.div
+                className="h-full rounded-full bg-pv-emerald"
+                initial={{ width: 0 }}
+                animate={{ width: `${row.pct}%` }}
+                transition={{ duration: 0.65, ease, delay: 0.05 }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }) {
   const t = useTranslations("dashboard");
 
   return (
     <aside className="flex min-w-0 flex-col gap-4 lg:col-span-5 xl:col-span-4">
-      <section
-        className="rounded-lg border border-white/[0.12] bg-pv-surface p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5"
-        aria-label={t("holdings.riskSectionAria")}
-      >
-        <h2 className="mb-5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:text-[11px] sm:tracking-[0.2em]">
-          {t("holdings.riskTitle")}
-        </h2>
-        <div className="space-y-5">
-          {DASHBOARD_RISK_PROFILE_MOCK.map((row) => (
-            <div key={row.key}>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                  {t(`holdings.risk.${row.key}` as never)}
-                </span>
-                <span className="font-mono text-[11px] font-bold tabular-nums text-pv-text">
-                  {row.pct}%
-                </span>
-              </div>
-              <div
-                className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]"
-                role="progressbar"
-                aria-valuenow={row.pct}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <motion.div
-                  className="h-full rounded-full bg-pv-emerald"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${row.pct}%` }}
-                  transition={{ duration: 0.65, ease, delay: 0.05 }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <RiskAllocationProfileCard
+        wins={wins}
+        losses={losses}
+        className="hidden lg:block"
+      />
 
       <section
         className="rounded-lg border border-white/[0.1] bg-pv-surface/50 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5"
@@ -442,12 +810,20 @@ function RiskAndActionsColumn() {
 export default function DashboardPortfolioSection({
   stakeHoldingsHeaderExtra,
   stakeHoldingsSearchQuery = "",
+  featuredVS,
+  wins = 0,
+  losses = 0,
 }: {
   stakeHoldingsHeaderExtra?: ReactNode;
   /** Misma cadena que el input de búsqueda del filtro VS (filtra filas de tenencias). */
   stakeHoldingsSearchQuery?: string;
+  featuredVS?: VSData | null;
+  wins?: number;
+  losses?: number;
 }) {
-  const [openId, setOpenId] = useState<DashboardStakeHoldingId | null>(null);
+  const [openId, setOpenId] = useState<
+    DashboardStakeHoldingId | "featured" | null
+  >(null);
 
   return (
     <div className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">
@@ -456,8 +832,9 @@ export default function DashboardPortfolioSection({
         setOpenId={setOpenId}
         headerExtra={stakeHoldingsHeaderExtra}
         stakeHoldingsSearchQuery={stakeHoldingsSearchQuery}
+        featuredVS={featuredVS}
       />
-      <RiskAndActionsColumn />
+      <RiskAndActionsColumn wins={wins} losses={losses} />
     </div>
   );
 }

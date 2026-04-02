@@ -23,7 +23,9 @@ import {
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Badge, VSStrip, LiveStat } from "@/components/ui";
 import EmptyState from "@/components/EmptyState";
-import DashboardPortfolioSection from "@/components/dashboard/DashboardPortfolioSection";
+import DashboardPortfolioSection, {
+  RiskAllocationProfileCard,
+} from "@/components/dashboard/DashboardPortfolioSection";
 import DashboardWalletGate from "@/components/dashboard/DashboardWalletGate";
 import DashboardVSFilterBar from "@/components/dashboard/DashboardVSFilterBar";
 import CacheFreshnessControls from "@/components/CacheFreshnessControls";
@@ -128,6 +130,10 @@ export default function DashboardPage() {
       }),
     [tabFiltered, categoryFilter, minStakeFilter, searchQuery]
   );
+
+  const featuredVS =
+    filtered.find((vs) => vs.state === "open" || vs.state === "accepted") ??
+    null;
 
   if (!isConnected) {
     return (
@@ -247,32 +253,44 @@ export default function DashboardPage() {
         </header>
 
         <section
-          className="mb-10 mt-5 border-t border-white/[0.06] pt-8 sm:mt-6 sm:pt-10"
+          className={`mb-10 mt-5 border-t border-white/[0.06] pt-8 sm:mt-6 sm:pt-10 ${loading ? "opacity-70" : ""}`}
           aria-label={t("overviewSectionAria")}
+          aria-busy={loading}
         >
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          <div className="grid grid-cols-2 items-start gap-3 sm:gap-4 lg:grid-cols-4">
             {(
               [
                 {
-                  key: "active",
-                  titleKey: "overviewActiveTitle",
-                  valueKey: "overviewActiveValue",
-                  subKey: "overviewActiveSub",
+                  key: "wins",
+                  titleKey: "overviewWinsTitle" as const,
+                  value: loading ? "—" : String(won),
+                  sub: "",
+                  valueClass: "text-pv-emerald",
                   subClass: "text-pv-emerald",
                 },
                 {
-                  key: "bankroll",
-                  titleKey: "overviewBankrollTitle",
-                  valueKey: "overviewBankrollValue",
-                  subKey: "overviewBankrollSub",
-                  subClass: "text-pv-muted",
+                  key: "losses",
+                  titleKey: "overviewLossesTitle" as const,
+                  value: loading ? "—" : String(lost),
+                  sub: "",
+                  valueClass: "text-pv-danger",
+                  subClass: "text-pv-danger",
                 },
                 {
-                  key: "net",
-                  titleKey: "overviewNetTitle",
-                  valueKey: "overviewNetValue",
-                  subKey: "overviewNetSub",
-                  subClass: "text-pv-muted",
+                  key: "winRate",
+                  titleKey: "overviewWinRateTitle" as const,
+                  value: loading ? "—" : `${winRate}%`,
+                  sub: "",
+                  valueClass: "text-pv-emerald",
+                  subClass: "text-pv-emerald",
+                },
+                {
+                  key: "claimed",
+                  titleKey: "overviewTotalClaimedTitle" as const,
+                  value: loading ? "—" : `${totalWon} GEN`,
+                  sub: "",
+                  valueClass: "text-pv-gold",
+                  subClass: "text-pv-gold",
                 },
               ] as const
             ).map((card, i) => (
@@ -285,33 +303,44 @@ export default function DashboardPage() {
                   delay: 0.08 + i * 0.07,
                   ease: listItemEase,
                 }}
-                className="group relative flex min-h-[140px] flex-col overflow-hidden rounded-2xl border border-white/[0.10] bg-pv-bg/60 p-5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] transition-[border-color,background-color] duration-300 hover:border-pv-emerald/20 sm:min-h-[152px] sm:p-6"
+                className="group/col relative flex flex-col overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface p-5 transition-[border-color,background-color] duration-300 hover:border-pv-emerald/28 hover:bg-[#242323] sm:p-6"
               >
                 <div
-                  className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover:h-full"
+                  className="pointer-events-none absolute left-0 top-0 h-0 w-1 bg-pv-emerald transition-[height] duration-500 ease-out group-hover/col:h-full"
                   aria-hidden
                 />
-                <div className="relative z-10 flex min-h-0 flex-1 flex-col text-left">
+                <div className="relative z-10 flex flex-col text-left">
                   <h2 className="font-display text-[10px] font-bold uppercase leading-snug tracking-[0.16em] text-pv-muted sm:text-[11px]">
                     {t(card.titleKey)}
                   </h2>
-                  <p className="mt-3 font-mono text-3xl font-bold tabular-nums leading-none tracking-tight text-pv-text sm:text-4xl">
-                    {t(card.valueKey)}
-                  </p>
                   <p
-                    className={`mt-auto pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] sm:text-[11px] ${card.subClass}`}
+                    className={`mt-3 font-mono text-3xl font-bold tabular-nums leading-none tracking-tight sm:text-4xl ${card.valueClass}`}
                   >
-                    {t(card.subKey)}
+                    {card.value}
                   </p>
+                  {card.sub ? (
+                    <p
+                      className={`mt-auto pt-4 font-mono text-[10px] font-bold uppercase leading-relaxed tracking-[0.12em] sm:text-[11px] ${card.subClass}`}
+                    >
+                      {card.sub}
+                    </p>
+                  ) : null}
                 </div>
               </motion.article>
             ))}
           </div>
         </section>
+
+        <div className="mt-2 mb-8 lg:hidden">
+          <RiskAllocationProfileCard wins={won} losses={lost} />
+        </div>
       </AnimatedItem>
 
       <AnimatedItem>
         <DashboardPortfolioSection
+          featuredVS={featuredVS}
+          wins={won}
+          losses={lost}
           stakeHoldingsSearchQuery={searchQuery}
           stakeHoldingsHeaderExtra={
             <DashboardVSFilterBar

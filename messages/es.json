@@ -29,7 +29,8 @@
     "challenge": "+ Desafiar",
     "challengeMobile": "Desafiar",
     "explore": "Explorador",
-    "myVS": "Mi Panel",
+    "launchApp": "Abrir app",
+    "myVS": "Dashboard",
     "messages": "Mensajes",
     "messagesMobile": "Mensajes",
     "openMenu": "Abrir menú",
@@ -58,9 +59,9 @@
     "emptyHeroTitleLine1Lead": "PRUEBALO",
     "emptyHeroTitleOnChainSegment": "ON-CHAIN.",
     "emptyHeroTitleLine2Lead": "CON",
-    "emptyHeroSubtitle": "Crea un claim, enlaza la fuente y deja que PROVEN lo resuelva.",
-    "heroChallengeSomeone": "DESAFIA A ALGUIEN",
-    "heroExploreChallenges": "EXPLORAR DESAFIOS",
+    "emptyHeroSubtitle": "Respalda tu desafío y PROVEN lo resuelve on-chain.",
+    "heroChallengeSomeone": "DESAFIAR A ALGUIEN",
+    "heroExploreChallenges": "EXPLORAR DESAFÍOS",
     "challengeSomeone": "Desafiar a alguien",
     "connectWalletToStart": "Conectar Wallet para empezar",
     "exploreOpenVS": "Abrir Explorador de mercado",
@@ -513,7 +514,7 @@
     }
   },
   "dashboard": {
-    "title": "MI PANEL",
+    "title": "MI DASHBOARD",
     "total": "{count} total",
     "new": "+ Nuevo",
     "record": "Record",
@@ -549,6 +550,10 @@
     "overviewNetTitle": "Beneficio neto",
     "overviewNetValue": "$120.73",
     "overviewNetSub": "18% ROI registrado",
+    "overviewWinsTitle": "Desafíos ganados",
+    "overviewLossesTitle": "Desafíos perdidos",
+    "overviewWinRateTitle": "Win rate",
+    "overviewTotalClaimedTitle": "Total cobrado",
     "holdings": {
       "sectionAria": "Tenencias en juego",
       "sectionTitle": "Tenencias en juego",
@@ -588,6 +593,9 @@
       "poolPill": {
         "closed": "Cerrado"
       },
+      "demoBadge": "Ejemplo",
+      "vsTitlePrivate": "Desafío privado {id}",
+      "vsTitleOpen": "Desafío {id}",
       "items": {
         "canelo": {
           "title": "Pereira vs Canelo · Más de 7 asaltos",
