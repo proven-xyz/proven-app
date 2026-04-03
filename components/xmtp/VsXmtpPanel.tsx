@@ -220,8 +220,13 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
 
   if (!canOpenVsXmtpChat(vs)) {
     return (
-      <div className="card border border-white/[0.08] p-5 lg:max-w-[800px] lg:mx-auto mb-6 sm:mb-8">
-        <div className="flex min-w-0 gap-3 sm:gap-3.5">
+      <GlassCard
+        glass
+        glow="none"
+        noPad
+        className="!rounded-2xl border border-white/[0.12] mb-6 sm:mb-8 lg:max-w-[800px] lg:mx-auto"
+      >
+        <div className="flex w-full min-w-0 items-start gap-3 px-5 py-5 sm:gap-3.5 sm:px-8 sm:py-6">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
             aria-hidden
@@ -237,7 +242,7 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
             </p>
           </div>
         </div>
-      </div>
+      </GlassCard>
     );
   }
 
