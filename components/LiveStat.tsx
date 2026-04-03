@@ -22,6 +22,8 @@ interface LiveStatProps {
   size?: "sm" | "md" | "lg" | "xl";
   /** Accent color for the number */
   color?: "text" | "cyan" | "fuch" | "emerald" | "gold";
+  /** Optional override for the label typography */
+  labelClassName?: string;
   className?: string;
 }
 
@@ -54,6 +56,7 @@ export default function LiveStat({
   duration = 1.2,
   size = "md",
   color = "text",
+  labelClassName = "",
   className = "",
 }: LiveStatProps) {
   const motionValue = useMotionValue(0);
@@ -91,7 +94,9 @@ export default function LiveStat({
   return (
     <div className={`flex flex-col ${className}`}>
       {label && labelPosition === "above" && (
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-pv-muted/60 mb-1">
+        <span
+          className={`font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-pv-muted/60 mb-1 ${labelClassName}`}
+        >
           {label}
         </span>
       )}
@@ -111,7 +116,9 @@ export default function LiveStat({
       </motion.div>
 
       {label && labelPosition === "below" && (
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-pv-muted/60 mt-1">
+        <span
+          className={`font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-pv-muted/60 mt-1 ${labelClassName}`}
+        >
           {label}
         </span>
       )}
