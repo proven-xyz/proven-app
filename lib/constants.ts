@@ -1,10 +1,6 @@
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 export const MIN_STAKE = 2;
 
-/**
- * Presets de plazo relativo (segundos) para crear VS.
- * Las etiquetas viven en `create.presets.*` (messages).
- */
 export const DEADLINE_PRESET_IDS = [
   "1h",
   "24h",
@@ -23,15 +19,13 @@ export const DEADLINE_PRESET_SECONDS: Record<DeadlinePresetId, number> = {
   "1month": 2592000,
 };
 
-/** Coincide con `theme.extend.colors.pv.emerald` — acento principal UI (chips, CTAs). */
 export const PV_EMERALD_HEX = "#4edea3";
 
 export const CATEGORIES = [
-  { id: "deportes", label: "Deportes", color: "#22D3EE" },
-  { id: "clima", label: "Clima", color: "#E879F9" },
+  { id: "sports", label: "Sports", color: "#22D3EE" },
+  { id: "weather", label: "Weather", color: "#E879F9" },
   { id: "crypto", label: "Crypto", color: "#FBBF24" },
-  { id: "tech", label: "Tech", color: "#818CF8" },
-  { id: "cultura", label: "Cultura", color: "#10B981" },
+  { id: "culture", label: "Culture", color: "#10B981" },
   { id: "custom", label: "Custom", color: "#A1A1AA" },
 ] as const;
 
@@ -44,8 +38,23 @@ type CategoryGuidance = {
   questionHint: string;
 };
 
+const LEGACY_CATEGORY_ALIASES: Record<string, CategoryId> = {
+  deportes: "sports",
+  clima: "weather",
+  cultura: "culture",
+  tech: "custom",
+};
+
+export function normalizeCategoryId(cat: string): CategoryId {
+  const normalized = cat.trim().toLowerCase();
+  if ((CATEGORIES as readonly { id: string }[]).some((entry) => entry.id === normalized)) {
+    return normalized as CategoryId;
+  }
+  return LEGACY_CATEGORY_ALIASES[normalized] ?? "custom";
+}
+
 export const CATEGORY_GUIDANCE: Record<CategoryId, CategoryGuidance> = {
-  deportes: {
+  sports: {
     sourceExamples: [
       "espn.com",
       "bbc.com/sport",
@@ -56,7 +65,7 @@ export const CATEGORY_GUIDANCE: Record<CategoryId, CategoryGuidance> = {
       "Resolve this against the official final result of the linked event. State whether extra time, penalties, or overtime count.",
     questionHint: "Include the teams, competition, and timeframe in the question itself.",
   },
-  clima: {
+  weather: {
     sourceExamples: [
       "weather.com",
       "weather.gov",
@@ -78,19 +87,7 @@ export const CATEGORY_GUIDANCE: Record<CategoryId, CategoryGuidance> = {
       "Resolve this using the visible spot price on the linked source at the deadline time. Apply any threshold or line exactly as written.",
     questionHint: "Name the asset, threshold, and deadline explicitly.",
   },
-  tech: {
-    sourceExamples: [
-      "openai.com",
-      "blog.google",
-      "apple.com/newsroom",
-    ],
-    sourceHint:
-      "Use an official product blog, press release, or changelog that will still reflect the announced fact at settlement.",
-    settlementTemplate:
-      "Resolve this only from the linked official source at the deadline. Treat “announced” as a public, attributable statement from the named party.",
-    questionHint: "Name the product, company, and the concrete milestone or date window being judged.",
-  },
-  cultura: {
+  culture: {
     sourceExamples: [
       "grammy.com",
       "billboard.com",
@@ -116,47 +113,51 @@ export const CATEGORY_GUIDANCE: Record<CategoryId, CategoryGuidance> = {
 };
 
 export const PREFILLS: Record<string, { q: string; a: string; b: string; u: string }> = {
-  deportes: {
-    q: "¿Argentina le gana a Brasil hoy?",
-    a: "Argentina gana",
-    b: "Brasil gana o empata",
+  sports: {
+    q: "Will Argentina beat Brazil today?",
+    a: "Argentina wins",
+    b: "Brazil wins or draws",
     u: "https://bbc.com/sport/football/scores-fixtures/2026-03-20",
   },
-  clima: {
-    q: "¿Llueve mañana en Buenos Aires?",
-    a: "Sí llueve",
-    b: "No llueve",
+  weather: {
+    q: "Will it rain tomorrow in Buenos Aires?",
+    a: "Yes, it rains",
+    b: "No rain",
     u: "https://weather.com",
   },
   crypto: {
-    q: "¿BTC supera $100k esta semana?",
-    a: "BTC supera $100k",
-    b: "BTC NO supera $100k",
+    q: "Will BTC break $100k this week?",
+    a: "BTC breaks $100k",
+    b: "BTC stays below $100k",
     u: "https://coingecko.com/en/coins/bitcoin",
   },
-  tech: {
-    q: "¿GPT-5 se anuncia antes de junio?",
-    a: "OpenAI anuncia GPT-5 antes de junio",
-    b: "Sin anuncio oficial antes de junio",
-    u: "https://openai.com",
-  },
-  cultura: {
-    q: "¿Shakira tiene más Grammys que Bad Bunny?",
-    a: "Shakira tiene más",
-    b: "Bad Bunny tiene más",
+  culture: {
+    q: "Will Shakira win more Grammys than Bad Bunny?",
+    a: "Shakira wins more",
+    b: "Bad Bunny wins more",
     u: "https://grammy.com",
+  },
+  custom: {
+    q: "Will OpenAI publish a GPT-5 announcement before June?",
+    a: "OpenAI publishes the announcement before June",
+    b: "No official announcement before June",
+    u: "https://openai.com/news/",
   },
 };
 
 export function shortenAddress(a: string, chars = 4): string {
   if (!a) return "";
-  return `${a.slice(0, chars + 2)}…${a.slice(-chars)}`;
+  return `${a.slice(0, chars + 2)}...${a.slice(-chars)}`;
 }
 
 export function formatDeadline(ts: number, locale = "es"): string {
   const loc = locale === "en" ? "en-US" : "es-AR";
   return new Date(ts * 1000).toLocaleString(loc, {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -198,13 +199,19 @@ export function normalizeResolutionSource(value: string): string {
 }
 
 export function getCategoryInfo(cat: string) {
+  const normalizedCategory = normalizeCategoryId(cat);
   return (
-    CATEGORIES.find((c) => c.id === cat) ??
-    CATEGORIES.find((c) => c.id === "custom")!
+    CATEGORIES.find((entry) => entry.id === normalizedCategory) ??
+    CATEGORIES.find((entry) => entry.id === "custom")!
   );
 }
 
 export const STATE_LABELS: Record<string, string> = {
-  open: "Abierto", accepted: "Aceptado", resolved: "PROVEN",
-  cancelled: "Cancelado", won: "Ganaste", lost: "Perdiste", draw: "Empate",
+  open: "Abierto",
+  accepted: "Aceptado",
+  resolved: "PROVEN",
+  cancelled: "Cancelado",
+  won: "Ganaste",
+  lost: "Perdiste",
+  draw: "Empate",
 };

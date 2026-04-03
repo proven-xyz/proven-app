@@ -11,63 +11,66 @@ Use this skill whenever a task involves modifying, reviewing, or debugging a Gen
 
 Use this skill for:
 - linting or validating a contract after edits
-- extracting ABI/schema from a contract
+- extracting ABI or schema from a contract
 - typechecking contracts with SDK-aware paths
 - iterative fix loops before adding tests
-- diagnosing whether a failure is caused by contract structure vs. runtime behavior
+- diagnosing whether a failure is caused by contract structure or runtime behavior
 
 ## Core rule
 
-Always lint before testing. Run `genvm-lint check` after writing or modifying a contract, fix all reported issues, and only then move to direct or integration tests.
+Always lint before testing. Run `genvm-lint check` after writing or modifying a contract, fix reported issues, and only then move to `$direct-tests` or `$integration-tests`.
 
 ## Setup
-
-Requires `genvm-linter`:
 
 ```bash
 pip install genvm-linter
 ```
 
-## Recommended workflow
+## In this repo
+
+Prefer the repo wrapper when available:
+
+```bash
+npm run contract:check
+```
+
+## Workflow
 
 1. Run `genvm-lint check <contract> --json` when you need structured output.
-2. Categorize failures into:
-   - AST safety or forbidden imports
-   - SDK semantic errors
-   - typing issues
-3. Fix the contract with minimal changes.
-4. Re-run until `"ok": true`.
-5. Only then move to tests.
+2. Split failures into lint, validate, and typecheck buckets.
+3. Fix concrete contract issues with minimal behavior change.
+4. Re-run until the result is clean.
+5. Only then move to tests or deployment.
 
 ## Commands
 
-### check (recommended)
+### check
 
 ```bash
 genvm-lint check contracts/my_contract.py
 genvm-lint check contracts/my_contract.py --json
 ```
 
-`check` runs both lint and validate in one pass.
+`check` runs lint and validate in one pass and should be the default starting point.
 
-### lint (fast AST checks only)
+### lint
 
 ```bash
 genvm-lint lint contracts/my_contract.py
 ```
 
-Typical catches:
-- forbidden imports (`os`, `sys`, `subprocess`, `random`, etc.)
+Use this for fast AST-level checks such as:
+- forbidden imports
 - nondeterministic patterns
-- malformed contract header structure
+- malformed contract headers
 
-### validate (SDK semantic checks)
+### validate
 
 ```bash
 genvm-lint validate contracts/my_contract.py
 ```
 
-Typical catches:
+Use this for SDK semantic checks such as:
 - invalid SDK types
 - incorrect decorators
 - invalid storage field types
@@ -97,34 +100,36 @@ genvm-lint download --version v0.2.12
 genvm-lint download --list
 ```
 
+Use `download` when the environment is missing GenVM artifacts.
+
 ## Output formats
 
-### Human
+Human output is useful for quick iteration:
 
 ```text
-✓ Lint passed (3 checks)
-✓ Validation passed
-  Contract: MyContract
-  Methods: 8 (5 view, 3 write)
+Lint passed
+Validation passed
+Contract: MyContract
 ```
 
-### JSON
+JSON output is better for automated fix loops and method-shape inspection:
 
 ```json
-{"ok":true,"lint":{"ok":true,"passed":3},"validate":{"ok":true,"contract":"MyContract","methods":8,"view_methods":5,"write_methods":3,"ctor_params":2}}
+{"ok":true,"lint":{"ok":true},"validate":{"ok":true}}
 ```
 
 ## Exit codes
 
-- `0` — all checks passed
-- `1` — lint or validation errors found
-- `2` — contract file not found
-- `3` — SDK download failed
+- `0` means all checks passed
+- `1` means lint, validation, or type errors were found
+- `2` usually means the contract file was not found
+- `3` usually means GenVM artifact download failed
 
-## Fix loop guidance
+## Agent workflow
 
-When you are asked to “make the contract pass lint”:
-- start with `genvm-lint check ... --json`
-- fix concrete issues first, not style-only concerns
-- keep behavior changes separate from structural fixes
-- summarize which errors were resolved and which remain
+When asked to "make the contract pass lint":
+1. Start with `genvm-lint check ... --json`.
+2. Fix concrete issues before style-only cleanup.
+3. Keep behavior changes separate from structural fixes when possible.
+4. Re-run until the contract is clean.
+5. Summarize which checks passed and what remains blocked, if anything.

@@ -13,3 +13,11 @@ export {
 export { default as PoolBadge } from "./PoolBadge";
 export { default as CountdownTimer } from "./CountdownTimer";
 export { default as VSStrip } from "./VSStrip";
+
+// Protocol system components
+export { default as Stage } from "../Stage";
+export { default as Artifact, ArtifactStamp } from "../Artifact";
+export { default as ControlPanel, SegmentedSwitch, DataBadge } from "../ControlPanel";
+export { default as OppositionLayout, DirectionalGlow } from "../OppositionLayout";
+export { default as LiveDeadline } from "../LiveDeadline";
+export { default as LiveStat } from "../LiveStat";

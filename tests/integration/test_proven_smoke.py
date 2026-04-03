@@ -28,7 +28,9 @@ def test_public_claim_flow_smoke():
     factory = get_contract_factory(contract_file_path="proven.py")
     contract = factory.deploy(args=[], account=creator)
 
-    create_receipt = contract.create_claim(args=_create_claim_args(5)).transact(value=5)
+    create_receipt = contract.create_claim(args=_create_claim_args(5)).transact(
+        value=5
+    )
     assert tx_execution_succeeded(create_receipt)
 
     claim_count = contract.get_claim_count().call()

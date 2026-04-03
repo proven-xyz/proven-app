@@ -6,8 +6,27 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { shortenAddress } from "@/lib/constants";
+import { getWalletChainParams } from "@/lib/genlayer";
+import HeaderNetworkStatus from "@/components/HeaderNetworkStatus";
 import { Menu, X } from "lucide-react";
 import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
+
+function shortenNetworkName(networkName: string) {
+  return networkName
+    .replace(/^GenLayer\s+/i, "")
+    .replace(/\s+Testnet(?:\s+Chain)?$/i, "")
+    .trim();
+}
+
+function formatAddNetworkLabel(template: string, networkName: string) {
+  if (/Bradbury Network/i.test(template)) {
+    return template.replace(/Bradbury Network/gi, `${networkName} Network`);
+  }
+  if (/Bradbury/i.test(template)) {
+    return template.replace(/Bradbury/gi, networkName);
+  }
+  return `${template} ${networkName}`.trim();
+}
 
 function WalletAccountMenu({
   address,
@@ -25,6 +44,22 @@ function WalletAccountMenu({
   buttonClassName: string;
 }) {
   const t = useTranslations("header");
+  const addNetworkLabel = formatAddNetworkLabel(
+    t("addNetwork"),
+    shortenNetworkName(getWalletChainParams().chainName)
+  );
+
+  async function handleAddNetwork() {
+    const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;
+    if (!ethereum) return;
+    try {
+      await ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [getWalletChainParams()],
+      });
+    } catch { /* user rejected or already added */ }
+    onOpenChange(false);
+  }
 
   return (
     <div ref={containerRef} className="relative">
@@ -46,8 +81,16 @@ function WalletAccountMenu({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-[calc(100%+6px)] z-[60] min-w-[160px] overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface/95 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            className="absolute right-0 top-[calc(100%+6px)] z-[60] min-w-[180px] overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface/95 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl"
           >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleAddNetwork}
+              className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text"
+            >
+              {addNetworkLabel}
+            </button>
             <button
               type="button"
               role="menuitem"
@@ -67,7 +110,7 @@ function WalletAccountMenu({
 }
 
 export default function Header() {
-  const { address, isConnected, isConnecting, connect, disconnect } =
+  const { address, isConnected, isConnecting, isCorrectNetwork, connect, disconnect, switchNetwork } =
     useWallet();
   const pathname = usePathname();
   const locale = useLocale();
@@ -172,15 +215,15 @@ export default function Header() {
                     ? "font-bold text-pv-text"
                     : "text-pv-muted hover:text-pv-text"
                 }`}
-              >
-                EN
-              </Link>
-            </div>
+                >
+                  EN
+                </Link>
+              </div>
             <Link
               href="/explorer"
               className="btn-compact-primary px-4 py-1.5 text-[12px] focus-ring sm:text-[13px]"
             >
-              {t("explore")}
+              {t("launchApp")}
             </Link>
           </div>
         ) : (
@@ -233,15 +276,27 @@ export default function Header() {
                 </Link>
               </div>
 
+              {isConnected && !isCorrectNetwork && (
+                <button
+                  type="button"
+                  onClick={() => void switchNetwork()}
+                  className="chip text-[11px] font-bold border-amber-400/40 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition-colors"
+                >
+                  {t("wrongNetwork")}
+                </button>
+              )}
               {isConnected && address ? (
-                <WalletAccountMenu
-                  address={address}
-                  open={walletMenuOpen}
-                  onOpenChange={setWalletMenuOpen}
-                  onDisconnect={disconnect}
-                  containerRef={walletMenuDesktopRef}
-                  buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
-                />
+                <div className="flex items-center gap-2">
+                  <HeaderNetworkStatus enabled={isCorrectNetwork} />
+                  <WalletAccountMenu
+                    address={address}
+                    open={walletMenuOpen}
+                    onOpenChange={setWalletMenuOpen}
+                    onDisconnect={disconnect}
+                    containerRef={walletMenuDesktopRef}
+                    buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
+                  />
+                </div>
               ) : (
                 <button
                   type="button"
@@ -274,15 +329,27 @@ export default function Header() {
                 </Link>
               </div>
 
+              {isConnected && !isCorrectNetwork && (
+                <button
+                  type="button"
+                  onClick={() => void switchNetwork()}
+                  className="chip text-[10px] font-bold border-amber-400/40 bg-amber-400/10 text-amber-300"
+                >
+                  {t("wrongNetwork")}
+                </button>
+              )}
               {isConnected && address ? (
-                <WalletAccountMenu
-                  address={address}
-                  open={walletMenuOpen}
-                  onOpenChange={setWalletMenuOpen}
-                  onDisconnect={disconnect}
-                  containerRef={walletMenuMobileRef}
-                  buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
-                />
+                <div className="flex items-center gap-1.5">
+                  <HeaderNetworkStatus enabled={isCorrectNetwork} compact />
+                  <WalletAccountMenu
+                    address={address}
+                    open={walletMenuOpen}
+                    onOpenChange={setWalletMenuOpen}
+                    onDisconnect={disconnect}
+                    containerRef={walletMenuMobileRef}
+                    buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
+                  />
+                </div>
               ) : (
                 <button
                   type="button"

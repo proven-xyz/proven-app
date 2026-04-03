@@ -42,7 +42,7 @@ export const DASHBOARD_STAKE_HOLDING_META: Record<
   }
 > = {
   canelo: {
-    categoryId: "deportes",
+    categoryId: "sports",
     status: "accepted",
     idCode: "#0482-P",
     marketType: "total",
@@ -52,7 +52,7 @@ export const DASHBOARD_STAKE_HOLDING_META: Record<
     maxParticipants: null,
   },
   colapinto: {
-    categoryId: "deportes",
+    categoryId: "sports",
     status: "open",
     idCode: "#0611-F",
     marketType: "prop",
@@ -62,7 +62,7 @@ export const DASHBOARD_STAKE_HOLDING_META: Record<
     maxParticipants: 2,
   },
   alvarez: {
-    categoryId: "deportes",
+    categoryId: "sports",
     status: "accepted",
     idCode: "#0339-A",
     marketType: "prop",

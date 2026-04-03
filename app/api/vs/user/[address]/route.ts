@@ -4,13 +4,13 @@ import {
   createApiError,
   parseAddressParam,
 } from "@/lib/server/api-validation";
-import { getUserVs } from "@/lib/server/vs-index";
+import { getUserVsSnapshot } from "@/lib/server/vs-index";
 import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ address: string }> }
 ) {
   try {
@@ -25,12 +25,25 @@ export async function GET(
       );
     }
 
-    const items = await getUserVs(address);
+    const refreshValue = new URL(request.url).searchParams.get("refresh");
+    if (refreshValue && refreshValue !== "1") {
+      return NextResponse.json(
+        createApiError("invalid_parameter", "refresh must be 1 when provided"),
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const { items, cache } = await getUserVsSnapshot(address, {
+      forceRefresh: refreshValue === "1",
+    });
 
     return NextResponse.json(
       {
         items,
         count: items.length,
+        cache,
       },
       {
         headers: VS_CACHE_HEADERS,

@@ -333,13 +333,13 @@ function StakeHoldingRow({
               {visibilityLine}
             </span>
             <span className="inline-flex items-center rounded border border-white/[0.14] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
-              DEMO
+              {t("holdings.demoBadge")}
             </span>
           </div>
         </div>
         <Link
           href={detailHref}
-          className="shrink-0 self-start font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
+          className="shrink-0 self-end font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:self-auto sm:text-[11px]"
         >
           {t("holdings.viewDetails")}
         </Link>
@@ -393,11 +393,12 @@ function StakeHoldingVSRow({
   const participantCount = 1 + getVSChallengerCount(vs);
   const isPrivate = isVSPrivate(vs);
 
+  const idLabel = `#${vs.id}`;
   const titleLine = vs.question?.trim()
     ? vs.question
     : isPrivate
-      ? `PRIVATE CHALLENGE #${vs.id}`
-      : `CHALLENGE #${vs.id}`;
+      ? t("holdings.vsTitlePrivate", { id: idLabel })
+      : t("holdings.vsTitleOpen", { id: idLabel });
 
   const status: "open" | "accepted" | "resolved" =
     vs.state === "open" || vs.state === "accepted" ? vs.state : "resolved";
@@ -445,7 +446,7 @@ function StakeHoldingVSRow({
   const detailHref = `/vs/${vs.id}`;
 
   return (
-    <div className="rounded-lg border border-white/[0.12] bg-pv-surface">
+    <div className="rounded-lg border border-white/[0.12] bg-pv-surface/80">
       <div className="flex items-stretch gap-3 px-3 sm:gap-4 sm:px-4">
         <div className="flex shrink-0 items-center justify-center self-center py-3 sm:py-4">
           <StakeHoldingVerifyIcon className="h-9 w-9 text-pv-emerald sm:h-10 sm:w-10" />
@@ -586,6 +587,9 @@ function StakeHoldingVSRow({
             <span className="inline-flex items-center rounded border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-text sm:text-[10px]">
               {visibilityLine}
             </span>
+            <span className="inline-flex items-center rounded border border-white/[0.14] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+              DEMO
+            </span>
           </div>
         </div>
         <Link
@@ -632,8 +636,9 @@ function StakeHoldingsColumn({
     }
   }, [openId, visibleHoldingIds, setOpenId]);
 
-  const showSearchEmpty =
+  const mockSearchEmpty =
     stakeHoldingsSearchQuery.trim().length > 0 && visibleHoldingIds.length === 0;
+  const listIsEmpty = !featuredVS && mockSearchEmpty;
 
   return (
     <section
@@ -644,7 +649,7 @@ function StakeHoldingsColumn({
         {t("holdings.sectionTitle")}
       </h2>
       {headerExtra ? <div className="mb-4">{headerExtra}</div> : null}
-      {showSearchEmpty ? (
+      {listIsEmpty ? (
         <p
           className="rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm"
           role="status"
@@ -662,14 +667,23 @@ function StakeHoldingsColumn({
               }
             />
           ) : null}
-          {visibleHoldingIds.map((id) => (
-            <StakeHoldingRow
-              key={id}
-              id={id}
-              isOpen={openId === id}
-              onToggle={() => setOpenId(openId === id ? null : id)}
-            />
-          ))}
+          {mockSearchEmpty ? (
+            <p
+              className="rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm"
+              role="status"
+            >
+              {t("holdings.searchEmpty")}
+            </p>
+          ) : (
+            visibleHoldingIds.map((id) => (
+              <StakeHoldingRow
+                key={id}
+                id={id}
+                isOpen={openId === id}
+                onToggle={() => setOpenId(openId === id ? null : id)}
+              />
+            ))
+          )}
         </div>
       )}
     </section>
@@ -810,9 +824,9 @@ export default function DashboardPortfolioSection({
   wins?: number;
   losses?: number;
 }) {
-  const [openId, setOpenId] = useState<
-    DashboardStakeHoldingId | "featured" | null
-  >(null);
+  const [openId, setOpenId] = useState<DashboardStakeHoldingId | "featured" | null>(
+    null
+  );
 
   return (
     <div className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">

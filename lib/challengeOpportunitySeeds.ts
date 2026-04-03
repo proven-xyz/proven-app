@@ -16,7 +16,7 @@ const EN_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "The official Formula 1 race page anchors the venue, race weekend, and final classification used to settle the Miami Grand Prix result.",
     candidate: {
-      category: "deportes",
+      category: "sports",
       claimText: "Will Kimi Antonelli win the 2026 Formula 1 Crypto.com Miami Grand Prix?",
       sideA: "Kimi Antonelli is listed as the official race winner",
       sideB: "Any other driver is listed as the official race winner",
@@ -36,7 +36,7 @@ const EN_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "The weather forecast page identifies Buenos Aires and the day-by-day forecast window that can be checked for rain conditions at settlement time.",
     candidate: {
-      category: "clima",
+      category: "weather",
       claimText: "Will rain be reported for Buenos Aires on March 30, 2026?",
       sideA: "Rain is reported for Buenos Aires on March 30, 2026",
       sideB: "No rain is reported for Buenos Aires on March 30, 2026",
@@ -96,7 +96,7 @@ const EN_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "Apple Newsroom is the canonical source for new product announcements, making it a strong anchor for a yes-or-no launch claim.",
     candidate: {
-      category: "tech",
+      category: "custom",
       claimText: "Will Apple announce a new iPad before June 30, 2026?",
       sideA: "Apple announces a new iPad before June 30, 2026",
       sideB: "Apple does not announce a new iPad before June 30, 2026",
@@ -116,7 +116,7 @@ const EN_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "OpenAI News gives a single official publication surface for launch or announcement claims tied to a named model family.",
     candidate: {
-      category: "tech",
+      category: "custom",
       claimText: "Will OpenAI publish a GPT-5 announcement before June 30, 2026?",
       sideA: "OpenAI publishes a GPT-5 announcement before June 30, 2026",
       sideB: "OpenAI does not publish a GPT-5 announcement before June 30, 2026",
@@ -139,7 +139,7 @@ const ES_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "La pagina oficial de Formula 1 fija el circuito, el fin de semana de carrera y la clasificacion final usada para resolver el resultado del Gran Premio de Miami.",
     candidate: {
-      category: "deportes",
+      category: "sports",
       claimText: "¿Kimi Antonelli ganará el FORMULA 1 CRYPTO.COM MIAMI GRAND PRIX 2026?",
       sideA: "Kimi Antonelli figura como ganador oficial de la carrera",
       sideB: "Cualquier otro piloto figura como ganador oficial de la carrera",
@@ -159,7 +159,7 @@ const ES_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "La pagina del pronostico identifica Buenos Aires y la ventana diaria que se puede revisar para verificar lluvia en el momento del settlement.",
     candidate: {
-      category: "clima",
+      category: "weather",
       claimText: "¿Se reportará lluvia para Buenos Aires el 30 de marzo de 2026?",
       sideA: "Se reporta lluvia para Buenos Aires el 30 de marzo de 2026",
       sideB: "No se reporta lluvia para Buenos Aires el 30 de marzo de 2026",
@@ -219,7 +219,7 @@ const ES_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "Apple Newsroom es la fuente canonica para anuncios de productos nuevos, asi que sirve como base fuerte para un claim binario de lanzamiento.",
     candidate: {
-      category: "tech",
+      category: "custom",
       claimText: "¿Apple anunciará un nuevo iPad antes del 30 de junio de 2026?",
       sideA: "Apple anuncia un nuevo iPad antes del 30 de junio de 2026",
       sideB: "Apple no anuncia un nuevo iPad antes del 30 de junio de 2026",
@@ -239,7 +239,7 @@ const ES_SEEDS: SeedChallengeOpportunity[] = [
     sourceSummary:
       "OpenAI News ofrece una sola superficie oficial de publicacion para claims de lanzamiento o anuncio ligados a una familia concreta de modelos.",
     candidate: {
-      category: "tech",
+      category: "custom",
       claimText: "¿OpenAI publicará un anuncio de GPT-5 antes del 30 de junio de 2026?",
       sideA: "OpenAI publica un anuncio de GPT-5 antes del 30 de junio de 2026",
       sideB: "OpenAI no publica un anuncio de GPT-5 antes del 30 de junio de 2026",

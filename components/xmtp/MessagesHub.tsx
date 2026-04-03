@@ -15,10 +15,11 @@ import {
   getVsXmtpUnavailableReason,
   isSampleVsIdForXmtp,
 } from "@/lib/xmtp/vs-chat-eligibility";
+import { getVSTotalPot } from "@/lib/contract";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Button, GlassCard, VSCardSkeleton } from "@/components/ui";
 import MessagesWalletGate from "@/components/xmtp/MessagesWalletGate";
-import { ArrowRight, Radio, Lock } from "lucide-react";
+import { ArrowRight, Radio, Lock, Zap, Clock, Ban } from "lucide-react";
 
 function truncateQuestion(q: string, max = 72): string {
   const t = q.trim();
@@ -227,14 +228,17 @@ export default function MessagesHub() {
                 {t("sectionActive")}
               </h2>
               <ul className="space-y-3">
-                {eligible.map((vs) => {
+                {eligible.map((vs, i) => {
                   const peer = getVsXmtpPeerAddress(vs, address);
                   const href = `/vs/${vs.id}#${VS_XMTP_CHAT_ANCHOR_ID}`;
+                  const pot = getVSTotalPot(vs);
                   return (
                     <li key={vs.id}>
                       <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: i * 0.05, ease: [0.25, 0.46, 0.45, 0.94] }}
                         whileHover={{ y: -1 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 28 }}
                       >
                         <Link
                           href={href}
@@ -245,13 +249,18 @@ export default function MessagesHub() {
                               <p className="font-display text-sm font-bold text-pv-text leading-snug group-hover:text-pv-emerald transition-colors">
                                 {truncateQuestion(vs.question)}
                               </p>
-                              {peer ? (
-                                <p className="text-[11px] text-pv-muted mt-2 font-mono">
-                                  {t("withPeer", {
-                                    address: shortenAddress(peer),
-                                  })}
-                                </p>
-                              ) : null}
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-mono text-pv-muted">
+                                {peer && (
+                                  <span>
+                                    vs {shortenAddress(peer)}
+                                  </span>
+                                )}
+                                {pot > 0 && (
+                                  <span className="text-pv-gold/80">
+                                    {pot} GEN
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <ArrowRight
                               className="shrink-0 text-pv-emerald/70 group-hover:text-pv-emerald transition-colors mt-0.5"
@@ -261,10 +270,7 @@ export default function MessagesHub() {
                           </div>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1.5 rounded border border-pv-emerald/[0.28] bg-pv-emerald/[0.1] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
-                              <span
-                                className="h-1.5 w-1.5 rounded-full bg-pv-emerald"
-                                aria-hidden
-                              />
+                              <Zap size={8} aria-hidden />
                               {t("badgeLive")}
                             </span>
                             <span className="text-[10px] text-pv-muted uppercase tracking-wider font-mono">
@@ -291,29 +297,47 @@ export default function MessagesHub() {
                 {t("sectionPending")}
               </h2>
               <ul className="space-y-2">
-                {other.map((vs) => {
+                {other.map((vs, i) => {
                   const reason =
                     getVsXmtpUnavailableReason(vs) ?? "not_accepted";
+                  const isWaiting = reason === "not_accepted";
+                  const StateIcon = isWaiting ? Clock : Ban;
                   return (
                     <li key={vs.id}>
-                      <GlassCard className="!p-3 border border-white/[0.06] opacity-[0.92]">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-pv-text/90 leading-snug">
-                              {truncateQuestion(vs.question, 64)}
-                            </p>
-                            <p className="text-[10px] text-pv-muted mt-1.5">
-                              {t(`reason.${reason}`)}
-                            </p>
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: 0.1 + i * 0.04, ease: [0.25, 0.46, 0.45, 0.94] }}
+                      >
+                        <GlassCard className="!p-3 border border-white/[0.06] opacity-[0.92]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-pv-text/90 leading-snug">
+                                {truncateQuestion(vs.question, 64)}
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                                <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] ${
+                                  isWaiting
+                                    ? "border-amber-400/25 bg-amber-400/[0.08] text-amber-300"
+                                    : "border-white/[0.1] bg-white/[0.04] text-pv-muted"
+                                }`}>
+                                  <StateIcon size={8} aria-hidden />
+                                  {isWaiting ? t("badgeAwaiting") : t("badgeNoComms")}
+                                </span>
+                                <span className="text-[10px] text-pv-muted font-mono">
+                                  {t(`reason.${reason}`)}
+                                </span>
+                              </div>
+                            </div>
+                            <Link
+                              href={`/vs/${vs.id}`}
+                              className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-pv-emerald hover:underline"
+                            >
+                              {t("viewVs")}
+                            </Link>
                           </div>
-                          <Link
-                            href={`/vs/${vs.id}`}
-                            className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-pv-emerald hover:underline"
-                          >
-                            {t("viewVs")}
-                          </Link>
-                        </div>
-                      </GlassCard>
+                        </GlassCard>
+                      </motion.div>
                     </li>
                   );
                 })}

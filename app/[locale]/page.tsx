@@ -1,13 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
-  getAllVSFast,
-  getVSChallengerCount,
+  getAllVSSnapshot,
   getVSSingleWinnerPayout,
   getVSTotalPot,
   hasVSWinner,
@@ -203,19 +202,25 @@ export default function HomePage() {
   const t  = useTranslations("home");
   const tStamp = useTranslations("stamp");
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const results = await getAllVSFast();
-        setAllVS(mergePendingVS(results));
-      } catch (e) {
-        console.error("Failed to load VS:", e);
-      } finally {
-        setLoading(false);
-      }
+  const loadVS = useCallback(async ({ showPageLoading = false } = {}) => {
+    if (showPageLoading) {
+      setLoading(true);
     }
-    load();
+
+    try {
+      const results = await getAllVSSnapshot();
+      setAllVS(mergePendingVS(results.items));
+    } catch (e) {
+      console.error("Failed to load VS:", e);
+      setAllVS([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadVS({ showPageLoading: true });
+  }, [loadVS]);
 
   const openVS     = allVS.filter((v) => isVSJoinable(v));
   const resolvedVS = allVS.filter((v) => v.state === "resolved");
@@ -232,9 +237,9 @@ export default function HomePage() {
         state: "open" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 8,
+        max_challengers: 1,
       },
-      challengersCount: 7,
+      challengersCount: 0,
     },
     {
       vs: {
@@ -242,13 +247,13 @@ export default function HomePage() {
         question: "GPT-5 Announced by OpenAI before June",
         stake_amount: 4,
         opponent: ZERO_ADDRESS,
-        category: "tech",
+        category: "custom",
         state: "open" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 20,
+        max_challengers: 1,
       },
-      challengersCount: 13,
+      challengersCount: 0,
     },
     {
       vs: {
@@ -256,13 +261,13 @@ export default function HomePage() {
         question: "Lakers win the western conference",
         stake_amount: 8,
         opponent: ZERO_ADDRESS,
-        category: "deportes",
+        category: "sports",
         state: "open" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 8,
+        max_challengers: 1,
       },
-      challengersCount: 4,
+      challengersCount: 0,
     },
     {
       vs: {
@@ -274,9 +279,9 @@ export default function HomePage() {
         state: "accepted" as const,
         market_type: "binary" as const,
         odds_mode: "fixed" as const,
-        max_challengers: 5,
+        max_challengers: 1,
       },
-      challengersCount: 3,
+      challengersCount: 1,
     },
     {
       vs: {
@@ -288,9 +293,9 @@ export default function HomePage() {
         state: "resolved" as const,
         market_type: "binary" as const,
         odds_mode: "pool" as const,
-        max_challengers: 15,
+        max_challengers: 1,
       },
-      challengersCount: 11,
+      challengersCount: 1,
     },
   ];
 
@@ -431,7 +436,7 @@ export default function HomePage() {
                 className="flex flex-col gap-3 sm:flex-row sm:justify-center sm:gap-4"
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7, duration: 0.5 }}
+                transition={{ delay: 0.58, duration: 0.5 }}
               >
                 {/* Secondary CTA — fuchsia neon */}
                 <Link
@@ -824,11 +829,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-1.5">
               {decidedResolvedVS.slice(0, 4).map((vs) => {
                 const payout = getVSSingleWinnerPayout(vs);
-                const winnerLabel =
-                  vs.winner_side === "challengers" &&
-                  getVSChallengerCount(vs) > 1
-                    ? tStamp("challengersWon")
-                    : tStamp("won", { address: shortenAddress(vs.winner) });
+                const winnerLabel = tStamp("won", { address: shortenAddress(vs.winner) });
 
                 return (
                 <Link key={vs.id} href={`/vs/${vs.id}`} className="block group">

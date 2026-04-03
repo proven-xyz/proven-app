@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { Search, X, ListFilter } from "lucide-react";
 import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { MIN_STAKE_OPTIONS } from "@/lib/exploreFilters";

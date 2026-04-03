@@ -1,10 +1,17 @@
-import { parseEventLogs, createPublicClient, http } from "viem";
+import { abi as genlayerAbi } from "genlayer-js";
+import { encodeFunctionData, parseEventLogs, createPublicClient, http } from "viem";
+import type { VSCacheFreshness } from "./vs-freshness";
 
 import {
   createGenlayerClient,
+  ensureGenlayerWalletChain,
   getEndpoint,
+  getConfiguredNetworkAlias,
+  getGenlayerChain,
   getConsensusMainContractAddress,
+  GENLAYER_CONSENSUS_MAIN_ABI,
 } from "./genlayer";
+import { normalizeCategoryId } from "./constants";
 
 export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   "0x0000000000000000000000000000000000000000") as any;
@@ -20,6 +27,17 @@ function genToWei(gen: number): bigint {
     throw new Error("GEN amounts must be whole numbers");
   }
   return BigInt(gen) * GEN_UNIT;
+}
+
+function normalizeWriteValueForNetwork(value: bigint): bigint {
+  const network = getConfiguredNetworkAlias();
+
+  // Studio does not support native token transfers, so keep stakes logical-only there.
+  if (network === "studionet" || network === "localnet") {
+    return BigInt(0);
+  }
+
+  return value;
 }
 
 export interface ClaimChallenger {
@@ -41,9 +59,10 @@ export interface ClaimData {
   available_creator_liability: number;
   deadline: number;
   state: "open" | "active" | "resolved" | "cancelled";
-  winner_side: "creator" | "challengers" | "draw" | "unresolvable" | "";
+  winner_side: "creator" | "challengers" | "draw" | "";
   resolution_summary: string;
   confidence: number;
+  resolve_attempts?: number;
   category: string;
   parent_id: number;
   challenger_count: number;
@@ -53,9 +72,11 @@ export interface ClaimData {
   handicap_line: string;
   settlement_rule: string;
   max_challengers: number;
-  created_at: number;
+  created_at?: number;
   visibility?: "public" | "private";
   is_private?: boolean;
+  creator_requested_resolve?: boolean;
+  challenger_requested_resolve?: boolean;
   challengers?: ClaimChallenger[];
   first_challenger?: string;
   challenger_addresses?: string[];
@@ -75,7 +96,7 @@ export interface VSData {
   state: "open" | "accepted" | "resolved" | "cancelled";
   winner: string;
   resolution_summary: string;
-  created_at: number;
+  created_at?: number;
   category: string;
   challengers?: ClaimChallenger[];
   counter_position?: string;
@@ -97,6 +118,9 @@ export interface VSData {
   is_private?: boolean;
   total_pot?: number;
   challenger_addresses?: string[];
+  resolve_attempts?: number;
+  creator_requested_resolve?: boolean;
+  challenger_requested_resolve?: boolean;
 }
 
 export interface CreateClaimParams {
@@ -130,12 +154,33 @@ export interface ClaimWriteResult extends ContractWriteResult {
   actor?: string;
 }
 
+export interface VSFeedSnapshot {
+  items: VSData[];
+  cache: VSCacheFreshness | null;
+}
+
+export interface VSDetailSnapshot {
+  item: VSData | null;
+  cache: VSCacheFreshness | null;
+}
+
 function normalizeClaimData(claim: ClaimData): ClaimData {
   const challengerAddresses =
     claim.challenger_addresses ?? claim.challengers?.map((challenger) => challenger.address) ?? [];
+  const winnerSide =
+    claim.winner_side === "creator" ||
+    claim.winner_side === "challengers" ||
+    claim.winner_side === "draw"
+      ? claim.winner_side
+      : "";
 
   return {
     ...claim,
+    category: normalizeCategoryId(claim.category),
+    winner_side: winnerSide,
+    resolve_attempts: claim.resolve_attempts ?? 0,
+    creator_requested_resolve: Boolean(claim.creator_requested_resolve),
+    challenger_requested_resolve: Boolean(claim.challenger_requested_resolve),
     first_challenger: claim.first_challenger ?? challengerAddresses[0] ?? ZERO_ADDRESS,
     challenger_addresses: challengerAddresses,
   };
@@ -316,7 +361,31 @@ export function mapClaimToVS(rawClaim: ClaimData): VSData {
 }
 
 function extractGenlayerTxIdFromLogs(logs: unknown[]): string | null {
-  // Bradbury emits CreatedTransaction(bytes32,uint256), not NewTransaction
+  // Studio and newer networks emit NewTransaction(bytes32,address,address).
+  const NEW_TX_ABI = [
+    {
+      anonymous: false,
+      inputs: [
+        { indexed: true, internalType: "bytes32", name: "txId", type: "bytes32" },
+        { indexed: true, internalType: "address", name: "recipient", type: "address" },
+        { indexed: true, internalType: "address", name: "activator", type: "address" },
+      ],
+      name: "NewTransaction",
+      type: "event",
+    },
+  ] as const;
+
+  const newTransactionEvents = parseEventLogs({
+    abi: NEW_TX_ABI,
+    eventName: "NewTransaction",
+    logs: logs as any,
+  });
+
+  if (newTransactionEvents.length > 0 && (newTransactionEvents[0] as any).args?.txId) {
+    return (newTransactionEvents[0] as any).args.txId as string;
+  }
+
+  // Bradbury also emits CreatedTransaction(bytes32,uint256).
   const CREATED_TX_ABI = [
     {
       anonymous: false,
@@ -388,6 +457,34 @@ function extractGenlayerTxIdFromLogs(logs: unknown[]): string | null {
   return null;
 }
 
+function getConsensusAddTransactionArgs(wallet: string, functionName: string, args: unknown[]) {
+  const chain = getGenlayerChain() as {
+    defaultConsensusMaxRotations?: number;
+    defaultNumberOfInitialValidators?: number;
+  };
+  const calldata = buildConsensusTransactionData(functionName, args);
+  const addTransactionInput = (GENLAYER_CONSENSUS_MAIN_ABI as any[]).find(
+    (entry) => entry?.type === "function" && entry?.name === "addTransaction"
+  ) as { inputs?: Array<{ name?: string; type?: string }> } | undefined;
+  const inputCount = Array.isArray(addTransactionInput?.inputs)
+    ? addTransactionInput.inputs.length
+    : 0;
+
+  const baseArgs = [
+    wallet,
+    CONTRACT_ADDRESS,
+    BigInt(chain.defaultNumberOfInitialValidators ?? 5),
+    BigInt(chain.defaultConsensusMaxRotations ?? 3),
+    calldata,
+  ];
+
+  if (inputCount >= 6) {
+    return [...baseArgs, BigInt(0)];
+  }
+
+  return baseArgs;
+}
+
 async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
   const endpoint = getEndpoint();
   const rpcUrl = endpoint || "https://rpc-bradbury.genlayer.com";
@@ -412,16 +509,159 @@ async function extractGenlayerTxId(evmTxHash: string): Promise<string> {
   return evmTxHash;
 }
 
+function makeContractFreshness(): VSCacheFreshness {
+  return {
+    source: "contract",
+    status: "live",
+    lastUpdatedAt: new Date().toISOString(),
+    ageMs: 0,
+    freshnessWindowMs: 1,
+  };
+}
+
+function buildConsensusTransactionData(functionName: string, args: unknown[]) {
+  const callData = genlayerAbi.calldata.encode(
+    genlayerAbi.calldata.makeCalldataObject(functionName, args as any, undefined)
+  );
+
+  return genlayerAbi.transactions.serialize([callData, false]);
+}
+
+async function sendBrowserWriteTransaction(
+  wallet: string,
+  functionName: string,
+  args: unknown[],
+  value: bigint
+) {
+  const ethereum =
+    typeof window !== "undefined" ? (window as any).ethereum : undefined;
+
+  if (!ethereum) {
+    throw new Error("No injected wallet available");
+  }
+
+  await ensureGenlayerWalletChain(ethereum);
+
+  const txRequest: Record<string, string> = {
+    from: wallet,
+    to: getConsensusMainContractAddress(),
+    data: encodeFunctionData({
+      abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+      functionName: "addTransaction",
+      args: getConsensusAddTransactionArgs(wallet, functionName, args) as any,
+    }),
+    value: `0x${value.toString(16)}`,
+  };
+
+  try {
+    const gas = await ethereum.request({
+      method: "eth_estimateGas",
+      params: [txRequest],
+    });
+    if (typeof gas === "string") {
+      txRequest.gas = gas;
+    }
+  } catch {
+    // Let the wallet estimate gas if the RPC estimate is unavailable.
+  }
+
+  try {
+    const gasPrice = await ethereum.request({
+      method: "eth_gasPrice",
+    });
+    if (typeof gasPrice === "string") {
+      txRequest.type = "0x0";
+      txRequest.gasPrice = gasPrice;
+    }
+  } catch {
+    // Some wallet providers will populate pricing fields automatically.
+  }
+
+  const evmTxHash = await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [txRequest],
+  });
+
+  if (typeof evmTxHash !== "string") {
+    throw new Error("Wallet did not return a transaction hash");
+  }
+
+  return evmTxHash;
+}
+
+export async function finalizeGenlayerTx(
+  genlayerTxId: string,
+  wallet: string
+): Promise<string> {
+  const ethereum =
+    typeof window !== "undefined" ? (window as any).ethereum : undefined;
+
+  if (!ethereum) {
+    throw new Error("No injected wallet available");
+  }
+
+  await ensureGenlayerWalletChain(ethereum);
+
+  const txRequest: Record<string, string> = {
+    from: wallet,
+    to: getConsensusMainContractAddress(),
+    data: encodeFunctionData({
+      abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+      functionName: "finalizeTransaction",
+      args: [genlayerTxId as `0x${string}`],
+    }),
+    value: "0x0",
+  };
+
+  try {
+    const gas = await ethereum.request({
+      method: "eth_estimateGas",
+      params: [txRequest],
+    });
+    if (typeof gas === "string") {
+      txRequest.gas = gas;
+    }
+  } catch {
+    // Let the wallet estimate gas if the RPC estimate is unavailable.
+  }
+
+  try {
+    const gasPrice = await ethereum.request({
+      method: "eth_gasPrice",
+    });
+    if (typeof gasPrice === "string") {
+      txRequest.type = "0x0";
+      txRequest.gasPrice = gasPrice;
+    }
+  } catch {
+    // Some wallet providers will populate pricing fields automatically.
+  }
+
+  const evmTxHash = await ethereum.request({
+    method: "eth_sendTransaction",
+    params: [txRequest],
+  });
+
+  if (typeof evmTxHash !== "string") {
+    throw new Error("Wallet did not return a transaction hash");
+  }
+
+  return evmTxHash;
+}
+
 async function writeAndWait(
   functionName: string,
   wallet: string,
   args: unknown[],
   value: bigint
 ): Promise<ContractWriteResult & { pending?: boolean }> {
+  const runtimeValue = normalizeWriteValueForNetwork(value);
   const isBrowser =
     typeof window !== "undefined" && !!(window as any).ethereum;
 
-  const evmTxHash = await sendRpcWriteTransaction(wallet, functionName, args, value);
+  const evmTxHash = isBrowser
+    ? await sendBrowserWriteTransaction(wallet, functionName, args, runtimeValue)
+    : await sendRpcWriteTransaction(wallet, functionName, args, runtimeValue);
 
   // --- browser (MetaMask) path: confirm at EVM level, skip consensus poll ---
   if (isBrowser) {
@@ -499,9 +739,19 @@ async function inferCreatedClaimId(wallet: string) {
   return claimCount > 0 ? claimCount : null;
 }
 
-async function readApiJson<T>(path: string): Promise<T | null> {
+async function readApiJson<T>(
+  path: string,
+  options?: {
+    timeoutMs?: number;
+  }
+): Promise<T | null> {
   try {
-    const response = await fetch(path);
+    const response = await fetch(path, {
+      signal:
+        typeof options?.timeoutMs === "number"
+          ? AbortSignal.timeout(options.timeoutMs)
+          : undefined,
+    });
     if (!response.ok) {
       return null;
     }
@@ -604,52 +854,128 @@ export async function getClaimCount(): Promise<number> {
   }
 }
 
-export async function getUserClaims(address: string): Promise<number[]> {
-  try {
-    return await readContractValue<number[]>("get_user_claims", [address]);
-  } catch {
+async function getAllClaimSummaries(pageSize = 50): Promise<ClaimData[]> {
+  const count = await getClaimCount();
+  if (count <= 0) {
     return [];
   }
+
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil(count / pageSize) }, (_, index) =>
+      getClaimSummaries(index * pageSize + 1, pageSize)
+    )
+  );
+
+  return pages.flat();
+}
+
+export async function getUserClaims(address: string): Promise<number[]> {
+  const claims = await getUserClaimSummaries(address);
+  return claims.map((claim) => claim.id);
 }
 
 export async function getOpenClaims(): Promise<number[]> {
-  try {
-    return await readContractValue<number[]>("get_open_claims", []);
-  } catch {
-    return [];
-  }
+  const claims = await getOpenClaimSummaries();
+  return claims.map((claim) => claim.id);
 }
 
 export async function getRivalryChain(claimId: number): Promise<number[]> {
-  try {
-    return await readContractValue<number[]>("get_rivalry_chain", [claimId]);
-  } catch {
+  const allClaims = await getAllClaimSummaries();
+  const byId = new Map(allClaims.map((claim) => [claim.id, claim]));
+  const seedClaim = byId.get(claimId) ?? (await getClaim(claimId));
+  if (!seedClaim) {
     return [];
   }
+
+  byId.set(seedClaim.id, seedClaim);
+
+  let rootId = seedClaim.id;
+  let parentId = seedClaim.parent_id;
+  const visited = new Set<number>([seedClaim.id]);
+
+  while (parentId > 0 && !visited.has(parentId)) {
+    const parentClaim = byId.get(parentId) ?? (await getClaim(parentId));
+    if (!parentClaim) {
+      break;
+    }
+
+    byId.set(parentClaim.id, parentClaim);
+    visited.add(parentClaim.id);
+    rootId = parentClaim.id;
+    parentId = parentClaim.parent_id;
+  }
+
+  const childrenByParent = new Map<number, number[]>();
+  for (const claim of Array.from(byId.values())) {
+    if (claim.parent_id <= 0) {
+      continue;
+    }
+
+    const siblings = childrenByParent.get(claim.parent_id) ?? [];
+    siblings.push(claim.id);
+    childrenByParent.set(claim.parent_id, siblings);
+  }
+
+  const chain = [rootId];
+  const chainedIds = new Set(chain);
+  let cursor = rootId;
+
+  while (true) {
+    const nextId = (childrenByParent.get(cursor) ?? [])
+      .filter((id) => !chainedIds.has(id))
+      .sort((a, b) => a - b)[0];
+
+    if (!nextId) {
+      break;
+    }
+
+    chain.push(nextId);
+    chainedIds.add(nextId);
+    cursor = nextId;
+  }
+
+  return chain;
 }
 
 export async function getUserClaimSummaries(address: string): Promise<ClaimData[]> {
-  try {
-    const claims = await readContractValue<ClaimData[]>("get_user_claim_summaries", [
-      address,
-    ]);
-    return claims.map(normalizeClaimData);
-  } catch {
-    const ids = await getUserClaims(address);
-    const claims = await Promise.all(ids.map((id) => getClaim(id)));
-    return claims.filter((claim): claim is ClaimData => claim !== null);
+  const allSummaries = await getAllClaimSummaries();
+  if (allSummaries.length === 0) {
+    return [];
   }
+
+  const creatorClaims = allSummaries.filter((claim) => isSameAddress(claim.creator, address));
+  const challengerCandidates = allSummaries.filter(
+    (claim) => claim.challenger_count > 0 && !isSameAddress(claim.creator, address)
+  );
+
+  const challengerClaims = challengerCandidates.length
+    ? await Promise.all(challengerCandidates.map((claim) => getClaim(claim.id)))
+    : [];
+
+  const challengerMatches = challengerClaims.filter((claim): claim is ClaimData => {
+    if (!claim) {
+      return false;
+    }
+
+    return (claim.challenger_addresses ?? []).some((entry) => isSameAddress(entry, address));
+  });
+
+  const merged = new Map<number, ClaimData>();
+  for (const claim of creatorClaims) {
+    merged.set(claim.id, claim);
+  }
+  for (const claim of challengerMatches) {
+    merged.set(claim.id, claim);
+  }
+
+  return Array.from(merged.values()).sort((a, b) => b.id - a.id);
 }
 
 export async function getOpenClaimSummaries(): Promise<ClaimData[]> {
-  try {
-    const claims = await readContractValue<ClaimData[]>("get_open_claim_summaries", []);
-    return claims.map(normalizeClaimData);
-  } catch {
-    const ids = await getOpenClaims();
-    const claims = await Promise.all(ids.map((id) => getClaim(id)));
-    return claims.filter((claim): claim is ClaimData => claim !== null);
-  }
+  const allClaims = await getAllClaimSummaries();
+  return allClaims
+    .filter((claim) => claim.state === "open" || claim.state === "active")
+    .sort((a, b) => b.id - a.id);
 }
 
 export async function getVSSummaries(
@@ -791,7 +1117,30 @@ export async function resolveClaim(
   claimId: number,
   inviteKey = ""
 ) {
-  const result = await writeAndWait("resolve_claim", wallet, [claimId], BigInt(0));
+  const result = await writeAndWait("request_resolve", wallet, [claimId], BigInt(0));
+  void requestIndexedClaimRefresh(claimId, inviteKey);
+  return result;
+}
+
+export async function requestResolveClaim(
+  wallet: string,
+  claimId: number,
+  inviteKey = ""
+) {
+  return resolveClaim(wallet, claimId, inviteKey);
+}
+
+export async function resetResolveRequest(
+  wallet: string,
+  claimId: number,
+  inviteKey = ""
+) {
+  const result = await writeAndWait(
+    "reset_resolve_request",
+    wallet,
+    [claimId],
+    BigInt(0)
+  );
   void requestIndexedClaimRefresh(claimId, inviteKey);
   return result;
 }
@@ -813,53 +1162,115 @@ export async function getVS(
     viewerAddress?: string | null;
   } = {}
 ): Promise<VSData | null> {
+  const snapshot = await getVSSnapshot(vsId, options);
+  return snapshot.item;
+}
+
+export async function getVSSnapshot(
+  vsId: number,
+  options: {
+    inviteKey?: string | null;
+    viewerAddress?: string | null;
+  } = {}
+): Promise<VSDetailSnapshot> {
   const inviteKey = options.inviteKey?.trim() ?? "";
 
   if (typeof window !== "undefined") {
     const path = inviteKey
       ? `/api/vs/${vsId}?invite=${encodeURIComponent(inviteKey)}`
       : `/api/vs/${vsId}`;
-    const response = await readApiJson<{ item: VSData }>(path);
+    const response = await readApiJson<{ item: VSData; cache?: VSCacheFreshness | null }>(path);
     if (response?.item) {
-      return response.item;
+      return {
+        item: response.item,
+        cache: response.cache ?? null,
+      };
     }
 
     if (inviteKey) {
       const inviteClaim = await getClaimWithAccess(vsId, inviteKey);
       if (inviteClaim) {
-        return mapClaimToVS(inviteClaim);
+        return {
+          item: mapClaimToVS(inviteClaim),
+          cache: makeContractFreshness(),
+        };
       }
+    }
+
+    const directClaim = await getClaim(vsId);
+    if (directClaim) {
+      return {
+        item: mapClaimToVS(directClaim),
+        cache: makeContractFreshness(),
+      };
     }
 
     if (options.viewerAddress) {
       const userItems = await getUserVSDirect(options.viewerAddress);
       const found = userItems.find((item) => item.id === vsId);
       if (found) {
-        return found;
+        return {
+          item: found,
+          cache: null,
+        };
       }
     }
 
-    return null;
+    return {
+      item: null,
+      cache: null,
+    };
   }
 
   if (inviteKey) {
     const inviteClaim = await getClaimWithAccess(vsId, inviteKey);
-    return inviteClaim ? mapClaimToVS(inviteClaim) : null;
+    return {
+      item: inviteClaim ? mapClaimToVS(inviteClaim) : null,
+      cache: inviteClaim ? makeContractFreshness() : null,
+    };
   }
 
   const claim = await getClaim(vsId);
-  return claim ? mapClaimToVS(claim) : null;
+  return {
+    item: claim ? mapClaimToVS(claim) : null,
+    cache: claim ? makeContractFreshness() : null,
+  };
 }
 
 export async function getAllVSFast(): Promise<VSData[]> {
+  const snapshot = await getAllVSSnapshot();
+  return snapshot.items;
+}
+
+export async function getAllVSSnapshot(options: {
+  forceRefresh?: boolean;
+} = {}): Promise<VSFeedSnapshot> {
   if (typeof window !== "undefined") {
-    const response = await readApiJson<{ items: VSData[] }>("/api/vs");
-    return response?.items ?? [];
+    const path = options.forceRefresh ? "/api/vs?refresh=1" : "/api/vs";
+    let response = await readApiJson<{
+      items: VSData[];
+      cache?: VSCacheFreshness | null;
+    }>(path, options.forceRefresh ? { timeoutMs: 12_000 } : undefined);
+
+    if (!response && options.forceRefresh) {
+      response = await readApiJson<{
+        items: VSData[];
+        cache?: VSCacheFreshness | null;
+      }>("/api/vs");
+    }
+
+    return {
+      items: response?.items ?? [],
+      cache: response?.cache ?? null,
+    };
   }
 
   const count = await getClaimCount();
   if (count <= 0) {
-    return [];
+    return {
+      items: [],
+      cache: makeContractFreshness(),
+    };
   }
 
   const pageSize = 50;
@@ -870,19 +1281,50 @@ export async function getAllVSFast(): Promise<VSData[]> {
   );
   const results = pages.flat();
 
-  return results.sort((a, b) => b.id - a.id);
+  return {
+    items: results.sort((a, b) => b.id - a.id),
+    cache: makeContractFreshness(),
+  };
 }
 
 export async function getUserVSFast(address: string): Promise<VSData[]> {
+  const snapshot = await getUserVSSnapshot(address);
+  return snapshot.items;
+}
+
+export async function getUserVSSnapshot(
+  address: string,
+  options: {
+    forceRefresh?: boolean;
+  } = {}
+): Promise<VSFeedSnapshot> {
   if (typeof window !== "undefined") {
-    const response = await readApiJson<{ items: VSData[] }>(
-      `/api/vs/user/${encodeURIComponent(address)}`
-    );
-    return response?.items ?? [];
+    const path = options.forceRefresh
+      ? `/api/vs/user/${encodeURIComponent(address)}?refresh=1`
+      : `/api/vs/user/${encodeURIComponent(address)}`;
+    let response = await readApiJson<{
+      items: VSData[];
+      cache?: VSCacheFreshness | null;
+    }>(path, options.forceRefresh ? { timeoutMs: 12_000 } : undefined);
+
+    if (!response && options.forceRefresh) {
+      response = await readApiJson<{
+        items: VSData[];
+        cache?: VSCacheFreshness | null;
+      }>(`/api/vs/user/${encodeURIComponent(address)}`);
+    }
+
+    return {
+      items: response?.items ?? [],
+      cache: response?.cache ?? null,
+    };
   }
 
   const results = await getUserVSSummaries(address);
-  return results.sort((a, b) => b.id - a.id);
+  return {
+    items: results.sort((a, b) => b.id - a.id),
+    cache: makeContractFreshness(),
+  };
 }
 
 export async function acceptVS(
@@ -896,6 +1338,14 @@ export async function acceptVS(
 
 export async function resolveVS(wallet: string, vsId: number, inviteKey = "") {
   return resolveClaim(wallet, vsId, inviteKey);
+}
+
+export async function requestResolveVS(wallet: string, vsId: number, inviteKey = "") {
+  return requestResolveClaim(wallet, vsId, inviteKey);
+}
+
+export async function resetVSResolveRequest(wallet: string, vsId: number, inviteKey = "") {
+  return resetResolveRequest(wallet, vsId, inviteKey);
 }
 
 export async function cancelVS(wallet: string, vsId: number, inviteKey = "") {

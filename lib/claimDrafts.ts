@@ -1,9 +1,8 @@
 export const CLAIM_DRAFT_CATEGORY_IDS = [
-  "deportes",
-  "clima",
+  "sports",
+  "weather",
   "crypto",
-  "tech",
-  "cultura",
+  "culture",
   "custom",
 ] as const;
 

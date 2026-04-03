@@ -23,6 +23,7 @@ import {
 } from "@/lib/contract";
 import { getExplorerTxUrl, getExplorerUrl } from "@/lib/genlayer";
 import { removePendingVS, savePendingVS, type PendingVS } from "@/lib/pending-vs";
+import { acquireTxLock } from "@/lib/tx-lock";
 import {
   CATEGORY_GUIDANCE,
   DEADLINE_PRESET_IDS,
@@ -30,6 +31,7 @@ import {
   MIN_STAKE,
   PREFILLS,
   getShareUrl,
+  normalizeCategoryId,
   normalizeResolutionSource,
 } from "@/lib/constants";
 import type {
@@ -58,6 +60,7 @@ import CreateMockFundingOverlay, {
   type CreateMockOverlayPhase,
 } from "@/components/vs/CreateMockFundingOverlay";
 import Confetti from "@/components/Confetti";
+import { sealStamp } from "@/lib/animations/rituals";
 import {
   Check,
   ChevronDown,
@@ -191,9 +194,9 @@ export default function CreatePage() {
   const [fixedOddsMultiple, setFixedOddsMultiple] = useState("2.00");
   const [handicapLine, setHandicapLine] = useState("");
   const [settlementRule, setSettlementRule] = useState("");
-  const [maxChallengers, setMaxChallengers] = useState(1);
+  const [, setMaxChallengers] = useState(1);
   /** Texto del 4º slot (custom); vacío cuando el valor coincide con preset 1/2/5 para mostrar placeholder "–". */
-  const [maxChallengersSlotDraft, setMaxChallengersSlotDraft] = useState("");
+  const [, setMaxChallengersSlotDraft] = useState("");
   const [visibility, setVisibility] =
     useState<CreateClaimParams["visibility"]>("public");
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -205,7 +208,7 @@ export default function CreatePage() {
   const [createdExplorerTxHash, setCreatedExplorerTxHash] = useState("");
   const [createdInviteKey, setCreatedInviteKey] = useState("");
   const [copied, setCopied] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [showSealStamp, setShowSealStamp] = useState(false);
   const [draftResult, setDraftResult] = useState<SourceClaimDraftResponse | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftError, setDraftError] = useState("");
@@ -251,7 +254,7 @@ export default function CreatePage() {
   const verificationQuestionHint = t(
     `guidance.${guidanceKey}.questionHint`,
   );
-  const isOneToMany = maxChallengers > 1;
+  const isOneToMany = false;
   const isPrivate = visibility === "private";
   const presetStakeHighlight =
     isPresetStakeAmount(stake) &&
@@ -301,6 +304,14 @@ export default function CreatePage() {
     }
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [created]);
+
+  /** `min` en type="date" no puede calcularse en SSR: servidor vs navegador = distinto día calendario → hydration mismatch. */
+  const [customDateInputMin, setCustomDateInputMin] = useState<
+    string | undefined
+  >(undefined);
+  useLayoutEffect(() => {
+    setCustomDateInputMin(formatLocalDateInputValue(new Date()));
+  }, []);
 
   function applyDeadlinePreset(seconds: number) {
     const presetDate = new Date(Date.now() + seconds * 1000);
@@ -447,7 +458,7 @@ export default function CreatePage() {
       setOpponentPos(source.counter_position ?? source.opponent_position);
       setUrl(source.resolution_url);
       setStake(source.creator_stake ?? source.stake_amount);
-      setCategory(source.category || "custom");
+      setCategory(normalizeCategoryId(source.category || "custom"));
       setMarketType(source.market_type ?? "binary");
       setOddsMode(source.odds_mode ?? "pool");
       setFixedOddsMultiple(
@@ -458,16 +469,11 @@ export default function CreatePage() {
       setHandicapLine(source.handicap_line ?? "");
       setSettlementRule(source.settlement_rule ?? "");
       setVisibility(source.is_private ? "private" : "public");
-      const mc =
-        source.max_challengers && source.max_challengers > 0
-          ? source.max_challengers
-          : 1;
-      setMaxChallengers(mc);
-      setMaxChallengersSlotDraft([1, 2, 5].includes(mc) ? "" : String(mc));
+      setMaxChallengers(1);
+      setMaxChallengersSlotDraft("");
       setAdvancedOpen(
         (source.market_type ?? "binary") !== "binary" ||
           (source.odds_mode ?? "pool") !== "pool" ||
-          (source.max_challengers ?? 1) > 1 ||
           Boolean(source.handicap_line) ||
           Boolean(source.settlement_rule)
       );
@@ -502,11 +508,14 @@ export default function CreatePage() {
 
       removePendingVS(createdId);
       setCreatedPending(false);
-      setShowConfetti(true);
+      setShowSealStamp(true);
       toast.success(
         rematchId ? t("createSuccessHeadlineRematch") : t("createSuccessHeadline"),
       );
-      setTimeout(() => setShowConfetti(false), 4000);
+      setTimeout(() => setShowSealStamp(false), 4000);
+      setShowSealStamp(true);
+      toast.success(rematchId ? t("rematchCreatedAndFunded") : t("vsCreatedAndFunded"));
+      setTimeout(() => setShowSealStamp(false), 4000);
     }
 
     void syncCreatedClaim();
@@ -519,8 +528,9 @@ export default function CreatePage() {
   }, [address, created, createdInviteKey, createdPending, rematchId, t]);
 
   function prefill(catId: string) {
-    setCategory(catId);
-    const prefillValues = PREFILLS[catId];
+    const normalizedCategory = normalizeCategoryId(catId);
+    setCategory(normalizedCategory);
+    const prefillValues = PREFILLS[normalizedCategory];
     if (prefillValues) {
       setQuestion(prefillValues.q);
       setCreatorPos(prefillValues.a);
@@ -585,7 +595,7 @@ export default function CreatePage() {
       setCreatorPos(candidate.sideA);
       setOpponentPos(candidate.sideB);
       setUrl(candidate.primaryResolutionSource);
-      setCategory(candidate.category);
+      setCategory(normalizeCategoryId(candidate.category));
       setMarketType("binary");
       setOddsMode("pool");
       setFixedOddsMultiple("2.00");
@@ -663,7 +673,7 @@ export default function CreatePage() {
       return;
     }
 
-    const normalizedMaxChallengers = Math.max(1, Math.min(100, Math.floor(maxChallengers)));
+    const normalizedMaxChallengers = 1;
     const inviteKey = isPrivate ? generatePrivateInviteKey() : "";
     const params: CreateClaimParams = {
       question,
@@ -683,6 +693,14 @@ export default function CreatePage() {
       visibility,
       invite_key: inviteKey,
     };
+
+    let releaseLock: (() => void) | undefined;
+    try {
+      releaseLock = acquireTxLock(address ?? MOCK_DEMO_CREATOR_ADDRESS);
+    } catch (lockErr: any) {
+      toast.error(lockErr.message);
+      return;
+    }
 
     if (isDemoCreate) {
       mockFlowTimersRef.current.forEach((id) => window.clearTimeout(id));
@@ -732,8 +750,8 @@ export default function CreatePage() {
         setMockOverlayPhase("closed");
         mockFlowTimersRef.current = [];
         toast.success(t("createSuccessHeadline"));
-        setShowConfetti(true);
-        window.setTimeout(() => setShowConfetti(false), 4000);
+        setShowSealStamp(true);
+        window.setTimeout(() => setShowSealStamp(false), 4000);
         router.replace(pathname, { scroll: false });
       }, 2300);
       mockFlowTimersRef.current.push(tDone);
@@ -789,12 +807,13 @@ export default function CreatePage() {
         router.push("/dashboard");
       }
       if (!result.pending) {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 4000);
+        setShowSealStamp(true);
+        setTimeout(() => setShowSealStamp(false), 4000);
       }
     } catch (err: any) {
       toast.error(err.message || t("errorCreating"));
     } finally {
+      releaseLock?.();
       setLoading(false);
     }
   }
@@ -815,23 +834,19 @@ export default function CreatePage() {
 
     return (
       <>
-        <Confetti active={showConfetti} />
         <PageTransition>
           <div className="mx-auto w-full max-w-lg px-4 pb-6 pt-4 sm:px-6 sm:pb-12 sm:pt-8 md:max-w-xl">
             <AnimatedItem>
               <div className="space-y-6 sm:space-y-10">
                 <header className="text-center">
+                  {/* Seal stamp — "ISSUED" lock-in animation */}
                   <motion.div
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }}
-                    className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-pv-emerald/35 bg-pv-emerald/[0.08] shadow-[0_0_28px_-10px_rgba(78,222,163,0.5)]"
+                    variants={sealStamp}
+                    initial="hidden"
+                    animate="visible"
+                    className="mx-auto mb-5 inline-flex items-center justify-center rounded-xl border-[3px] border-pv-emerald bg-pv-emerald/[0.05] px-8 py-2 font-display text-lg font-bold uppercase tracking-widest text-pv-emerald shadow-glow-emerald sm:text-xl"
                   >
-                    <Check
-                      className="size-7 text-pv-emerald"
-                      strokeWidth={2.5}
-                      aria-hidden
-                    />
+                    ISSUED
                   </motion.div>
                   <p className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald/90">
                     {isMockSuccess
@@ -1176,7 +1191,7 @@ export default function CreatePage() {
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="rounded-full border border-pv-cyan/25 bg-pv-cyan/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-cyan">
-                                  {tCat(candidate.category)}
+                                  {tCat(normalizeCategoryId(candidate.category))}
                                 </span>
                                 <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                                   {candidate.confidenceScore}/100
@@ -1296,11 +1311,13 @@ export default function CreatePage() {
                 {t("challengeSectionTitle")}
               </h2>
             </div>
+            {/* Claim canvas — the visual centerpiece */}
             <div className="relative">
+              <div className="absolute inset-0 rounded-2xl pointer-events-none bg-gradient-to-br from-pv-cyan/[0.03] via-transparent to-pv-fuch/[0.03]" />
               <textarea
                 id={challengeQuestionFieldId}
-                rows={4}
-                className="min-h-[120px] w-full resize-none rounded-xl border border-white/[0.15] bg-transparent p-6 font-display text-lg leading-snug tracking-tight text-pv-text outline-none transition-all placeholder:text-pv-muted/50 focus:border-pv-emerald/60 focus:ring-1 focus:ring-pv-emerald/40 sm:text-xl"
+                rows={5}
+                className="min-h-[160px] w-full resize-none rounded-2xl border border-white/[0.12] bg-pv-bg/40 p-6 sm:p-8 font-display text-xl leading-snug tracking-tight text-pv-text outline-none transition-all placeholder:text-pv-muted/30 focus:border-pv-emerald/50 focus:ring-1 focus:ring-pv-emerald/30 focus:shadow-glow-emerald sm:text-2xl md:text-[26px]"
                 placeholder={challengePlaceholder}
                 aria-labelledby={challengeQuestionHeadingId}
                 value={question}
@@ -1317,22 +1334,25 @@ export default function CreatePage() {
                 : verificationQuestionHint.trim() || t("questionStrengthHint")}
             </p>
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2.5">
+            {/* Opposition split — Side A (cyan/left) vs Side B (fuchsia/right) */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-0">
+              {/* Side A — Creator / Cyan */}
+              <div className="relative flex flex-col gap-4 md:pr-4 md:border-r md:border-white/[0.06]">
+                <div className="absolute inset-0 pointer-events-none rounded-xl opacity-60" style={{ background: creatorPos ? "radial-gradient(ellipse 80% 60% at 0% 50%, rgba(93,230,255,0.06), transparent 70%)" : "none" }} />
+                <div className="relative flex items-center gap-2.5">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-cyan/10 text-pv-cyan"
                     aria-hidden
                   >
                     <User size={16} strokeWidth={2} />
                   </span>
-                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-emerald sm:tracking-[0.2em]">
+                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-cyan sm:tracking-[0.2em]">
                     {t("ibet")}
                   </span>
                 </div>
                 <input
                   type="text"
-                  className="w-full rounded-xl border border-white/[0.12] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-colors placeholder:text-pv-muted/55 focus:border-pv-emerald/50 focus:ring-1 focus:ring-pv-emerald/20"
+                  className="relative w-full rounded-xl border border-pv-cyan/[0.15] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-all placeholder:text-pv-muted/55 focus:border-pv-cyan/40 focus:ring-1 focus:ring-pv-cyan/20 focus:shadow-glow"
                   placeholder={creatorPosPlaceholder}
                   value={creatorPos}
                   onChange={(event) => setCreatorPos(event.target.value)}
@@ -1340,21 +1360,23 @@ export default function CreatePage() {
                   aria-label={t("ibet")}
                 />
               </div>
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2.5">
+              {/* Side B — Opponent / Fuchsia */}
+              <div className="relative flex flex-col gap-4 md:pl-4">
+                <div className="absolute inset-0 pointer-events-none rounded-xl opacity-60" style={{ background: opponentPos ? "radial-gradient(ellipse 80% 60% at 100% 50%, rgba(248,172,255,0.06), transparent 70%)" : "none" }} />
+                <div className="relative flex items-center gap-2.5">
                   <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-fuch/10 text-pv-fuch"
                     aria-hidden
                   >
                     <Users size={16} strokeWidth={2} />
                   </span>
-                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-muted sm:tracking-[0.2em]">
+                  <span className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-fuch sm:tracking-[0.2em]">
                     {isOneToMany ? t("challengerSideBets") : t("rivalBets")}
                   </span>
                 </div>
                 <input
                   type="text"
-                  className="w-full rounded-xl border border-white/[0.12] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-colors placeholder:text-pv-muted/55 focus:border-pv-emerald/50 focus:ring-1 focus:ring-pv-emerald/20"
+                  className="relative w-full rounded-xl border border-pv-fuch/[0.15] bg-pv-bg/90 px-4 py-3.5 font-body text-sm text-pv-text outline-none transition-all placeholder:text-pv-muted/55 focus:border-pv-fuch/40 focus:ring-1 focus:ring-pv-fuch/20 focus:shadow-glow-fuch"
                   placeholder={opponentPosPlaceholder}
                   value={opponentPos}
                   onChange={(event) => setOpponentPos(event.target.value)}
@@ -1565,7 +1587,7 @@ export default function CreatePage() {
                   <Input
                     type="date"
                     label={`${t("exactDate")} *`}
-                    min={minCustomDeadlineDate}
+                    min={customDateInputMin}
                     value={customDeadlineDate}
                     onChange={(event) => {
                       setDeadlinePreset(null);
@@ -1726,83 +1748,6 @@ export default function CreatePage() {
 
                   <div className="space-y-2">
                     <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                      {t("maxChallengers")}
-                    </label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[1, 2, 5].map((value) => (
-                        <motion.button
-                          key={value}
-                          type="button"
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => {
-                            setMaxChallengers(value);
-                            setMaxChallengersSlotDraft("");
-                          }}
-                          aria-pressed={maxChallengers === value}
-                          className={`min-h-[2.75rem] min-w-0 rounded-lg border px-1.5 py-2 font-display text-[11px] font-bold leading-tight transition-[border-color,background-color,color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg sm:min-h-[3rem] sm:px-2 sm:py-2.5 sm:text-xs ${
-                            maxChallengers === value
-                              ? "border-pv-emerald bg-pv-emerald/[0.12] text-pv-emerald shadow-[0_0_16px_-8px_rgba(78,222,163,0.3)]"
-                              : "border border-white/[0.12] bg-pv-surface text-pv-muted hover:border-pv-emerald/35 hover:text-pv-emerald"
-                          }`}
-                        >
-                          {value}
-                        </motion.button>
-                      ))}
-                      <div
-                        className={`flex min-h-[2.75rem] min-w-0 items-center justify-center rounded-lg border px-1.5 py-2 transition-[border-color,background-color,color,box-shadow] sm:min-h-[3rem] sm:px-2 sm:py-2.5 ${
-                          [1, 2, 5].includes(maxChallengers)
-                            ? "border border-white/[0.12] bg-pv-surface"
-                            : "border-pv-emerald bg-pv-emerald/[0.12] text-pv-emerald shadow-[0_0_16px_-8px_rgba(78,222,163,0.3)]"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="off"
-                          aria-label={t("maxChallengers")}
-                          placeholder={t("maxChallengersCustomPlaceholder")}
-                          className="w-full min-w-0 bg-transparent text-center font-display text-xs font-bold tabular-nums text-inherit outline-none placeholder:font-normal placeholder:text-pv-muted/45 focus:outline-none sm:text-sm"
-                          value={maxChallengersSlotDraft}
-                          onChange={(event) => {
-                            const raw = event.target.value.replace(/\D/g, "");
-                            setMaxChallengersSlotDraft(raw);
-                            if (raw === "") {
-                              setMaxChallengers(1);
-                              return;
-                            }
-                            const n = parseInt(raw, 10);
-                            if (Number.isFinite(n) && n >= 1 && n <= 100) {
-                              setMaxChallengers(n);
-                            }
-                          }}
-                          onBlur={() => {
-                            const raw = maxChallengersSlotDraft.replace(/\D/g, "");
-                            if (raw === "") {
-                              setMaxChallengers(1);
-                              setMaxChallengersSlotDraft("");
-                              return;
-                            }
-                            const n = parseInt(raw, 10);
-                            if (!Number.isFinite(n) || n < 1) {
-                              setMaxChallengers(1);
-                              setMaxChallengersSlotDraft("");
-                              return;
-                            }
-                            const clamped = Math.min(100, Math.max(1, n));
-                            setMaxChallengers(clamped);
-                            if ([1, 2, 5].includes(clamped)) {
-                              setMaxChallengersSlotDraft("");
-                            } else {
-                              setMaxChallengersSlotDraft(String(clamped));
-                            }
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("handicapLine")}
                     </label>
                     <input
@@ -1934,11 +1879,7 @@ export default function CreatePage() {
                   draftId={ticketDraftId}
                   marketTypeLabel={t(`marketTypes.${marketType}`)}
                   oddsModeLabel={t(`oddsModes.${oddsMode}`)}
-                  formatLabel={
-                    isOneToMany
-                      ? t("oneToManySummary", { count: maxChallengers })
-                      : t("headToHeadSummary")
-                  }
+                  formatLabel={t("headToHeadSummary")}
                   visibilityLabel={
                     isPrivate ? t("visibilityPrivate") : t("visibilityPublic")
                   }

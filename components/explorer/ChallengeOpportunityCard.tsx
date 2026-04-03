@@ -69,21 +69,27 @@ export default function ChallengeOpportunityCard({
   )}`;
 
   return (
-    <article className="group flex h-full flex-col gap-5 rounded-2xl border border-white/[0.1] bg-pv-surface p-5 transition-all duration-300 hover:border-pv-emerald/30 hover:bg-[#242323] sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center rounded-full border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+    <article className="group relative flex h-full flex-col gap-5 rounded-lg border border-white/[0.12] bg-pv-surface/80 transition-all duration-300 hover:border-white/[0.22] hover:bg-pv-surface/90 overflow-hidden">
+      {/* Top bar — serial + badges (document header) */}
+      <div className="flex items-center justify-between px-5 py-2.5 border-b border-white/[0.06] bg-white/[0.02] sm:px-6">
+        <span className="font-mono text-[9px] tracking-[0.15em] text-pv-muted/50 uppercase">
+          PV-{opportunity.id.slice(0, 8).toUpperCase()}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-pv-muted">
             {t(`challengeOpportunitySourceTypes.${opportunity.sourceType}`)}
           </span>
           <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${
+            className={`inline-flex items-center rounded border px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.12em] ${
               strengthBadgeClass[opportunity.claimStrengthTier]
             }`}
           >
-            {tQuality("claimStrength")}: {tQuality(`tiers.${opportunity.claimStrengthTier}`)}
+            {tQuality(`tiers.${opportunity.claimStrengthTier}`)}
           </span>
         </div>
       </div>
+
+      <div className="px-5 sm:px-6 pb-0">
 
       <div className="space-y-3">
         <div>
@@ -132,8 +138,9 @@ export default function ChallengeOpportunityCard({
           </div>
         </div>
       </dl>
+      </div>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2.5">
+      <div className="mt-auto flex flex-wrap items-center gap-2.5 px-5 sm:px-6 pb-5 sm:pb-6">
         {opportunity.action === "challenge" && opportunity.existingClaimId ? (
           <>
             <Link
@@ -169,6 +176,7 @@ export default function ChallengeOpportunityCard({
           </>
         )}
       </div>
+      <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
     </article>
   );
 }
