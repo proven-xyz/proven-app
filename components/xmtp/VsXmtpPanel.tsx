@@ -52,7 +52,19 @@ function formatMessageTime(d: Date, locale: string): string {
   return d.toLocaleTimeString(tag, { hour: "2-digit", minute: "2-digit" });
 }
 
-export default function VsXmtpPanel({ vs }: { vs: VSData }) {
+/** Same card width/centering as `/vs/[id]`. Hub passes `embedded` only to drop bottom margin inside its scroll parent. */
+function vsPanelPageShell(embedded: boolean) {
+  const layout = "w-full lg:mx-auto lg:max-w-[800px]";
+  return embedded ? `${layout} mb-0` : `${layout} mb-6 sm:mb-8`;
+}
+
+/** Single scroll + padding spec for thread log (hub and VS detail must match). */
+const VS_XMTP_PANEL_THREAD_SCROLL_CLASS =
+  "max-h-[min(42vh,280px)] min-h-[128px] overflow-y-auto px-3 py-2.5 sm:max-h-[min(48vh,360px)] sm:min-h-[140px] sm:px-3.5 sm:py-3";
+
+export type VsXmtpPanelProps = { vs: VSData; embedded?: boolean };
+
+export default function VsXmtpPanel({ vs, embedded = false }: VsXmtpPanelProps) {
   const locale = useLocale();
   const t = useTranslations("xmtpVs");
   const panelTitle = useMemo(() => {
@@ -305,7 +317,9 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
   if (!featureEnabled) {
     if (isOneVsOneDemoVs(vs)) {
       return (
-        <div className="card border border-white/[0.08] p-5 lg:max-w-[800px] lg:mx-auto mb-6 sm:mb-8">
+        <div
+          className={`card border border-white/[0.08] p-5 ${vsPanelPageShell(embedded)}`}
+        >
           <div className="flex min-w-0 gap-3 sm:gap-3.5">
             <span
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-muted/15 text-pv-muted"
@@ -334,7 +348,7 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
         glass
         glow="none"
         noPad
-        className="!rounded-2xl border border-white/[0.12] mb-6 sm:mb-8 lg:max-w-[800px] lg:mx-auto"
+        className={`!rounded-2xl border border-white/[0.12] ${vsPanelPageShell(embedded)}`}
       >
         <div className="flex w-full min-w-0 items-start gap-3 px-5 py-5 sm:gap-3.5 sm:px-8 sm:py-6">
           <span
@@ -358,7 +372,9 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
 
   if (!isConnected || !address) {
     return (
-      <div className="card border border-white/[0.08] p-5 lg:max-w-[800px] lg:mx-auto mb-6 sm:mb-8">
+      <div
+        className={`card border border-white/[0.08] p-5 ${vsPanelPageShell(embedded)}`}
+      >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 gap-3 sm:gap-3.5">
             <span
@@ -386,7 +402,9 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
 
   if (!peerAddress) {
     return (
-      <div className="card border border-white/[0.08] p-5 lg:max-w-[800px] lg:mx-auto mb-6 sm:mb-8">
+      <div
+        className={`card border border-white/[0.08] p-5 ${vsPanelPageShell(embedded)}`}
+      >
         <div className="flex min-w-0 gap-3 sm:gap-3.5">
           <span
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
@@ -408,7 +426,9 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
   }
 
   return (
-    <div className="card overflow-hidden rounded-xl border border-white/[0.1] p-0 lg:mx-auto lg:max-w-[800px] mb-6 sm:mb-8">
+    <div
+      className={`card overflow-hidden rounded-xl border border-white/[0.1] p-0 ${vsPanelPageShell(embedded)}`}
+    >
       <div className="border-b border-white/[0.08] bg-pv-bg/25 px-5 py-3.5 sm:px-6">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 flex-1 gap-3 sm:gap-3.5">
@@ -602,7 +622,7 @@ export default function VsXmtpPanel({ vs }: { vs: VSData }) {
           <div className="overflow-hidden rounded-lg border border-white/[0.08] bg-pv-bg/40">
             <div
               ref={threadScrollRef}
-              className="max-h-[min(42vh,280px)] min-h-[128px] overflow-y-auto px-3 py-2.5 sm:max-h-[min(48vh,360px)] sm:min-h-[140px] sm:px-3.5 sm:py-3"
+              className={VS_XMTP_PANEL_THREAD_SCROLL_CLASS}
               role="log"
               aria-label={t("chatScrollAria")}
               aria-live="polite"
