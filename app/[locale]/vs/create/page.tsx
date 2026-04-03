@@ -25,6 +25,7 @@ import { getExplorerTxUrl, getExplorerUrl } from "@/lib/genlayer";
 import { removePendingVS, savePendingVS, type PendingVS } from "@/lib/pending-vs";
 import { acquireTxLock } from "@/lib/tx-lock";
 import {
+  CATEGORIES,
   CATEGORY_GUIDANCE,
   DEADLINE_PRESET_IDS,
   DEADLINE_PRESET_SECONDS,
@@ -1815,6 +1816,17 @@ export default function CreatePage() {
                       autoComplete="off"
                     />
                   </div>
+
+                  <ListboxField
+                    id="create-category"
+                    label={t("category") ?? ""}
+                    value={category}
+                    options={CATEGORIES.map((entry) => ({
+                      value: entry.id,
+                      label: tCat(entry.id),
+                    }))}
+                    onChange={(value) => setCategory(normalizeCategoryId(value))}
+                  />
                 </div>
 
                 {oddsMode === "fixed" && (

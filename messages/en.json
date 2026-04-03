@@ -247,6 +247,7 @@
     "advancedHint": "Use this for custom odds, handicap lines, special settlement rules, or 1-v-many formats.",
     "marketType": "Market type",
     "oddsMode": "Odds mode",
+    "category": "Category",
     "format": "Format",
     "pricing": "Pricing",
     "visibility": "Visibility",

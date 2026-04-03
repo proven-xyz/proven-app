@@ -249,6 +249,7 @@
     "advancedHint": "Usalo para odds custom, handicaps, reglas especiales de settlement o formatos 1 contra varios.",
     "marketType": "Tipo de mercado",
     "oddsMode": "Modo de odds",
+    "category": "Categoría",
     "format": "Formato",
     "pricing": "Pricing",
     "visibility": "Visibilidad",
