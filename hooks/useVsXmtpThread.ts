@@ -54,6 +54,15 @@ export function useVsXmtpThread({
   client,
   peerAddress,
 }: UseVsXmtpThreadOptions): UseVsXmtpThreadResult {
+  const isNonFatalSyncNotice = useCallback((message: string) => {
+    // XMTP can surface sync telemetry as an "error" string even when successful.
+    // Example: "[GroupError::Sync] synced 1 messages, 0 failed 1 succeeded ..."
+    return (
+      /^\[GroupError::Sync\]/.test(message) &&
+      /\b0\s+failed\b/i.test(message) &&
+      /\bsucceeded\b/i.test(message)
+    );
+  }, []);
   const [phase, setPhase] = useState<VsXmtpThreadPhase>("idle");
   const [dm, setDm] = useState<Dm | null>(null);
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
@@ -108,11 +117,14 @@ export function useVsXmtpThread({
       setMessages(next);
     } catch (e) {
       const { kind, message } = classifyXmtpThreadError(e);
+      if (isNonFatalSyncNotice(message)) {
+        return;
+      }
       setThreadError({ kind, technical: message });
     } finally {
       setIsRefreshing(false);
     }
-  }, [clearThreadError]);
+  }, [clearThreadError, isNonFatalSyncNotice]);
 
   const throttledVisibilityRefresh = useCallback(() => {
     const now = Date.now();
@@ -144,7 +156,8 @@ export function useVsXmtpThread({
       try {
         const { dm: opened, messages: initial } = await ensureVsDmThread(
           client,
-          peerAddress
+          peerAddress,
+          { timeoutMs: 20000 }
         );
 
         if (cancelled || myGen !== initGen.current) return;
@@ -171,6 +184,11 @@ export function useVsXmtpThread({
       } catch (e) {
         if (cancelled || myGen !== initGen.current) return;
         const { kind, message } = classifyXmtpThreadError(e);
+        if (isNonFatalSyncNotice(message)) {
+          setPhase("idle");
+          setThreadError(null);
+          return;
+        }
         setThreadError({ kind, technical: message });
         setPhase("error");
         setDm(null);
@@ -186,6 +204,25 @@ export function useVsXmtpThread({
       setMessages([]);
     };
   }, [threadEligible, client, peerAddress, openRetryNonce]);
+
+  /**
+   * Safety net: if the open flow gets stuck without throwing (SDK/worker edge cases),
+   * fail fast into a recoverable error state instead of showing "Opening conversation…" forever.
+   */
+  useEffect(() => {
+    if (!threadEligible) return;
+    if (phase !== "loading") return;
+    const myGen = initGen.current;
+    const id = window.setTimeout(() => {
+      // Only trip if we're still on the same init generation and still loading.
+      if (initGen.current !== myGen) return;
+      setThreadError({ kind: "network", technical: "XMTP_OPEN_TIMEOUT" });
+      setPhase("error");
+      setDm(null);
+      setMessages([]);
+    }, 25_000);
+    return () => window.clearTimeout(id);
+  }, [threadEligible, phase]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;

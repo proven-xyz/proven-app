@@ -1582,6 +1582,8 @@ export default function VSDetailPage() {
                             : undefined
                         }
                         compact
+                        showPhaseBadge={false}
+                        timeClassName="text-base sm:text-lg lg:text-xl"
                       />
                     </div>
                   </div>

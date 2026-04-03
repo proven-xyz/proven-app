@@ -200,7 +200,7 @@ export default function CreatePage() {
   const [visibility, setVisibility] =
     useState<CreateClaimParams["visibility"]>("public");
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [sourceDraftOpen, setSourceDraftOpen] = useState(true);
+  const [sourceDraftOpen, setSourceDraftOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingParent, setLoadingParent] = useState(false);
   const [created, setCreated] = useState<number | null>(null);
@@ -429,6 +429,7 @@ export default function CreatePage() {
     if (normalizedSourceSeed) {
       setUrl(normalizedSourceSeed);
       setSourceSeedUrl(normalizedSourceSeed);
+      setSourceDraftOpen(true);
     }
   }, []);
 

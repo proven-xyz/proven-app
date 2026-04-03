@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTimeRemaining } from "@/lib/constants";
+import { useLocale } from "next-intl";
 
 interface LiveDeadlineProps {
   deadline: number;
@@ -10,8 +11,12 @@ interface LiveDeadlineProps {
   showBar?: boolean;
   /** Phase label to display */
   phase?: "open" | "locked" | "verifying" | "proven";
+  /** Show the phase badge pill next to the timer */
+  showPhaseBadge?: boolean;
   /** Compact mode — no bar, smaller text */
   compact?: boolean;
+  /** Override countdown text sizing/styling */
+  timeClassName?: string;
   className?: string;
 }
 
@@ -34,15 +39,22 @@ export default function LiveDeadline({
   deadline,
   showBar = true,
   phase,
+  showPhaseBadge = true,
   compact = false,
+  timeClassName = "",
   className = "",
 }: LiveDeadlineProps) {
-  const [state, setState] = useState(() => getTimeRemaining(deadline));
+  const locale = useLocale();
+  const countdownLocale = locale === "en" ? "en" : "es";
+  const [state, setState] = useState(() => getTimeRemaining(deadline, countdownLocale));
 
   useEffect(() => {
-    const id = setInterval(() => setState(getTimeRemaining(deadline)), 1000);
+    const id = setInterval(
+      () => setState(getTimeRemaining(deadline, countdownLocale)),
+      1000
+    );
     return () => clearInterval(id);
-  }, [deadline]);
+  }, [deadline, countdownLocale]);
 
   // Calculate progress (0→1 where 1 = full time, 0 = expired)
   // Assume max range of 30 days for visual scaling
@@ -77,7 +89,7 @@ export default function LiveDeadline({
       <div className="flex items-center gap-2">
         {/* Phase badge */}
         <AnimatePresence mode="wait">
-          {phaseConfig && (
+          {showPhaseBadge && phaseConfig && (
             <motion.span
               key={phase}
               initial={{ opacity: 0, scale: 0.8 }}
@@ -102,7 +114,7 @@ export default function LiveDeadline({
         <span
           className={`font-mono font-bold tabular-nums transition-colors duration-300 ${timeColor} ${
             compact ? "text-xs" : "text-sm"
-          } ${isCritical ? "animate-phase-glow" : ""}`}
+          } ${isCritical ? "animate-phase-glow" : ""} ${timeClassName}`}
         >
           {state.text}
         </span>
