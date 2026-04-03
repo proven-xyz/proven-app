@@ -1786,36 +1786,41 @@ export default function VSDetailPage() {
 
               {canAccept && (
                 <GlassCard glass className="!rounded-2xl border border-white/[0.12]">
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
-                    <Input
-                      label={t("challengeStake")}
-                      type="number"
-                      min={MIN_STAKE}
-                      step="1"
-                      value={challengeStake}
-                      onChange={(event) => setChallengeStake(event.target.value)}
-                    />
-                    <Button
-                      variant="fuch"
-                      onClick={handleAccept}
-                      loading={actionLoading === "accept"}
-                      disabled={!hasValidChallengeStake}
-                    >
-                      {actionLoading === "accept"
-                        ? t("accepting")
-                        : t("acceptAndStake", {
-                            amount: hasValidChallengeStake ? challengeStakeValue : vs.stake_amount,
-                          })}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-pv-muted mt-3">
-                    {fixedPayoutPreview !== null
-                      ? t("challengeStakeHintFixed", { payout: fixedPayoutPreview })
-                      : t("challengeStakeHintHeadToHead")}
-                  </p>
-                  <p className="text-xs text-pv-muted mt-2">
-                    {t("minimumStakeHint", { amount: MIN_STAKE })}
-                  </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+                      <Input
+                        label={t("challengeStake")}
+                        type="number"
+                        min={MIN_STAKE}
+                        step="1"
+                        value={challengeStake}
+                        onChange={(event) => setChallengeStake(event.target.value)}
+                      />
+                      <Button
+                        variant="fuch"
+                        onClick={handleAccept}
+                        loading={actionLoading === "accept"}
+                        disabled={!hasValidChallengeStake}
+                        className={
+                          actionLoading === "accept"
+                            ? "opacity-70 brightness-[0.85] saturate-[0.75] pointer-events-none"
+                            : ""
+                        }
+                      >
+                        {actionLoading === "accept"
+                          ? t("accepting")
+                          : t("acceptAndStake", {
+                              amount: hasValidChallengeStake ? challengeStakeValue : vs.stake_amount,
+                            })}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-pv-muted mt-3">
+                      {fixedPayoutPreview !== null
+                        ? t("challengeStakeHintFixed", { payout: fixedPayoutPreview })
+                        : t("challengeStakeHintHeadToHead")}
+                    </p>
+                    <p className="text-xs text-pv-muted mt-2">
+                      {t("minimumStakeHint", { amount: MIN_STAKE })}
+                    </p>
                 </GlassCard>
               )}
 
