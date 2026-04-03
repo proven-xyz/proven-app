@@ -472,6 +472,8 @@
     "aiOpportunitySourceDomain": "DOMINIO FUENTE",
     "aiOpportunityCategory": "CATEGORIA",
     "aiOpportunitySettlementBasis": "BASE DE RESOLUCION",
+    "settlementBasisExpandAria": "Ver texto completo de la base de resolución",
+    "settlementBasisCollapseAria": "Ocultar texto completo de la base de resolución",
     "confidenceHigh": "ALTA",
     "confidenceMedium": "MEDIA",
     "confidenceLow": "BAJA",

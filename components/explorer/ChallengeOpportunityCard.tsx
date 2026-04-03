@@ -1,9 +1,23 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { Link } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { ExternalLink, Globe, Sparkles, Timer } from "lucide-react";
+import {
+  ChevronDown,
+  ExternalLink,
+  Globe,
+  ShieldCheck,
+  Sparkles,
+  Timer,
+} from "lucide-react";
+
+/** Matches `ExploreClient` advanced filters panel height animation. */
+const exploreFilterPanelHeightTransition = {
+  duration: 0.34,
+  ease: [0.25, 0.46, 0.45, 0.94] as const,
+};
 
 import type { ChallengeOpportunity } from "@/lib/claimDrafts";
 
@@ -85,6 +99,7 @@ export default function ChallengeOpportunityCard({
   const t = useTranslations("explore");
   const tCat = useTranslations("categories");
   const locale = useLocale();
+  const [settlementExpanded, setSettlementExpanded] = useState(false);
 
   const deadlineLabel = useMemo(() => {
     const date = new Date(opportunity.candidate.deadlineAt);
@@ -112,11 +127,14 @@ export default function ChallengeOpportunityCard({
     }
   }, [opportunity.candidate.primaryResolutionSource]);
 
-  const settlementPreview = useMemo(
+  const settlementText = useMemo(
     () =>
       opportunity.candidate.settlementRule.replace(/\s+/g, " ").trim(),
     [opportunity.candidate.settlementRule]
   );
+
+  const settlementPanelId = `opportunity-settlement-${opportunity.id}`;
+  const settlementTriggerId = `opportunity-settlement-trigger-${opportunity.id}`;
 
   const createHref = `/vs/create?source=${encodeURIComponent(
     opportunity.candidate.primaryResolutionSource
@@ -200,38 +218,79 @@ export default function ChallengeOpportunityCard({
           {opportunity.candidate.claimText}
         </h3>
 
-        <dl className="grid grid-cols-1 gap-2 rounded-2xl border border-white/[0.08] bg-black/20 p-3 sm:grid-cols-2">
-          <div>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+          <div className="min-w-0">
             <dt className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted">
-              <Timer size={10} className="text-pv-muted/75" aria-hidden />
+              <Timer size={10} className="shrink-0 text-pv-muted/75" aria-hidden />
               {t("challengeOpportunityDeadline")}
             </dt>
             <dd className="mt-1 text-[13px] leading-5 text-pv-text">{deadlineLabel}</dd>
           </div>
-          <div>
+          <div className="min-w-0">
             <dt className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted">
-              <Globe size={10} className="text-pv-muted/75" aria-hidden />
-              {t("aiOpportunitySourceDomain")}
-            </dt>
-            <dd className="mt-1 truncate text-[13px] leading-5 text-pv-text">{sourceHostname}</dd>
-          </div>
-          <div>
-            <dt className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted">
+              <ShieldCheck size={10} className="shrink-0 text-pv-muted/75" aria-hidden />
               {t("aiOpportunitySourceTrust")}
             </dt>
             <dd className="mt-1 text-[13px] leading-5 text-pv-text">
               {t(`challengeOpportunitySourceTypes.${opportunity.sourceType}`)}
             </dd>
           </div>
-          <div>
-            <dt className="font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted">
-              {t("aiOpportunitySettlementBasis")}
+          <div className="col-span-2 min-w-0">
+            <dt className="inline-flex items-center gap-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted">
+              <Globe size={10} className="shrink-0 text-pv-muted/75" aria-hidden />
+              {t("aiOpportunitySourceDomain")}
             </dt>
-            <dd className="mt-1 line-clamp-2 text-[13px] leading-5 text-pv-text/88">
-              {settlementPreview}
-            </dd>
+            <dd className="mt-1 truncate text-[13px] leading-5 text-pv-text">{sourceHostname}</dd>
           </div>
         </dl>
+
+        <button
+          type="button"
+          id={settlementTriggerId}
+          aria-expanded={settlementExpanded}
+          aria-controls={settlementPanelId}
+          aria-label={
+            settlementExpanded
+              ? t("settlementBasisCollapseAria")
+              : t("settlementBasisExpandAria")
+          }
+          onClick={() => setSettlementExpanded((open) => !open)}
+          className="focus-ring flex w-full flex-col gap-2 rounded-2xl border border-white/[0.08] bg-black/20 px-3 py-2.5 text-left outline-none transition-colors hover:bg-white/[0.04] sm:px-4 sm:py-3"
+        >
+          <span className="flex w-full min-h-[44px] items-center justify-between gap-3 sm:min-h-0">
+            <span className="min-w-0 font-mono text-[9px] font-bold uppercase tracking-[0.18em] text-pv-muted">
+              {t("aiOpportunitySettlementBasis")}
+            </span>
+            <ChevronDown
+              size={18}
+              className={`shrink-0 text-pv-muted transition-transform duration-[340ms] ease-[cubic-bezier(0.25,0.46,0.45,0.94)] ${
+                settlementExpanded ? "rotate-180" : ""
+              }`}
+              aria-hidden
+            />
+          </span>
+          <motion.span
+            initial={false}
+            animate={{
+              height: settlementExpanded ? "auto" : "2.5rem",
+            }}
+            transition={{
+              height: exploreFilterPanelHeightTransition,
+            }}
+            className="block min-h-0 min-w-0 w-full overflow-hidden"
+          >
+            <span
+              id={settlementPanelId}
+              className={
+                settlementExpanded
+                  ? "block text-[13px] leading-relaxed text-pv-text/92"
+                  : "block overflow-hidden text-[13px] leading-snug text-pv-text/88 line-clamp-2 sm:leading-5"
+              }
+            >
+              {settlementText}
+            </span>
+          </motion.span>
+        </button>
       </div>
 
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-0">

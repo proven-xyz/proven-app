@@ -16,6 +16,8 @@ const EXPLORE_FALLBACKS: Record<string, Record<string, string>> = {
     sortHighestConfidence: "Highest confidence",
     minStakeArenaOnlyHint: "Minimum stake filters Arena Live only",
     quickFilterNeedsArenaOnlyHint: "Only applies to Arena Live challenges",
+    settlementBasisExpandAria: "Show full settlement basis",
+    settlementBasisCollapseAria: "Collapse settlement basis",
   },
   es: {
     noResults: "Ningún desafío coincide con estos filtros",
@@ -30,6 +32,8 @@ const EXPLORE_FALLBACKS: Record<string, Record<string, string>> = {
     sortHighestConfidence: "Mayor confianza",
     minStakeArenaOnlyHint: "La apuesta mínima filtra solo Arena Live",
     quickFilterNeedsArenaOnlyHint: "Solo aplica a desafíos en Arena Live",
+    settlementBasisExpandAria: "Ver texto completo de la base de resolución",
+    settlementBasisCollapseAria: "Ocultar texto completo de la base de resolución",
   },
 };
 

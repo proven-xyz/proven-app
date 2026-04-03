@@ -468,6 +468,8 @@
     "aiOpportunitySourceDomain": "SOURCE DOMAIN",
     "aiOpportunityCategory": "CATEGORY",
     "aiOpportunitySettlementBasis": "SETTLEMENT BASIS",
+    "settlementBasisExpandAria": "Show full settlement basis",
+    "settlementBasisCollapseAria": "Collapse settlement basis",
     "confidenceHigh": "HIGH",
     "confidenceMedium": "MEDIUM",
     "confidenceLow": "LOW",
