@@ -2,7 +2,7 @@
 
 # PROVEN.
 
-**AI-settled prediction markets where the contract reads the web, judges the outcome, and settles the duel automatically.**
+**Source-backed 1v1 prediction challenges, settled by AI consensus on GenLayer.**
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)
@@ -20,6 +20,9 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Hackathon Fit](#hackathon-fit)
+- [Demo Status](#demo-status)
+- [Why GenLayer](#why-genlayer)
 - [Core Features](#core-features)
 - [Architecture / Highlights](#architecture--highlights)
 - [How It Works](#how-it-works)
@@ -30,6 +33,7 @@
   - [Prerequisites](#prerequisites)
   - [Automated Setup](#automated-setup)
   - [Start the Application](#start-the-application)
+  - [Demo Flow](#demo-flow)
   - [Manual Setup](#manual-setup)
   - [Connect Your Wallet](#connect-your-wallet)
 - [Project Structure](#project-structure)
@@ -53,7 +57,7 @@
 
 ## Overview
 
-PROVEN is an AI-settled claim market built on GenLayer. Users create verifiable predictions about real-world outcomes - sports, crypto, weather, culture, and custom claims - stake on their position, and challenge an opponent to a head-to-head market. When the deadline arrives, the intelligent contract fetches evidence from the web, an LLM evaluates it, and validators reach consensus through GenLayer.
+PROVEN is a peer-to-peer challenge market built on GenLayer. Users create verifiable claims about real-world outcomes, stake on a side, and challenge an opponent to a head-to-head market. When the deadline arrives, the intelligent contract fetches web evidence, evaluates the outcome with AI, and settles through validator consensus.
 
 The current main workflow is aligned to [`contracts/proven.py`](contracts/proven.py). Experimental contract variants can exist in the repo, but `contracts/proven.py` should be treated as the source of truth for the app, scripts, and normal deployment flow unless explicitly stated otherwise.
 
@@ -66,7 +70,35 @@ The current main workflow is aligned to [`contracts/proven.py`](contracts/proven
 
 ### PROVEN solves this
 
-By leveraging GenLayer intelligent contracts, PROVEN turns the contract itself into the judge. The contract reads web evidence, evaluates it against the exact market terms, and settles based on validator consensus - without relying on a custom oracle committee for each market.
+PROVEN turns the contract itself into the judge. The contract reads web evidence, evaluates it against the market terms, and settles based on validator consensus without relying on a separate, market-specific oracle committee.
+
+---
+
+## Hackathon Fit
+
+- **Intelligent contract core** - the critical product logic lives inside a GenLayer intelligent contract, not only in the frontend
+- **Web evidence + AI reasoning** - the contract reads a real source URL and evaluates evidence against explicit market terms
+- **Validator-consensus settlement** - outcomes are determined through GenLayer validator execution and comparison
+- **Judgment-heavy real-world use case** - PROVEN is built for claims that need interpretation, not just simple price feeds
+
+---
+
+## Demo Status
+
+Studio is currently the most reliable demo path for this repository. Use Bradbury as the primary demo path only if the full deployment and interaction flow has already been validated end to end on the current build.
+
+---
+
+## Why GenLayer
+
+The core innovation in PROVEN is inside the intelligent contract:
+
+- it fetches evidence from the web
+- it evaluates the evidence against the claim terms
+- it produces a verdict candidate
+- validators independently execute the same logic and settle by consensus
+
+The frontend is important for usability, but the product's differentiator is that the judgment workflow itself lives in the contract.
 
 ---
 
@@ -94,7 +126,7 @@ Claims can be public or invite-only. Private claims require the invite key for v
 
 ### Runtime Network Switching
 
-The header includes a network switcher so users can move between configured GenLayer environments at runtime without changing code or rebuilding the app.
+The header includes a network switcher so users can move between configured GenLayer environments at runtime without changing code or rebuilding the app. The current default experience is Studio-first.
 
 ### Studio-Safe Demo Flow
 
@@ -266,7 +298,7 @@ The runtime network switcher also uses this flow when the user changes networks 
 
 ## Quick Start
 
-> Hackathon MVP - production hardening is still ongoing.
+> Current demo status: **Studio Network** is the most reliable path today. Use Bradbury first only if the full flow has already been validated end to end.
 
 ### Prerequisites
 
@@ -302,6 +334,25 @@ If you hit stale dev chunks:
 npm run dev:clean
 ```
 
+### Demo Flow
+
+The cleanest way to show the product is:
+
+1. Set the app to Studio Network
+2. Connect an injected wallet
+3. Open the Arena and move through the two discovery modes:
+   - `Arena Live` for open head-to-head challenges
+   - `Proving Ground` for AI-surfaced source-backed opportunities
+4. Create a challenge from a source-backed flow
+5. Open the challenge detail page and show:
+   - the claim terms
+   - the source URL
+   - the settlement rule
+   - the resolution lifecycle
+6. Show how GenLayer validators independently execute the same judgment flow before settlement
+
+If Bradbury is configured in the repo, treat it as secondary unless you have already validated the full write/read flow on the current deployment.
+
 ### Manual Setup
 
 1. Clone the repository.
@@ -334,6 +385,7 @@ Notes:
 
 - On Studio/localnet, browser writes intentionally send `value = 0`.
 - On Bradbury, the app uses the Bradbury-compatible write flow and indexed read path.
+- The UI now defaults to Studio when no runtime preference is already saved.
 
 ---
 
@@ -409,7 +461,7 @@ Core endpoints:
 | `NEXT_PUBLIC_CONTRACT_ADDRESS_TESTNET_BRADBURY` | Bradbury contract address | Used when Bradbury is selected |
 | `NEXT_PUBLIC_CONTRACT_ADDRESS_LOCALNET` | Localnet contract address | Optional |
 | `NEXT_PUBLIC_CONTRACT_ADDRESS_TESTNET_ASIMOV` | Asimov contract address | Optional |
-| `NEXT_PUBLIC_GENLAYER_NETWORK` | Base frontend network alias | `testnet-bradbury` if unset |
+| `NEXT_PUBLIC_GENLAYER_NETWORK` | Base frontend network alias | `studionet` if unset |
 | `GENLAYER_NETWORK` | Base server network alias | Falls back to frontend/base logic |
 | `NEXT_PUBLIC_GENLAYER_RPC` | Frontend RPC override | Optional |
 | `GENLAYER_RPC` | Server RPC override | Optional |
@@ -501,7 +553,7 @@ All `NEXT_PUBLIC_*` variables are exposed to the browser. Use [`.env.example`](.
 
 #### Option A: GenLayer Studio
 
-Fastest path for demos:
+Fastest path for the current demo flow:
 
 1. Deploy the contract to Studio.
 2. Copy the Studio contract address.
@@ -576,6 +628,8 @@ NEXT_PUBLIC_CONTRACT_ADDRESS_TESTNET_BRADBURY=0xYOUR_BRADBURY_CONTRACT
 
 If you want the runtime switcher to expose a network in production, make sure that network has a configured contract address in env.
 
+For the current hackathon deployment, Studio should be treated as the primary environment unless you have explicitly validated the Bradbury flow end to end on the deployed app.
+
 #### Netlify
 
 1. Import the repo at [netlify.com](https://netlify.com)
@@ -593,9 +647,9 @@ If you want the runtime switcher to expose a network in production, make sure th
 
 <div align="center">
 
-**The contract reads the web. Validators judge the result. PROVEN turns that into a playable market.**
+**The contract reads the web. Validators judge the result. PROVEN turns that into a source-backed challenge market.**
 
-Built for Aleph Hackathon 2026 - GenLayer Track
+Built at Aleph Hackathon 2026, recognized as an Honorable Mention, and later submitted to the GenLayer Bradbury Hackathon
 
 MIT License
 
