@@ -43,7 +43,7 @@ async function rpcRequest(
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
-      id: `${method}-${Date.now()}`,
+      id: Date.now(),
       method,
       params,
     }),
