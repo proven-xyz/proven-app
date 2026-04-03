@@ -33,10 +33,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;
     if (!ethereum) return;
     try {
-      await ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [getWalletChainParams()],
-      });
+      await ensureGenlayerWalletChain(ethereum);
     } catch { /* user rejected */ }
   }, []);
 

@@ -388,14 +388,9 @@ export async function ensureGenlayerWalletChain(ethereum: {
   })) as string;
 
   if (currentChainId === params.chainId) {
-    try {
-      await ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [params],
-      });
-    } catch {
-      // Asimov and Bradbury share a chain id, so treat refresh failures as non-fatal.
-    }
+    // If the wallet is already on the expected chain, avoid re-adding it.
+    // MetaMask logs noisy RPC errors when asked to "update" a network to the
+    // exact same RPC endpoint and chain id.
     return;
   }
 

@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { shortenAddress } from "@/lib/constants";
-import { getWalletChainParams } from "@/lib/genlayer";
+import { ensureGenlayerWalletChain, getWalletChainParams } from "@/lib/genlayer";
 import HeaderNetworkStatus from "@/components/HeaderNetworkStatus";
 import { Menu, X } from "lucide-react";
 import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
@@ -53,10 +53,7 @@ function WalletAccountMenu({
     const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;
     if (!ethereum) return;
     try {
-      await ethereum.request({
-        method: "wallet_addEthereumChain",
-        params: [getWalletChainParams()],
-      });
+      await ensureGenlayerWalletChain(ethereum);
     } catch { /* user rejected or already added */ }
     onOpenChange(false);
   }
