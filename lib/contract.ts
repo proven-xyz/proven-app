@@ -48,10 +48,14 @@ function getActiveContractAddress() {
 }
 
 function shouldBypassIndexedApi() {
-  return (
-    typeof window !== "undefined" &&
-    getConfiguredNetworkAlias() !== getBaseConfiguredNetworkAlias()
-  );
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  // The indexed API/cache is populated from the Bradbury-backed sync pipeline.
+  // Studio/local network views should read directly from the selected contract
+  // so we never render claims from a different network.
+  return getConfiguredNetworkAlias() !== "testnet-bradbury";
 }
 
 export interface ClaimChallenger {
