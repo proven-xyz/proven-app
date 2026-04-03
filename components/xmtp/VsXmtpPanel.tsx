@@ -31,6 +31,7 @@ import {
   mergeThreadDisplayRows,
   type OptimisticPendingMessage,
 } from "@/lib/xmtp/optimistic-send";
+import { GlassCard } from "@/components/ui";
 
 const XMTP_PANEL_TITLE_FALLBACK: Record<string, string> = {
   en: "XMTP MESSAGES",
