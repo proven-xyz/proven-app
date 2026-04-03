@@ -428,11 +428,6 @@ export default function CreatePage() {
     return moderationDecision === "allow";
   }, [moderationDecision]);
 
-  const isModerationUpToDate = useMemo(() => {
-    if (!CLAIM_MODERATION_ENABLED) return false;
-    return moderationKey === lastModerationKeyRef.current && Boolean(moderationDecision);
-  }, [moderationDecision, moderationKey]);
-
   useEffect(() => {
     if (!CLAIM_MODERATION_ENABLED) {
       return;
@@ -2244,37 +2239,53 @@ export default function CreatePage() {
                               ? moderationMessageKey
                               : undefined,
                           violationCodes: moderationCodes,
-                          confidence: moderationConfidence,
                           checkedAtMs: moderationCheckedAtMs || undefined,
                         }
                       : undefined
                   }
                 />
                 {CLAIM_MODERATION_ENABLED ? (
-                  <div className="rounded-2xl border border-white/[0.10] bg-white/[0.02] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                          {tQuality("moderationLabel")}
-                        </div>
-                        <div className="mt-1 text-xs text-pv-muted">
-                          {moderationInputReady
-                            ? isModerationUpToDate
-                              ? t("moderationUpToDate")
-                              : t("moderationNeedsCheck")
-                            : t("moderationNeedsMoreInfo")}
-                        </div>
-                      </div>
+                  <div className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-br from-white/[0.04] via-white/[0.015] to-transparent px-3 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] sm:px-4">
+                    <div
+                      className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                      aria-hidden
+                    />
+                    <div className="flex min-w-0 flex-row flex-wrap items-center justify-center gap-5 sm:gap-8">
                       <Button
                         variant="ghost"
                         fullWidth={false}
                         onClick={() => void runClaimModeration()}
                         disabled={!moderationInputReady || moderationLoading}
                         loading={moderationLoading}
-                        className="shrink-0 rounded-xl px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] !border-white/[0.22] !bg-white/[0.06] !text-pv-text/90 enabled:hover:!bg-white/[0.10]"
+                        className="shrink-0 rounded-lg px-3.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] !border-white/[0.10] !bg-white/[0.03] !text-pv-muted/95 enabled:hover:!border-white/[0.14] enabled:hover:!bg-white/[0.05] enabled:hover:!text-pv-text/85 disabled:!opacity-50"
                       >
                         {t("moderationRunCheck")}
                       </Button>
+                      <div className="min-w-0 shrink-0 text-center">
+                        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-pv-muted/90">
+                          {tQuality("moderationConfidenceHeading")}
+                        </div>
+                        <div className="mt-1 font-mono text-xl font-semibold tabular-nums leading-none text-pv-text/90">
+                          {moderationCheckedAtMs ? (
+                            <>
+                              {Math.max(
+                                0,
+                                Math.min(100, Math.round(moderationConfidence))
+                              )}
+                              <span className="text-base font-medium text-pv-muted/70">
+                                /100
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-pv-muted/75">—</span>
+                              <span className="text-base font-medium text-pv-muted/70">
+                                /100
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : null}

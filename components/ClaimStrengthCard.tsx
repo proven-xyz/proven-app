@@ -25,7 +25,6 @@ export type ClaimStrengthModeration = {
   message?: string;
   /** Optional additional context for richer UI. */
   violationCodes?: string[];
-  confidence?: number;
   checkedAtMs?: number;
 };
 
@@ -110,17 +109,6 @@ export default function ClaimStrengthCard({
         code
       ),
     }));
-  }, [moderation, safeT]);
-
-  const moderationConfidenceLabel = useMemo(() => {
-    const value = moderation?.confidence;
-    if (typeof value !== "number" || !Number.isFinite(value)) return "";
-    const rounded = Math.max(0, Math.min(100, Math.round(value)));
-    return safeT(
-      "moderationConfidence",
-      { value: rounded },
-      `Confidence: ${rounded}/100`
-    );
   }, [moderation, safeT]);
 
   const moderationCheckedLabel = useMemo(() => {
@@ -229,64 +217,59 @@ export default function ClaimStrengthCard({
 
         {moderation ? (
           <div className="rounded-xl border border-white/[0.12] bg-white/[0.03] px-3 py-2">
-            <div className="flex items-start gap-2 text-xs leading-relaxed">
-              {moderation.status === "allowed" ? (
-                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-pv-emerald" aria-hidden />
-              ) : moderation.status === "blocked" ? (
-                <ShieldX size={14} className="mt-0.5 shrink-0 text-amber-300" aria-hidden />
-              ) : (
-                <ShieldAlert size={14} className="mt-0.5 shrink-0 text-pv-muted" aria-hidden />
-              )}
-              <div className="min-w-0">
-                <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                  {safeT("moderationLabel", undefined, "Moderation")}
-                </div>
-                <div
-                  className={
-                    moderation.status === "checking"
-                      ? "text-amber-200 animate-pulse"
-                      : moderation.status === "blocked"
-                        ? "text-amber-200"
-                        : "text-pv-muted"
-                  }
-                >
-                  {moderationMessage ||
-                    (moderation.status === "checking"
-                      ? safeT("moderationAnalyzing", undefined, "Analyzing with AI…")
-                      : moderation.status === "allowed"
-                        ? safeT("moderationAllowed", undefined, "Allowed by policy.")
+            <div className="flex items-stretch gap-3 text-xs leading-relaxed">
+              <div className="flex min-w-0 flex-1 items-start gap-2">
+                {moderation.status === "allowed" ? (
+                  <ShieldCheck size={14} className="mt-0.5 shrink-0 text-pv-emerald" aria-hidden />
+                ) : moderation.status === "blocked" ? (
+                  <ShieldX size={14} className="mt-0.5 shrink-0 text-amber-300" aria-hidden />
+                ) : (
+                  <ShieldAlert size={14} className="mt-0.5 shrink-0 text-pv-muted" aria-hidden />
+                )}
+                <div className="min-w-0">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                    {safeT("moderationLabel", undefined, "Moderation")}
+                  </div>
+                  <div
+                    className={
+                      moderation.status === "checking"
+                        ? "text-amber-200 animate-pulse"
                         : moderation.status === "blocked"
-                          ? safeT("moderationBlockedGeneric", undefined, "Blocked by policy.")
-                          : safeT("moderationIdle", undefined, "Complete the claim to run a policy check."))}
+                          ? "text-amber-200"
+                          : "text-pv-muted"
+                    }
+                  >
+                    {moderationMessage ||
+                      (moderation.status === "checking"
+                        ? safeT("moderationAnalyzing", undefined, "Analyzing with AI…")
+                        : moderation.status === "allowed"
+                          ? safeT("moderationAllowed", undefined, "Allowed by policy.")
+                          : moderation.status === "blocked"
+                            ? safeT("moderationBlockedGeneric", undefined, "Blocked by policy.")
+                            : safeT("moderationIdle", undefined, "Complete the form to run a policy check."))}
+                  </div>
+
+                  {moderation.status !== "checking" &&
+                  moderationCodeChips.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {moderationCodeChips.map((chip) => (
+                        <span
+                          key={chip.code}
+                          className="rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-pv-text/80"
+                        >
+                          {chip.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-
-                {moderation.status !== "checking" &&
-                moderationCodeChips.length > 0 ? (
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {moderationCodeChips.map((chip) => (
-                      <span
-                        key={chip.code}
-                        className="rounded-full border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[10px] font-medium text-pv-text/80"
-                      >
-                        {chip.label}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                {moderation.status !== "checking" &&
-                moderationConfidenceLabel ? (
-                  <div className="mt-2 text-[10px] font-medium text-pv-muted">
-                    {moderationConfidenceLabel}
-                  </div>
-                ) : null}
-
-                {moderation.status !== "checking" && moderationCheckedLabel ? (
-                  <div className="mt-1 text-[10px] font-medium text-pv-muted/80">
-                    {moderationCheckedLabel}
-                  </div>
-                ) : null}
               </div>
+
+              {moderation.status !== "checking" && moderationCheckedLabel ? (
+                <div className="flex shrink-0 items-center self-stretch text-right text-[10px] font-medium text-pv-muted/80">
+                  {moderationCheckedLabel}
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
