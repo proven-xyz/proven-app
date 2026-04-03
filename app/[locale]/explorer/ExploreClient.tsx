@@ -29,11 +29,10 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Button, ArenaCardSkeleton } from "@/components/ui";
 import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
-import { ChevronDown, ListFilter, Search, X } from "lucide-react";
+import { ChevronDown, ListFilter, RefreshCw, Search, X } from "lucide-react";
 import ExploreFeaturedCarousel from "@/components/explorer/ExploreFeaturedCarousel";
 import ChallengeOpportunityCard from "@/components/explorer/ChallengeOpportunityCard";
 import Stage from "@/components/Stage";
-import CacheFreshnessControls from "@/components/CacheFreshnessControls";
 import type { VSCacheFreshness } from "@/lib/vs-freshness";
 
 /** Píldoras de filtro (CATEGORIES + Quick minimum): borde tipo botón, mismo hover. */
@@ -64,6 +63,7 @@ export default function ExploreClient() {
     process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
 
   const t = useTranslations("explore");
+  const cacheT = useTranslations("cache");
 
   const loadExploreData = useCallback(
     async ({
@@ -343,13 +343,6 @@ export default function ExploreClient() {
             <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
               {t("lead")}
             </span>
-            <CacheFreshnessControls
-              freshness={vsFreshness}
-              refreshing={refreshing}
-              onRefresh={() => {
-                void loadExploreData({ forceRefresh: true });
-              }}
-            />
           </div>
         </div>
       </AnimatedItem>
@@ -637,6 +630,22 @@ export default function ExploreClient() {
                 >
                   <ListFilter size={16} className="text-pv-muted" aria-hidden />
                   {t("advanced")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void loadExploreData({ forceRefresh: true });
+                  }}
+                  disabled={refreshing}
+                  aria-busy={refreshing}
+                  className="flex h-11 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded border border-white/[0.1] bg-pv-bg px-5 font-display text-[11px] font-bold uppercase tracking-[0.18em] text-pv-text transition-colors hover:border-pv-emerald/30 hover:bg-white/[0.04] disabled:cursor-wait disabled:opacity-70 lg:w-auto"
+                >
+                  <RefreshCw
+                    size={16}
+                    className={`text-pv-muted ${refreshing ? "animate-spin" : ""}`}
+                    aria-hidden
+                  />
+                  {refreshing ? cacheT("refreshing") : cacheT("refresh")}
                 </button>
               </div>
             </div>

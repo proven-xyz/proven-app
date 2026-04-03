@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Search, X, ListFilter } from "lucide-react";
+import { Search, X, ListFilter, RefreshCw } from "lucide-react";
 import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { MIN_STAKE_OPTIONS } from "@/lib/exploreFilters";
 
@@ -34,6 +34,8 @@ type DashboardVSFilterBarProps = {
   onCategoryChange: (cat: string) => void;
   minStakeFilter: number;
   onMinStakeFilterChange: (value: number) => void;
+  refreshing?: boolean;
+  onRefresh: () => void;
 };
 
 /**
@@ -49,9 +51,12 @@ export default function DashboardVSFilterBar({
   onCategoryChange,
   minStakeFilter,
   onMinStakeFilterChange,
+  refreshing = false,
+  onRefresh,
 }: DashboardVSFilterBarProps) {
   const tDash = useTranslations("dashboard");
   const tExplore = useTranslations("explore");
+  const tCache = useTranslations("cache");
   const tCat = useTranslations("categories");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -138,6 +143,20 @@ export default function DashboardVSFilterBar({
           >
             <ListFilter size={16} className="text-pv-muted" aria-hidden />
             {tExplore("advanced")}
+          </button>
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing}
+            className="flex h-11 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded border border-white/[0.1] bg-pv-bg px-5 font-display text-[11px] font-bold uppercase tracking-[0.18em] text-pv-text transition-colors hover:border-pv-emerald/30 hover:bg-white/[0.04] disabled:cursor-wait disabled:opacity-70 sm:w-auto"
+          >
+            <RefreshCw
+              size={16}
+              className={`text-pv-muted ${refreshing ? "animate-spin" : ""}`}
+              aria-hidden
+            />
+            {refreshing ? tCache("refreshing") : tCache("refresh")}
           </button>
         </div>
       </div>

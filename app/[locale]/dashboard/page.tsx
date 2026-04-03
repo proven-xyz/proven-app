@@ -26,9 +26,7 @@ import DashboardPortfolioSection, {
 } from "@/components/dashboard/DashboardPortfolioSection";
 import DashboardWalletGate from "@/components/dashboard/DashboardWalletGate";
 import DashboardVSFilterBar from "@/components/dashboard/DashboardVSFilterBar";
-import CacheFreshnessControls from "@/components/CacheFreshnessControls";
 import { Trophy, Flame, TrendingUp, Zap } from "lucide-react";
-import type { VSCacheFreshness } from "@/lib/vs-freshness";
 
 /** Alineado con píldoras de Explore (`ExploreClient`). */
 const filterPillBase =
@@ -40,7 +38,6 @@ const listItemEase = [0.25, 0.1, 0.25, 1] as const;
 export default function DashboardPage() {
   const { address, isConnected, isConnecting, connect } = useWallet();
   const [duels, setDuels] = useState<VSData[]>([]);
-  const [cacheFreshness, setCacheFreshness] = useState<VSCacheFreshness | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tab, setTab] = useState<"all" | "active" | "done">("all");
@@ -82,13 +79,9 @@ export default function DashboardPage() {
         results.items.sort((a, b) => b.id - a.id);
         if (requestId === requestIdRef.current) {
           setDuels(mergePendingVS(results.items, address));
-          setCacheFreshness(results.cache);
         }
       } catch (e) {
         console.error(e);
-        if (requestId === requestIdRef.current) {
-          setCacheFreshness(null);
-        }
       } finally {
         if (requestId === requestIdRef.current) {
           setLoading(false);
@@ -225,15 +218,6 @@ export default function DashboardPage() {
           <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
             {t("eyebrow")}
           </span>
-          <div className="mt-3">
-            <CacheFreshnessControls
-              freshness={cacheFreshness}
-              refreshing={refreshing}
-              onRefresh={() => {
-                void loadDuels({ forceRefresh: true });
-              }}
-            />
-          </div>
         </header>
 
         <section
@@ -343,6 +327,10 @@ export default function DashboardPage() {
               onCategoryChange={setCategoryFilter}
               minStakeFilter={minStakeFilter}
               onMinStakeFilterChange={setMinStakeFilter}
+              refreshing={refreshing}
+              onRefresh={() => {
+                void loadDuels({ forceRefresh: true });
+              }}
             />
           }
         />
