@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
@@ -1147,7 +1148,9 @@ export default function VSDetailPage() {
       return;
     }
 
-    setActionLoading("accept");
+    flushSync(() => {
+      setActionLoading("accept");
+    });
     try {
       const liveVS = await getVS(vsId, {
         inviteKey,
@@ -1797,14 +1800,11 @@ export default function VSDetailPage() {
                       />
                       <Button
                         variant="fuch"
+                        fullWidth={false}
                         onClick={handleAccept}
                         loading={actionLoading === "accept"}
                         disabled={!hasValidChallengeStake}
-                        className={
-                          actionLoading === "accept"
-                            ? "opacity-70 brightness-[0.85] saturate-[0.75] pointer-events-none"
-                            : ""
-                        }
+                        className="sm:min-w-[12rem]"
                       >
                         {actionLoading === "accept"
                           ? t("accepting")

@@ -36,6 +36,8 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { ArenaCardSkeleton } from "@/components/ui";
 import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
+import ExploreArenaEmptyState from "@/components/explorer/ExploreArenaEmptyState";
+import ExploreFilteredEmptyState from "@/components/explorer/ExploreFilteredEmptyState";
 import { ChevronDown, ListFilter, RefreshCw, Search, X } from "lucide-react";
 import ExploreFeaturedCarousel from "@/components/explorer/ExploreFeaturedCarousel";
 import ChallengeOpportunityCard from "@/components/explorer/ChallengeOpportunityCard";
@@ -306,8 +308,28 @@ export default function ExploreClient() {
       );
     }
 
+    if (filters.expiringSoon) {
+      const nowTs = Math.floor(Date.now() / 1000);
+      next = next.filter((opportunity) => {
+        const deadlineMs = new Date(
+          opportunity.candidate.deadlineAt
+        ).getTime();
+        if (!Number.isFinite(deadlineMs)) return false;
+        const d = Math.floor(deadlineMs / 1000);
+        return d > nowTs && d - nowTs <= 24 * 60 * 60;
+      });
+    }
+
+    // `minStake` and `needsChallengers` apply only to on-chain VS (Arena Live).
+
     return sortOpportunities(next, filters.sort);
-  }, [filters.cat, filters.search, filters.sort, opportunities]);
+  }, [
+    filters.cat,
+    filters.expiringSoon,
+    filters.search,
+    filters.sort,
+    opportunities,
+  ]);
 
   const { cat, sort, search, minStake, needsChallengers, expiringSoon } = filters;
 
@@ -329,14 +351,32 @@ export default function ExploreClient() {
     needsChallengers !== DEFAULT_EXPLORE_FILTERS.needsChallengers ||
     expiringSoon !== DEFAULT_EXPLORE_FILTERS.expiringSoon;
 
+  /**
+   * Proving Ground only narrows on category, search, and expiring window.
+   * Min stake / needs challengers / sort alone do not remove dossiers from the AI list.
+   */
+  const hasActiveOpportunityFilters = useMemo(
+    () =>
+      cat !== DEFAULT_EXPLORE_FILTERS.cat ||
+      search.trim().length > 0 ||
+      expiringSoon,
+    [cat, expiringSoon, search]
+  );
+
   const sortOnlyOptions: { key: ExploreSort; label: string }[] = useMemo(
     () => [
       { key: "newest", label: t("newest") },
-      { key: "highest", label: t("highestStake") },
+      {
+        key: "highest",
+        label:
+          activeView === "ai"
+            ? t("sortHighestConfidence")
+            : t("highestStake"),
+      },
       { key: "expiring", label: t("expiringSoon") },
       { key: "strength", label: t("strength") },
     ],
-    [t]
+    [activeView, t]
   );
 
   const sortTriggerLabel = useMemo(
@@ -403,10 +443,13 @@ export default function ExploreClient() {
   const switchView = useCallback(
     (nextView: ArenaViewMode) => {
       startViewTransition(() => {
+        if (nextView === "ai") {
+          updateFilters({ needsChallengers: false });
+        }
         setActiveView(nextView);
       });
     },
-    [startViewTransition]
+    [startViewTransition, updateFilters]
   );
 
   const scrollToBand = useCallback((id: string) => {
@@ -445,21 +488,23 @@ export default function ExploreClient() {
     if (filteredOpenChallenges.length === 0) {
       if (hasActiveFilters) {
         return (
-          <EmptyState
+          <ExploreFilteredEmptyState
+            eyebrow={t("noResultsEyebrow")}
             title={t("noResults")}
             description={t("noResultsDesc")}
-            actionLabel={t("resetFilters")}
-            onAction={resetFilters}
+            resetLabel={t("resetFilters")}
+            onReset={resetFilters}
           />
         );
       }
 
       return (
-        <EmptyState
-          title={t("noResults")}
+        <ExploreArenaEmptyState
+          eyebrow={t("openChallengesEmptyEyebrow")}
+          title={t("openChallengesEmptyTitle")}
           description={t("openChallengesEmptyDesc")}
-          actionLabel={t("challengeSomeone")}
-          actionHref="/vs/create"
+          ctaLabel={t("openChallengesEmptyCta")}
+          ctaHref="/vs/create"
         />
       );
     }
@@ -509,6 +554,17 @@ export default function ExploreClient() {
     }
 
     if (filteredOpportunities.length === 0) {
+      if (hasActiveOpportunityFilters) {
+        return (
+          <ExploreFilteredEmptyState
+            eyebrow={t("noResultsEyebrow")}
+            title={t("noResults")}
+            description={t("noResultsDesc")}
+            resetLabel={t("resetFilters")}
+            onReset={resetFilters}
+          />
+        );
+      }
       return (
         <EmptyState
           title={t("aiOpportunitiesEmptyTitle")}
@@ -554,81 +610,79 @@ export default function ExploreClient() {
         </section>
       </AnimatedItem>
 
-      <AnimatedItem>
+      {/* z-20: filter dropdowns (absolute z-40) must stack above #arena-content — Framer
+          motion siblings create stacking contexts; later DOM order was painting cards on top. */}
+      <AnimatedItem className="relative z-20">
         <section id="arena-controls" className="mb-8" aria-label={t("filtersAriaLabel")}>
           <div className="rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5 shadow-[0_18px_60px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-6">
-            <div className="rounded-[24px] border border-white/[0.08] bg-black/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-4">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-2">
-                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-pv-muted">
-                    {activeView === "open"
-                      ? t("openChallengesTab")
-                      : t("aiOpportunitiesTab")}
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-2">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-pv-muted">
+                  {activeView === "open"
+                    ? t("openChallengesTab")
+                    : t("aiOpportunitiesTab")}
+                </p>
+                <div>
+                  <h2 className="font-display text-xl font-bold uppercase tracking-tight text-pv-text sm:text-2xl">
+                    {activeBandCopy.title}
+                  </h2>
+                  <p className="mt-1 max-w-2xl text-sm leading-relaxed text-pv-muted">
+                    {activeBandCopy.hint}
                   </p>
-                  <div>
-                    <h2 className="font-display text-xl font-bold uppercase tracking-tight text-pv-text sm:text-2xl">
-                      {activeBandCopy.title}
-                    </h2>
-                    <p className="mt-1 max-w-2xl text-sm leading-relaxed text-pv-muted">
-                      {activeBandCopy.hint}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="inline-flex w-full flex-col gap-2 rounded-[22px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-auto sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    onClick={() => switchView("open")}
-                    aria-pressed={activeView === "open"}
-                    className={`flex min-h-[52px] flex-1 items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left transition-all duration-200 sm:min-w-[240px] ${
-                      activeView === "open"
-                        ? "border border-pv-emerald/40 bg-pv-emerald/[0.18] shadow-[0_12px_32px_-20px_rgba(78,222,163,0.95)]"
-                        : "border border-transparent bg-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-pv-text">
-                      {t("openChallengesTab")}
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${
-                        activeView === "open"
-                          ? "bg-pv-emerald text-pv-bg"
-                          : "border border-white/[0.12] bg-black/20 text-pv-muted"
-                      }`}
-                    >
-                      {filteredOpenChallenges.length}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => switchView("ai")}
-                    aria-pressed={activeView === "ai"}
-                    className={`flex min-h-[52px] flex-1 items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left transition-all duration-200 sm:min-w-[240px] ${
-                      activeView === "ai"
-                        ? "border border-pv-emerald/40 bg-pv-emerald/[0.18] shadow-[0_12px_32px_-20px_rgba(78,222,163,0.95)]"
-                        : "border border-transparent bg-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
-                    }`}
-                  >
-                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-pv-text">
-                      {t("aiOpportunitiesTab")}
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${
-                        activeView === "ai"
-                          ? "bg-pv-emerald text-pv-bg"
-                          : "border border-white/[0.12] bg-black/20 text-pv-muted"
-                      }`}
-                    >
-                      {filteredOpportunities.length}
-                    </span>
-                  </button>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {activeView === "open" ? (
+              <div className="inline-flex w-full flex-col gap-2 rounded-[22px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-auto sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => switchView("open")}
+                  aria-pressed={activeView === "open"}
+                  className={`flex min-h-[52px] flex-1 items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left transition-all duration-200 sm:min-w-[240px] ${
+                    activeView === "open"
+                      ? "border border-pv-emerald/40 bg-pv-emerald/[0.18] shadow-[0_12px_32px_-20px_rgba(78,222,163,0.95)]"
+                      : "border border-transparent bg-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
+                  }`}
+                >
+                  <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-pv-text">
+                    {t("openChallengesTab")}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${
+                      activeView === "open"
+                        ? "bg-pv-emerald text-pv-bg"
+                        : "border border-white/[0.12] bg-black/20 text-pv-muted"
+                    }`}
+                  >
+                    {filteredOpenChallenges.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => switchView("ai")}
+                  aria-pressed={activeView === "ai"}
+                  className={`flex min-h-[52px] flex-1 items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left transition-all duration-200 sm:min-w-[240px] ${
+                    activeView === "ai"
+                      ? "border border-pv-emerald/40 bg-pv-emerald/[0.18] shadow-[0_12px_32px_-20px_rgba(78,222,163,0.95)]"
+                      : "border border-transparent bg-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
+                  }`}
+                >
+                  <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-pv-text">
+                    {t("aiOpportunitiesTab")}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${
+                      activeView === "ai"
+                        ? "bg-pv-emerald text-pv-bg"
+                        : "border border-white/[0.12] bg-black/20 text-pv-muted"
+                    }`}
+                  >
+                    {filteredOpportunities.length}
+                  </span>
+                </button>
+              </div>
+            </div>
+
             <div className="mt-4 rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5 shadow-[0_18px_60px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-6">
               <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:items-end lg:gap-4 xl:gap-5">
               <div
@@ -675,7 +729,7 @@ export default function ExploreClient() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="absolute left-0 top-full z-40 mt-1.5 w-max min-w-full max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
+                      className="absolute left-0 top-full z-[100] mt-1.5 w-max min-w-full max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
                     >
                       {sortOnlyOptions.map(({ key, label }) => (
                         <button
@@ -747,7 +801,7 @@ export default function ExploreClient() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.16, ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="absolute left-0 top-full z-40 mt-1.5 w-max min-w-full max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
+                      className="absolute left-0 top-full z-[100] mt-1.5 w-max min-w-full max-w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded border border-white/[0.1] bg-pv-bg py-1 shadow-[0_16px_48px_-12px_rgba(0,0,0,0.85)]"
                     >
                       <button
                         type="button"
@@ -772,8 +826,16 @@ export default function ExploreClient() {
                       <button
                         type="button"
                         role="option"
+                        aria-disabled={activeView === "ai"}
+                        disabled={activeView === "ai"}
+                        title={
+                          activeView === "ai"
+                            ? t("quickFilterNeedsArenaOnlyHint")
+                            : undefined
+                        }
                         aria-selected={quickFilterOptionSelected("needs")}
                         onClick={() => {
+                          if (activeView === "ai") return;
                           updateFilters({
                             needsChallengers: true,
                             expiringSoon: false,
@@ -781,6 +843,10 @@ export default function ExploreClient() {
                           setQuickFilterMenuOpen(false);
                         }}
                         className={`flex w-full items-center px-4 py-2.5 text-left font-body text-sm transition-colors ${
+                          activeView === "ai"
+                            ? "cursor-not-allowed opacity-45"
+                            : ""
+                        } ${
                           quickFilterOptionSelected("needs")
                             ? "bg-pv-emerald/[0.12] font-medium text-pv-emerald"
                             : "text-pv-muted hover:bg-white/[0.05] hover:text-pv-text"
@@ -844,6 +910,10 @@ export default function ExploreClient() {
                   autoComplete="off"
                   placeholder={t("minStakePlaceholder")}
                   aria-label={t("minStakeInputAria")}
+                  title={
+                    activeView === "ai" ? t("minStakeArenaOnlyHint") : undefined
+                  }
+                  disabled={activeView === "ai"}
                   value={minDraft}
                   onChange={(event) => handleMinInputChange(event.target.value)}
                   onBlur={commitMinDraft}
@@ -852,7 +922,11 @@ export default function ExploreClient() {
                       event.currentTarget.blur();
                     }
                   }}
-                  className="input h-11 min-h-[44px] w-full max-w-full bg-pv-bg py-2.5 font-mono text-sm tabular-nums"
+                  className={`input h-11 min-h-[44px] w-full max-w-full bg-pv-bg py-2.5 font-mono text-sm tabular-nums ${
+                    activeView === "ai"
+                      ? "cursor-not-allowed opacity-50"
+                      : ""
+                  }`}
                 />
               </div>
 
@@ -982,11 +1056,22 @@ export default function ExploreClient() {
                           key={value}
                           type="button"
                           aria-pressed={minStake === value}
+                          disabled={activeView === "ai"}
+                          title={
+                            activeView === "ai"
+                              ? t("minStakeArenaOnlyHint")
+                              : undefined
+                          }
                           onClick={() => {
+                            if (activeView === "ai") return;
                             updateFilters({ minStake: value });
                             setMinDraft(value === 0 ? "" : String(value));
                           }}
                           className={`${filterPillBase} ${
+                            activeView === "ai"
+                              ? "cursor-not-allowed opacity-45"
+                              : ""
+                          } ${
                             minStake === value
                               ? filterPillActive
                               : filterPillInactive
@@ -1001,11 +1086,11 @@ export default function ExploreClient() {
               </div>
             </motion.div>
           </div>
-          ) : null}
+          </div>
         </section>
       </AnimatedItem>
 
-      <AnimatedItem>
+      <AnimatedItem className="relative z-0">
         <section id="arena-content" className="pb-4">
           <AnimatePresence mode="wait" initial={false}>
             {activeView === "open" ? (
