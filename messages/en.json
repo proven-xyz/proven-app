@@ -752,7 +752,7 @@
     "progressCreated": "Created",
     "progressAccepted": "Accepted",
     "progressVerifying": "Verifying",
-    "progressProven": "PROVEN",
+    "progressProven": "VERDICT",
     "marketTypes": {
       "binary": "Binary",
       "moneyline": "Moneyline",

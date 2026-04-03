@@ -757,7 +757,7 @@
     "progressCreated": "Creado",
     "progressAccepted": "Aceptado",
     "progressVerifying": "Verificando",
-    "progressProven": "PROVEN",
+    "progressProven": "VERDICT",
     "designPreviewLifecycleHint": "Solo diseño: toca un paso del ciclo para previsualizar esa fase (sin cambios on-chain).",
     "designPreviewReset": "Estado demo original",
     "designPreviewResolutionSummary": "Solo vista previa: se muestra el lado creador como resultado. No se ejecutó consenso real.",

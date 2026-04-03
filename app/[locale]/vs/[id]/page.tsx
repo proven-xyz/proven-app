@@ -304,18 +304,38 @@ function buildDesignPreviewRematchChain(
   resolutionSummary: string,
 ): VSData[] {
   // Dos rondas mock para que se vea "Rematch" en el card sin depender de on-chain.
+  const isGpt5Vs =
+    base.question.startsWith("GPT-5 Announced by OpenAI before ");
+
+  const round1BaseQuestion = isGpt5Vs
+    ? base.question.replace(/before\s+[A-Za-z]+\b.*/i, "before February")
+    : base.question.includes("March")
+      ? base.question.replace("March", "January")
+      : base.question;
+
+  const round2BaseQuestion = isGpt5Vs
+    ? base.question.replace(/before\s+[A-Za-z]+\b.*/i, "before June")
+    : base.question;
+
   const round1Base: VSData = {
     ...base,
     id: base.id - 100,
-    question: base.question.includes("March")
-      ? base.question.replace("March", "January")
-      : base.question,
+    question: round1BaseQuestion,
+    creator_position: isGpt5Vs
+      ? "OpenAI announces GPT-5 before February"
+      : base.creator_position,
+    opponent_position: isGpt5Vs
+      ? "No official announcement before February"
+      : base.opponent_position,
     resolution_summary: resolutionSummary,
   };
+
   const round2Base: VSData = {
     ...base,
     id: base.id - 101,
-    question: base.question,
+    question: round2BaseQuestion,
+    creator_position: isGpt5Vs ? "OpenAI announces GPT-5 before June" : base.creator_position,
+    opponent_position: isGpt5Vs ? "No official announcement before June" : base.opponent_position,
     resolution_summary: resolutionSummary,
   };
 
@@ -326,7 +346,7 @@ function buildDesignPreviewRematchChain(
   const round3Base: VSData = {
     ...base,
     id: base.id - 102,
-    question: "BTC Price will break $100k before April 30",
+    question: "BTC Price will break $100k before August 31",
     resolution_summary: resolutionSummary,
   };
 
@@ -383,10 +403,6 @@ function ProgressBar({
   const progressPercent = isResolved ? 100 : ((stepIndex + 1) / total) * 100;
   const phaseCurrent = isResolved ? total : stepIndex + 1;
 
-  // Expanding timeline: active phase gets more visual weight
-  const phaseWeights = steps.map((_, i) => (i === stepIndex ? 2 : 1));
-  const totalWeight = phaseWeights.reduce((a, b) => a + b, 0);
-
   const cellClass = (isCurrent: boolean, isDone: boolean) =>
     `flex h-full min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border px-3 py-3 text-left transition-all duration-300 sm:min-h-0 sm:py-3.5 ${
       interactive ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 " : ""
@@ -409,14 +425,30 @@ function ProgressBar({
           {steps.map((_, i) => {
             const isDone = isResolved || i < stepIndex;
             const isCurrent = !isResolved && i === stepIndex;
+            const shouldFill = isDone || isCurrent;
             return (
               <motion.div
                 key={i}
-                className={`h-full rounded-full ${isDone ? "bg-pv-emerald" : isCurrent ? "bg-pv-emerald animate-phase-glow" : "bg-white/[0.06]"}`}
+                className="relative flex-1 h-full overflow-hidden rounded-full bg-white/[0.06]"
                 initial={false}
-                animate={{ flex: phaseWeights[i] }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              />
+                style={{ transformOrigin: "left center" }}
+              >
+                <motion.div
+                  className={`absolute inset-0 rounded-full ${
+                    isDone ? "bg-pv-emerald" : isCurrent ? "bg-pv-emerald animate-phase-glow" : ""
+                  }`}
+                  initial={false}
+                  style={{ transformOrigin: "left center" }}
+                  animate={{
+                    scaleX: shouldFill ? 1 : 0,
+                    opacity: shouldFill ? 1 : 0,
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                />
+              </motion.div>
             );
           })}
         </div>
