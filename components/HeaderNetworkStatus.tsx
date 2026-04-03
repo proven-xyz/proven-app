@@ -347,7 +347,8 @@ export default function HeaderNetworkStatus({
                 <div className="space-y-1 p-2 pt-2">
                   {availableOptions.map((option) => {
                     const isBusy = switchingAlias === option.alias;
-                    const isUnavailable = !option.hasContract;
+                    const isComingSoon = option.alias === "testnet-bradbury";
+                    const isUnavailable = !option.hasContract || isComingSoon;
                     const environmentLabel = getNetworkEnvironmentLabel(option.alias, t);
 
                     return (
@@ -387,12 +388,17 @@ export default function HeaderNetworkStatus({
                         className={[
                           "flex w-full items-center justify-between gap-3 rounded-2xl border px-3 py-3 text-left transition-colors",
                           isUnavailable
-                            ? "border-white/[0.06] bg-white/[0.02] text-pv-muted/55"
+                            ? "cursor-not-allowed border-white/[0.07] bg-white/[0.025] text-pv-muted/60"
                             : "border-white/[0.08] bg-white/[0.03] hover:border-white/[0.18] hover:bg-white/[0.06]",
                         ].join(" ")}
                       >
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold leading-snug text-pv-text">
+                          <p
+                            className={[
+                              "text-sm font-semibold leading-snug",
+                              isUnavailable ? "text-pv-text/72" : "text-pv-text",
+                            ].join(" ")}
+                          >
                             {option.shortName}
                           </p>
                           <p className="mt-1 text-[11px] text-pv-muted">
@@ -403,15 +409,29 @@ export default function HeaderNetworkStatus({
                         <div className="flex items-center gap-2">
                           {isUnavailable ? (
                             <span
-                              className="rounded-full border border-white/[0.08] bg-white/[0.03] px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted/60"
+                              className={[
+                                "rounded-full border px-2 py-1 font-mono text-[9px] font-bold uppercase tracking-[0.14em]",
+                                isComingSoon
+                                  ? "border-pv-gold/20 bg-pv-gold/[0.08] text-pv-gold/80"
+                                  : "border-white/[0.08] bg-white/[0.03] text-pv-muted/60",
+                              ].join(" ")}
                             >
-                              {t("networkUnavailable")}
+                              {isComingSoon
+                                ? t("networkComingSoon")
+                                : t("networkUnavailable")}
                             </span>
                           ) : null}
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-black/20 text-pv-text/80">
+                          <div
+                            className={[
+                              "flex h-8 w-8 items-center justify-center rounded-full border bg-black/20",
+                              isUnavailable
+                                ? "border-white/[0.06] text-pv-muted/40"
+                                : "border-white/[0.08] text-pv-text/80",
+                            ].join(" ")}
+                          >
                             {isBusy ? (
                               <RefreshCw size={14} className="animate-spin" aria-hidden />
-                            ) : (
+                            ) : isUnavailable ? null : (
                               <ChevronDown size={13} className="-rotate-90" aria-hidden />
                             )}
                           </div>

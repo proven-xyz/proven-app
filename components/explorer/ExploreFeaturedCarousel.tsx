@@ -47,7 +47,13 @@ function CarouselArrowIcon({ direction }: { direction: "prev" | "next" }) {
   );
 }
 
-export default function ExploreFeaturedCarousel() {
+export default function ExploreFeaturedCarousel({
+  onPrimaryClick,
+  onSecondaryClick,
+}: {
+  onPrimaryClick?: () => void;
+  onSecondaryClick?: () => void;
+}) {
   const t = useTranslations("explore");
   const slides = EXPLORE_FEATURED_SLIDE_IDS;
   const [index, setIndex] = useState(0);
@@ -110,7 +116,7 @@ export default function ExploreFeaturedCarousel() {
       }}
     >
       <div
-        className="group/card relative w-full overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] max-sm:aspect-[3/4] sm:min-h-[320px]"
+        className="group/card relative w-full overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] max-sm:aspect-[3/4] sm:min-h-[420px] md:min-h-[480px]"
       >
         <AnimatePresence initial={false} mode="wait">
           <motion.div
@@ -152,7 +158,7 @@ export default function ExploreFeaturedCarousel() {
           aria-hidden
         />
 
-        <div className="relative z-10 flex h-full min-h-0 flex-col p-6 sm:min-h-[320px] sm:p-8">
+        <div className="relative z-10 flex h-full min-h-0 flex-col p-6 sm:min-h-[420px] sm:p-8 md:min-h-[480px]">
           <AnimatePresence initial={false} mode="wait">
             <motion.div
               key={activeId}
@@ -183,13 +189,20 @@ export default function ExploreFeaturedCarousel() {
 
               <div className="mt-auto flex flex-col gap-4 pt-5 sm:flex-row sm:items-end sm:justify-between sm:pt-6">
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button type="button" variant="primary" fullWidth={false}>
+                  <Button
+                    type="button"
+                    variant="emerald"
+                    fullWidth={false}
+                    onClick={onPrimaryClick}
+                    className="shadow-[0_12px_30px_-16px_rgba(78,222,163,0.75)]"
+                  >
                     {t("featuredCtaPrimary")}
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     fullWidth={false}
+                    onClick={onSecondaryClick}
                     className="!border !border-white/[0.18] !bg-white/[0.06] !text-pv-text shadow-none hover:!border-white/[0.28] hover:!bg-white/[0.1]"
                   >
                     {t("featuredCtaSecondary")}

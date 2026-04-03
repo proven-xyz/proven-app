@@ -1,9 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import {
   getAllVSSnapshot,
@@ -18,33 +24,113 @@ import {
   DEFAULT_EXPLORE_FILTERS,
   MIN_STAKE_OPTIONS,
   normalizeExploreMinStake,
-  serializeExploreFilters,
   type ExploreSort,
 } from "@/lib/exploreFilters";
-import type { ChallengeOpportunitiesResponse, ChallengeOpportunity } from "@/lib/claimDrafts";
+import type {
+  ChallengeOpportunitiesResponse,
+  ChallengeOpportunity,
+} from "@/lib/claimDrafts";
 import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { useExploreFilterState } from "@/hooks/useExploreFilterState";
-import { getExploreSampleCards } from "@/lib/sampleVs";
 import PageTransition, { AnimatedItem } from "@/components/PageTransition";
-import { Button, ArenaCardSkeleton } from "@/components/ui";
+import { ArenaCardSkeleton } from "@/components/ui";
 import ArenaCard from "@/components/ArenaCard";
 import EmptyState from "@/components/EmptyState";
 import { ChevronDown, ListFilter, RefreshCw, Search, X } from "lucide-react";
 import ExploreFeaturedCarousel from "@/components/explorer/ExploreFeaturedCarousel";
 import ChallengeOpportunityCard from "@/components/explorer/ChallengeOpportunityCard";
-import Stage from "@/components/Stage";
 import type { VSCacheFreshness } from "@/lib/vs-freshness";
 
-/** Píldoras de filtro (CATEGORIES + Quick minimum): borde tipo botón, mismo hover. */
 const filterPillBase =
   "shrink-0 rounded border px-4 py-2 font-display text-xs font-bold uppercase tracking-tight transition-[color,border-color,background-color] focus-ring";
 const filterPillActive = "border-pv-emerald/50 bg-pv-emerald text-pv-bg";
 const filterPillInactive =
   "border-white/[0.15] bg-transparent text-pv-muted hover:border-white/[0.28] hover:text-pv-text";
 
+type ArenaViewMode = "open" | "ai";
+
+function getOpportunitySearchBlob(opportunity: ChallengeOpportunity) {
+  return [
+    opportunity.candidate.claimText,
+    opportunity.sourceSummary,
+    opportunity.candidate.settlementRule,
+    opportunity.candidate.category,
+    opportunity.candidate.primaryResolutionSource,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+function getOpportunityDeadlineValue(opportunity: ChallengeOpportunity) {
+  const time = new Date(opportunity.candidate.deadlineAt).getTime();
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+function sortOpportunities(
+  opportunities: ChallengeOpportunity[],
+  sort: ExploreSort
+) {
+  const next = [...opportunities];
+
+  if (sort === "expiring") {
+    return next.sort(
+      (a, b) => getOpportunityDeadlineValue(a) - getOpportunityDeadlineValue(b)
+    );
+  }
+
+  if (sort === "strength" || sort === "highest") {
+    return next.sort((a, b) => {
+      if (b.candidate.confidenceScore !== a.candidate.confidenceScore) {
+        return b.candidate.confidenceScore - a.candidate.confidenceScore;
+      }
+      return b.claimStrengthScore - a.claimStrengthScore;
+    });
+  }
+
+  return next;
+}
+
+function IntelligenceDossierSkeleton() {
+  return (
+    <div className="h-full rounded-2xl border border-white/[0.1] bg-white/[0.03] p-4 backdrop-blur-xl">
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+        <div className="h-3 rounded bg-white/[0.08]" />
+        <div className="h-3 rounded bg-white/[0.08]" />
+        <div className="h-3 rounded bg-white/[0.08]" />
+      </div>
+      <div className="mb-3 space-y-2">
+        <div className="h-5 w-5/6 rounded bg-white/[0.08]" />
+        <div className="h-5 w-3/4 rounded bg-white/[0.08]" />
+      </div>
+      <div className="mb-3 grid grid-cols-1 gap-2 rounded-2xl border border-white/[0.06] bg-black/20 p-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <div className="h-3 w-1/2 rounded bg-white/[0.08]" />
+          <div className="h-3 rounded bg-white/[0.08]" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-1/2 rounded bg-white/[0.08]" />
+          <div className="h-3 rounded bg-white/[0.08]" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-1/2 rounded bg-white/[0.08]" />
+          <div className="h-3 rounded bg-white/[0.08]" />
+        </div>
+        <div className="space-y-2">
+          <div className="h-3 w-1/2 rounded bg-white/[0.08]" />
+          <div className="h-3 rounded bg-white/[0.08]" />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <div className="h-11 flex-1 rounded-lg bg-white/[0.08]" />
+        <div className="h-11 w-36 rounded-lg bg-white/[0.08]" />
+      </div>
+    </div>
+  );
+}
+
 export default function ExploreClient() {
   const { filters, updateFilters, resetFilters } = useExploreFilterState();
-  const { address, isConnected } = useWallet();
+  const { address } = useWallet();
   const locale = useLocale();
   const [allVS, setAllVS] = useState<VSData[]>([]);
   const [opportunities, setOpportunities] = useState<ChallengeOpportunity[]>([]);
@@ -56,6 +142,8 @@ export default function ExploreClient() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [quickFilterMenuOpen, setQuickFilterMenuOpen] = useState(false);
   const [minDraft, setMinDraft] = useState("");
+  const [activeView, setActiveView] = useState<ArenaViewMode>("open");
+  const [, startViewTransition] = useTransition();
   const sortMenuRef = useRef<HTMLDivElement>(null);
   const quickFilterMenuRef = useRef<HTMLDivElement>(null);
   const requestIdRef = useRef(0);
@@ -109,9 +197,12 @@ export default function ExploreClient() {
         setOpportunitiesLoading(false);
       } else {
         setOpportunitiesLoading(true);
-        opportunitiesPromise = fetch(`/api/challenge-opportunities?locale=${locale}&limit=6`, {
-          cache: "no-store",
-        })
+        opportunitiesPromise = fetch(
+          `/api/challenge-opportunities?locale=${locale}&limit=8`,
+          {
+            cache: "no-store",
+          }
+        )
           .then(async (response) => {
             const payload = (await response.json().catch(() => null)) as
               | ChallengeOpportunitiesResponse
@@ -121,7 +212,9 @@ export default function ExploreClient() {
             if (!response.ok) {
               const errorMessage =
                 payload && "error" in payload ? payload.error?.message : undefined;
-              throw new Error(errorMessage || "Unable to load challenge opportunities");
+              throw new Error(
+                errorMessage || "Unable to load challenge opportunities"
+              );
             }
 
             return payload as ChallengeOpportunitiesResponse;
@@ -187,30 +280,34 @@ export default function ExploreClient() {
     }
   }, []);
 
-  const open = useMemo(
+  const openChallenges = useMemo(
     () => allVS.filter((vs) => isVSJoinable(vs, address ?? undefined)),
     [address, allVS]
   );
 
-  const filtered = useMemo(
-    () => applyExploreFilters(open, filters),
-    [open, filters]
+  const filteredOpenChallenges = useMemo(
+    () => applyExploreFilters(openChallenges, filters),
+    [filters, openChallenges]
   );
-  const readyToChallenge = useMemo(() => {
-    if (!address) {
-      return [];
-    }
-    return applyExploreFilters(
-      allVS.filter((vs) => isVSJoinable(vs, address)),
-      { ...filters, sort: "strength" }
-    ).slice(0, 3);
-  }, [address, allVS, filters]);
 
-  const samplePool = useMemo(() => getExploreSampleCards(), []);
-  const filteredSamples = useMemo(
-    () => applyExploreFilters(samplePool, filters),
-    [samplePool, filters]
-  );
+  const filteredOpportunities = useMemo(() => {
+    let next = opportunities;
+
+    if (filters.cat !== "all") {
+      next = next.filter(
+        (opportunity) => opportunity.candidate.category === filters.cat
+      );
+    }
+
+    const query = filters.search.trim().toLowerCase();
+    if (query) {
+      next = next.filter((opportunity) =>
+        getOpportunitySearchBlob(opportunity).includes(query)
+      );
+    }
+
+    return sortOpportunities(next, filters.sort);
+  }, [filters.cat, filters.search, filters.sort, opportunities]);
 
   const { cat, sort, search, minStake, needsChallengers, expiringSoon } = filters;
 
@@ -232,22 +329,6 @@ export default function ExploreClient() {
     needsChallengers !== DEFAULT_EXPLORE_FILTERS.needsChallengers ||
     expiringSoon !== DEFAULT_EXPLORE_FILTERS.expiringSoon;
 
-  const showResultsCount =
-    !loading &&
-    !(filtered.length === 0 && filteredSamples.length === 0 && hasActiveFilters);
-
-  const resultsMessage = useMemo(() => {
-    if (filtered.length > 0) {
-      return filtered.length === 1
-        ? t("results", { count: filtered.length })
-        : t("resultsPlural", { count: filtered.length });
-    }
-    if (filteredSamples.length > 0) {
-      return null;
-    }
-    return hasActiveFilters ? t("sampleNoMatchIntro") : null;
-  }, [filtered.length, filteredSamples.length, hasActiveFilters, t]);
-
   const sortOnlyOptions: { key: ExploreSort; label: string }[] = useMemo(
     () => [
       { key: "newest", label: t("newest") },
@@ -260,7 +341,7 @@ export default function ExploreClient() {
 
   const sortTriggerLabel = useMemo(
     () =>
-      sortOnlyOptions.find((o) => o.key === sort)?.label ??
+      sortOnlyOptions.find((option) => option.key === sort)?.label ??
       sortOnlyOptions[0].label,
     [sort, sortOnlyOptions]
   );
@@ -279,25 +360,20 @@ export default function ExploreClient() {
 
   const quickFilterOptionSelected = (
     choice: "all" | "needs" | "soon" | "strength"
-  ): boolean => {
+  ) => {
     if (choice === "all") {
-      return (
-        !needsChallengers &&
-        !expiringSoon &&
-        sort !== "strength"
-      );
+      return !needsChallengers && !expiringSoon && sort !== "strength";
     }
     if (choice === "needs") return needsChallengers && !expiringSoon;
     if (choice === "soon") return expiringSoon && !needsChallengers;
-    return (
-      sort === "strength" && !needsChallengers && !expiringSoon
-    );
+    return sort === "strength" && !needsChallengers && !expiringSoon;
   };
 
   useEffect(() => {
     if (!sortMenuOpen && !quickFilterMenuOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      const node = e.target as Node;
+
+    const onDoc = (event: MouseEvent) => {
+      const node = event.target as Node;
       if (
         sortMenuRef.current?.contains(node) ||
         quickFilterMenuRef.current?.contains(node)
@@ -307,58 +383,254 @@ export default function ExploreClient() {
       setSortMenuOpen(false);
       setQuickFilterMenuOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
         setSortMenuOpen(false);
         setQuickFilterMenuOpen(false);
       }
     };
+
     document.addEventListener("mousedown", onDoc);
     window.addEventListener("keydown", onKey);
+
     return () => {
       document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("keydown", onKey);
     };
-  }, [sortMenuOpen, quickFilterMenuOpen]);
+  }, [quickFilterMenuOpen, sortMenuOpen]);
+
+  const switchView = useCallback(
+    (nextView: ArenaViewMode) => {
+      startViewTransition(() => {
+        setActiveView(nextView);
+      });
+    },
+    [startViewTransition]
+  );
+
+  const scrollToBand = useCallback((id: string) => {
+    if (typeof document === "undefined") return;
+    const target = document.getElementById(id);
+    target?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const activeCountLabel =
+    activeView === "open"
+      ? t("available", { count: filteredOpenChallenges.length })
+      : t("aiSignalsCount", { count: filteredOpportunities.length });
+
+  const activeBandCopy =
+    activeView === "open"
+      ? {
+          title: t("openChallengesBandTitle"),
+          hint: t("openChallengesBandHint"),
+        }
+      : {
+          title: t("aiOpportunitiesBandTitle"),
+          hint: t("aiOpportunitiesBandHint"),
+        };
+
+  const renderOpenChallenges = () => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+          <ArenaCardSkeleton />
+          <ArenaCardSkeleton />
+          <ArenaCardSkeleton />
+        </div>
+      );
+    }
+
+    if (filteredOpenChallenges.length === 0) {
+      if (hasActiveFilters) {
+        return (
+          <EmptyState
+            title={t("noResults")}
+            description={t("noResultsDesc")}
+            actionLabel={t("resetFilters")}
+            onAction={resetFilters}
+          />
+        );
+      }
+
+      return (
+        <EmptyState
+          title={t("noResults")}
+          description={t("openChallengesEmptyDesc")}
+          actionLabel={t("challengeSomeone")}
+          actionHref="/vs/create"
+        />
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+        {filteredOpenChallenges.map((vs) => (
+          <motion.div
+            key={vs.id}
+            layout
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.22 }}
+          >
+            <ArenaCard
+              vs={vs}
+              challengersCount={getVSChallengerCount(vs)}
+              viewerAddress={address}
+              hideQualityPills={false}
+            />
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderAiOpportunities = () => {
+    if (!opportunitiesEnabled) {
+      return (
+        <EmptyState
+          title={t("aiOpportunitiesDisabledTitle")}
+          description={t("aiOpportunitiesDisabledDesc")}
+        />
+      );
+    }
+
+    if (opportunitiesLoading) {
+      return (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <IntelligenceDossierSkeleton />
+          <IntelligenceDossierSkeleton />
+          <IntelligenceDossierSkeleton />
+          <IntelligenceDossierSkeleton />
+        </div>
+      );
+    }
+
+    if (filteredOpportunities.length === 0) {
+      return (
+        <EmptyState
+          title={t("aiOpportunitiesEmptyTitle")}
+          description={t("aiOpportunitiesEmptyDesc")}
+        />
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        {filteredOpportunities.map((opportunity) => (
+          <motion.div
+            key={opportunity.id}
+            layout
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChallengeOpportunityCard opportunity={opportunity} />
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <PageTransition>
+      <h1 className="sr-only">{t("title")}</h1>
+
       <AnimatedItem>
-        <div className="mb-10">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-4 sm:gap-6">
-            <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-6">
-              <h1 className="font-display text-2xl font-bold uppercase tracking-tighter text-pv-text sm:text-3xl md:text-4xl">
-                {t("title")}
-              </h1>
-              <div className="h-px min-w-[2rem] flex-1 bg-white/[0.12]" aria-hidden />
-            </div>
-            <div className="flex flex-shrink-0 items-center gap-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-pv-emerald shadow-[0_0_8px_rgba(78,222,163,0.6)]" />
-              <span className="font-mono text-xs text-pv-muted">
-                {t("available", { count: open.length })}
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="block max-w-2xl font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-pv-emerald sm:text-xs">
-              {t("lead")}
-            </span>
-          </div>
-        </div>
+        <section id="arena-hero" className="mb-8">
+          <ExploreFeaturedCarousel
+            onPrimaryClick={() => {
+              switchView("open");
+              window.requestAnimationFrame(() => scrollToBand("arena-content"));
+            }}
+            onSecondaryClick={() => {
+              switchView("open");
+              window.requestAnimationFrame(() => scrollToBand("arena-controls"));
+            }}
+          />
+        </section>
       </AnimatedItem>
 
       <AnimatedItem>
-        <ExploreFeaturedCarousel />
-      </AnimatedItem>
+        <section id="arena-controls" className="mb-8" aria-label={t("filtersAriaLabel")}>
+          <div className="rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5 shadow-[0_18px_60px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-6">
+            <div className="rounded-[24px] border border-white/[0.08] bg-black/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:p-4">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-2">
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-[0.22em] text-pv-muted">
+                    {activeView === "open"
+                      ? t("openChallengesTab")
+                      : t("aiOpportunitiesTab")}
+                  </p>
+                  <div>
+                    <h2 className="font-display text-xl font-bold uppercase tracking-tight text-pv-text sm:text-2xl">
+                      {activeBandCopy.title}
+                    </h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-relaxed text-pv-muted">
+                      {activeBandCopy.hint}
+                    </p>
+                  </div>
+                </div>
 
-      <AnimatedItem>
-        <section
-          className="mb-8"
-          aria-label={t("filtersAriaLabel")}
-        >
-          <div className="rounded-xl border border-white/[0.08] bg-pv-bg/80 p-5 shadow-[inset_0_1px_3px_rgba(0,0,0,0.4)] sm:p-6">
-            {/* Sort | filter (2+2); min 2 cols para cifras largas; búsqueda 6 cols. */}
-            <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:gap-4 lg:items-end xl:gap-5">
+                <div className="inline-flex w-full flex-col gap-2 rounded-[22px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] sm:w-auto sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => switchView("open")}
+                    aria-pressed={activeView === "open"}
+                    className={`flex min-h-[52px] flex-1 items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left transition-all duration-200 sm:min-w-[240px] ${
+                      activeView === "open"
+                        ? "border border-pv-emerald/40 bg-pv-emerald/[0.18] shadow-[0_12px_32px_-20px_rgba(78,222,163,0.95)]"
+                        : "border border-transparent bg-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
+                    }`}
+                  >
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-pv-text">
+                      {t("openChallengesTab")}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${
+                        activeView === "open"
+                          ? "bg-pv-emerald text-pv-bg"
+                          : "border border-white/[0.12] bg-black/20 text-pv-muted"
+                      }`}
+                    >
+                      {filteredOpenChallenges.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => switchView("ai")}
+                    aria-pressed={activeView === "ai"}
+                    className={`flex min-h-[52px] flex-1 items-center justify-between gap-3 rounded-[18px] px-4 py-3 text-left transition-all duration-200 sm:min-w-[240px] ${
+                      activeView === "ai"
+                        ? "border border-pv-emerald/40 bg-pv-emerald/[0.18] shadow-[0_12px_32px_-20px_rgba(78,222,163,0.95)]"
+                        : "border border-transparent bg-transparent hover:border-white/[0.08] hover:bg-white/[0.03]"
+                    }`}
+                  >
+                    <span className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-pv-text">
+                      {t("aiOpportunitiesTab")}
+                    </span>
+                    <span
+                      className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.14em] ${
+                        activeView === "ai"
+                          ? "bg-pv-emerald text-pv-bg"
+                          : "border border-white/[0.12] bg-black/20 text-pv-muted"
+                      }`}
+                    >
+                      {filteredOpportunities.length}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {activeView === "open" ? (
+            <div className="mt-4 rounded-[28px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5 shadow-[0_18px_60px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:p-6">
+              <div className="grid grid-cols-2 gap-3 gap-y-4 lg:grid-cols-12 lg:items-end lg:gap-4 xl:gap-5">
               <div
                 className="relative col-span-1 min-w-0 lg:col-span-2"
                 ref={sortMenuRef}
@@ -379,7 +651,7 @@ export default function ExploreClient() {
                   aria-controls="explore-sort-listbox"
                   onClick={() => {
                     setQuickFilterMenuOpen(false);
-                    setSortMenuOpen((o) => !o);
+                    setSortMenuOpen((open) => !open);
                   }}
                   className="input flex h-11 min-h-[44px] w-full cursor-pointer items-center justify-between gap-2 bg-pv-bg py-0 pr-3 text-left font-body text-sm text-pv-text transition-[border-color,box-shadow] hover:border-white/[0.14]"
                 >
@@ -449,7 +721,7 @@ export default function ExploreClient() {
                   aria-controls="explore-quick-filter-listbox"
                   onClick={() => {
                     setSortMenuOpen(false);
-                    setQuickFilterMenuOpen((o) => !o);
+                    setQuickFilterMenuOpen((open) => !open);
                   }}
                   className="input flex h-11 min-h-[44px] w-full cursor-pointer items-center justify-between gap-2 bg-pv-bg py-0 pr-3 text-left font-body text-sm text-pv-text transition-[border-color,box-shadow] hover:border-white/[0.14]"
                 >
@@ -573,11 +845,11 @@ export default function ExploreClient() {
                   placeholder={t("minStakePlaceholder")}
                   aria-label={t("minStakeInputAria")}
                   value={minDraft}
-                  onChange={(e) => handleMinInputChange(e.target.value)}
+                  onChange={(event) => handleMinInputChange(event.target.value)}
                   onBlur={commitMinDraft}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.currentTarget.blur();
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.currentTarget.blur();
                     }
                   }}
                   className="input h-11 min-h-[44px] w-full max-w-full bg-pv-bg py-2.5 font-mono text-sm tabular-nums"
@@ -624,7 +896,7 @@ export default function ExploreClient() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setAdvancedOpen((o) => !o)}
+                  onClick={() => setAdvancedOpen((open) => !open)}
                   aria-expanded={advancedOpen}
                   className="flex h-11 min-h-[44px] w-full shrink-0 items-center justify-center gap-2 rounded border border-white/[0.1] bg-pv-bg px-5 font-display text-[11px] font-bold uppercase tracking-[0.18em] text-pv-text transition-colors hover:border-pv-emerald/30 hover:bg-white/[0.04] lg:w-auto"
                 >
@@ -657,20 +929,14 @@ export default function ExploreClient() {
                 opacity: advancedOpen ? 1 : 0,
               }}
               transition={{
-                height: {
-                  duration: 0.34,
-                  ease: [0.25, 0.46, 0.45, 0.94],
-                },
-                opacity: {
-                  duration: 0.22,
-                  ease: [0.25, 0.1, 0.25, 1],
-                },
+                height: { duration: 0.34, ease: [0.25, 0.46, 0.45, 0.94] },
+                opacity: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] },
               }}
               className={`overflow-hidden ${!advancedOpen ? "pointer-events-none" : ""}`}
               aria-hidden={!advancedOpen}
             >
               <div className="mt-6 border-t border-white/[0.06] pt-6">
-                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-6 sm:items-start">
+                <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 sm:items-start sm:gap-x-10 sm:gap-y-6">
                   <div className="min-w-0">
                     <span className="mb-3 block font-display text-[10px] font-bold uppercase tracking-[0.22em] text-pv-muted">
                       {t("categoriesHeading")}
@@ -705,6 +971,7 @@ export default function ExploreClient() {
                       ))}
                     </div>
                   </div>
+
                   <div className="min-w-0">
                     <span className="mb-3 block font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted">
                       {t("advancedMinPresets")}
@@ -717,9 +984,7 @@ export default function ExploreClient() {
                           aria-pressed={minStake === value}
                           onClick={() => {
                             updateFilters({ minStake: value });
-                            setMinDraft(
-                              value === 0 ? "" : String(value)
-                            );
+                            setMinDraft(value === 0 ? "" : String(value));
                           }}
                           className={`${filterPillBase} ${
                             minStake === value
@@ -736,193 +1001,37 @@ export default function ExploreClient() {
               </div>
             </motion.div>
           </div>
+          ) : null}
         </section>
       </AnimatedItem>
 
-      <div>
-        {opportunitiesEnabled && (opportunitiesLoading || opportunities.length > 0) ? (
-          <AnimatedItem>
-            <section className="mb-8" aria-label={t("challengeOpportunities")}>
-              <div className="mb-4 flex flex-col gap-1.5">
-                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
-                  {t("challengeOpportunities")}
-                </div>
-                <p className="max-w-3xl text-sm leading-relaxed text-pv-muted">
-                  {t("challengeOpportunitiesHint")}
-                </p>
-              </div>
-              {opportunitiesLoading ? (
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-                  <ArenaCardSkeleton />
-                  <ArenaCardSkeleton />
-                  <ArenaCardSkeleton />
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-3">
-                  {opportunities.map((opportunity) => (
-                    <ChallengeOpportunityCard
-                      key={opportunity.id}
-                      opportunity={opportunity}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          </AnimatedItem>
-        ) : null}
-
-        {isConnected && readyToChallenge.length > 0 ? (
-          <AnimatedItem>
-            <section className="mb-8" aria-label={t("readyToChallenge")}>
-              <div className="mb-4 flex flex-col gap-1.5">
-                <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
-                  {t("readyToChallenge")}
-                </div>
-                <p className="text-sm leading-relaxed text-pv-muted">
-                  {t("readyToChallengeHint")}
-                </p>
-              </div>
-              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {readyToChallenge.map((vs) => (
-                  <ArenaCard
-                    key={`ready-${vs.id}`}
-                    vs={vs}
-                    challengersCount={getVSChallengerCount(vs)}
-                    viewerAddress={address}
-                    hideQualityPills
-                  />
-                ))}
-              </div>
-            </section>
-          </AnimatedItem>
-        ) : null}
-
-        {showResultsCount && resultsMessage ? (
-          <AnimatedItem>
-            <div className="mb-4 text-xs leading-relaxed text-pv-muted" aria-live="polite">
-              {resultsMessage}
-            </div>
-          </AnimatedItem>
-        ) : null}
-
-        {loading ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <ArenaCardSkeleton />
-            <ArenaCardSkeleton />
-            <ArenaCardSkeleton />
-          </div>
-        ) : filtered.length === 0 && filteredSamples.length === 0 ? (
-          hasActiveFilters ? (
-            <div className="mx-auto flex w-full max-w-lg flex-col items-center rounded-xl border border-white/[0.05] bg-pv-bg/60 px-6 py-8 text-center backdrop-blur-[1px] sm:px-8 sm:py-10">
-              <p className="mb-4 max-w-[40ch] text-xs leading-relaxed text-pv-muted">
-                {t("sampleNoMatchIntro")}
-              </p>
-              <p className="mb-6 max-w-[34ch] text-sm leading-relaxed text-pv-muted">
-                {t("sampleCreateHint")}
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  fullWidth={false}
-                  onClick={resetFilters}
-                >
-                  {t("resetFilters")}
-                </Button>
-                <Link href="/vs/create" className="inline-block">
-                  <Button variant="primary" fullWidth={false}>
-                    {t("challengeSomeone")}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <EmptyState
-              title={t("noResults")}
-              description={t("noResultsDesc")}
-              actionLabel={t("challengeSomeone")}
-              actionHref="/vs/create"
-            />
-          )
-        ) : filtered.length > 0 ? (
-          <AnimatePresence mode="popLayout">
-            <div>
-              {/* Featured duels — first 2 items get expanded Stage treatment */}
-              {filtered.length > 2 && (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
-                  {filtered.slice(0, 2).map((vs) => (
-                    <motion.div
-                      key={vs.id}
-                      layout
-                      initial={{ opacity: 0, scale: 0.97 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.97 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <Stage glow="both" className="border border-white/[0.08]">
-                        <ArenaCard
-                          vs={vs}
-                          challengersCount={getVSChallengerCount(vs)}
-                          viewerAddress={address}
-                          hideQualityPills
-                        />
-                      </Stage>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-              {/* Remaining items as compact grid */}
-              <motion.div layout className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                {(filtered.length > 2 ? filtered.slice(2) : filtered).map((vs) => (
-                  <motion.div
-                    key={vs.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.97 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.97 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <ArenaCard
-                      vs={vs}
-                      challengersCount={getVSChallengerCount(vs)}
-                      viewerAddress={address}
-                      hideQualityPills
-                    />
-                  </motion.div>
-                ))}
+      <AnimatedItem>
+        <section id="arena-content" className="pb-4">
+          <AnimatePresence mode="wait" initial={false}>
+            {activeView === "open" ? (
+              <motion.div
+                key="arena-open-view"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+              >
+                {renderOpenChallenges()}
               </motion.div>
-            </div>
+            ) : (
+              <motion.div
+                key="arena-ai-view"
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+              >
+                {renderAiOpportunities()}
+              </motion.div>
+            )}
           </AnimatePresence>
-        ) : (
-          <AnimatePresence mode="popLayout">
-            <motion.div layout className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {filteredSamples.map((vs) => (
-                <motion.div
-                  key={vs.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.97 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.97 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ArenaCard
-                    vs={vs}
-                    challengersCount={getVSChallengerCount(vs)}
-                    viewerAddress={address}
-                    hideQualityPills
-                    isSample
-                    sampleBadgeLabel={t("sampleBadge")}
-                    categoryFilterHref={`/explorer?${serializeExploreFilters({
-                      ...DEFAULT_EXPLORE_FILTERS,
-                      cat: vs.category,
-                    })}`}
-                  />
-                </motion.div>
-              ))}
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </div>
+        </section>
+      </AnimatedItem>
     </PageTransition>
   );
 }

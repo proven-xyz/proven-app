@@ -27,7 +27,7 @@ type ResolvedNetworkOption = {
   hasContract: boolean;
 };
 
-const DEFAULT_NETWORK_ALIAS: SupportedGenlayerNetwork = "testnet-bradbury";
+const DEFAULT_NETWORK_ALIAS: SupportedGenlayerNetwork = "studionet";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const CLIENT_NETWORK_STORAGE_KEY = "proven.genlayer.network";
 
@@ -43,7 +43,7 @@ const NETWORK_CONFIGS: Record<SupportedGenlayerNetwork, GenlayerNetworkConfig> =
     alias: "studionet",
     chain: studionet,
     defaultRpc: "https://studio.genlayer.com/api",
-    defaultExplorer: "https://genlayer-explorer.vercel.app",
+    defaultExplorer: "https://explorer-studio.genlayer.com",
     defaultConsensusMainContract: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
   },
   "testnet-asimov": {
@@ -170,9 +170,14 @@ function getStoredClientNetworkPreference() {
   }
 
   try {
-    return parseSupportedGenlayerNetwork(
+    const storedPreference = parseSupportedGenlayerNetwork(
       window.localStorage.getItem(CLIENT_NETWORK_STORAGE_KEY)
     );
+    if (storedPreference === "testnet-bradbury") {
+      window.localStorage.removeItem(CLIENT_NETWORK_STORAGE_KEY);
+      return null;
+    }
+    return storedPreference;
   } catch {
     return null;
   }
@@ -208,6 +213,16 @@ export function getConfiguredNetworkName(
   network?: SupportedGenlayerNetwork | null
 ) {
   return getResolvedNetworkConfig(network).chain.name;
+}
+
+export function getConfiguredExplorerBaseUrl(
+  network?: SupportedGenlayerNetwork | null
+) {
+  const resolvedNetwork = resolveNetworkAlias(network);
+  if (resolvedNetwork === getBaseNetworkAlias()) {
+    return getBaseConfiguredExplorerOverride() || getResolvedNetworkConfig(network).defaultExplorer;
+  }
+  return getResolvedNetworkConfig(network).defaultExplorer;
 }
 
 export function setClientPreferredNetworkAlias(

@@ -6,27 +6,13 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useWallet } from "@/lib/wallet";
 import { shortenAddress } from "@/lib/constants";
-import { ensureGenlayerWalletChain, getWalletChainParams } from "@/lib/genlayer";
+import {
+  getConfiguredExplorerBaseUrl,
+  getConfiguredNetworkAlias,
+} from "@/lib/genlayer";
 import HeaderNetworkStatus from "@/components/HeaderNetworkStatus";
-import { Menu, X } from "lucide-react";
+import { Copy, ExternalLink, LogOut, Menu, X } from "lucide-react";
 import { isXmtpFeatureEnabled } from "@/lib/xmtp/config";
-
-function shortenNetworkName(networkName: string) {
-  return networkName
-    .replace(/^GenLayer\s+/i, "")
-    .replace(/\s+Testnet(?:\s+Chain)?$/i, "")
-    .trim();
-}
-
-function formatAddNetworkLabel(template: string, networkName: string) {
-  if (/Bradbury Network/i.test(template)) {
-    return template.replace(/Bradbury Network/gi, `${networkName} Network`);
-  }
-  if (/Bradbury/i.test(template)) {
-    return template.replace(/Bradbury/gi, networkName);
-  }
-  return `${template} ${networkName}`.trim();
-}
 
 function WalletAccountMenu({
   address,
@@ -44,18 +30,22 @@ function WalletAccountMenu({
   buttonClassName: string;
 }) {
   const t = useTranslations("header");
-  const addNetworkLabel = formatAddNetworkLabel(
-    t("addNetwork"),
-    shortenNetworkName(getWalletChainParams().chainName)
-  );
+  const [copied, setCopied] = useState(false);
+  const explorerBase = getConfiguredExplorerBaseUrl(getConfiguredNetworkAlias());
+  const explorerHref = `${explorerBase.replace(/\/+$/, "")}/address/${address}`;
+  const actionItemClass =
+    "group flex w-full items-center gap-3 rounded-xl border border-transparent px-3.5 py-3 text-left text-[13px] font-medium text-pv-text/82 transition-[background-color,border-color,color,transform] hover:border-pv-emerald/20 hover:bg-pv-emerald/[0.07] hover:text-pv-text";
+  const iconClass =
+    "h-4 w-4 shrink-0 text-pv-muted transition-colors group-hover:text-pv-emerald";
 
-  async function handleAddNetwork() {
-    const ethereum = typeof window !== "undefined" ? (window as any).ethereum : null;
-    if (!ethereum) return;
+  async function handleCopyAddress() {
     try {
-      await ensureGenlayerWalletChain(ethereum);
-    } catch { /* user rejected or already added */ }
-    onOpenChange(false);
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
   }
 
   return (
@@ -74,20 +64,42 @@ function WalletAccountMenu({
         {open ? (
           <motion.div
             role="menu"
-            initial={{ opacity: 0, y: -6 }}
+            initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
+            exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-[calc(100%+6px)] z-[60] min-w-[180px] overflow-hidden rounded-lg border border-white/[0.12] bg-pv-surface/95 py-1 shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+            className="absolute right-0 top-[calc(100%+4px)] z-[60] min-w-[240px] overflow-hidden rounded-2xl border border-white/[0.14] bg-[linear-gradient(180deg,rgba(36,35,35,0.96),rgba(24,24,24,0.98))] p-2 shadow-[0_22px_60px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/12 before:to-transparent"
           >
+            <div className="mb-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-3">
+              <p className="font-display text-[13px] font-bold tracking-tight text-pv-text">
+                {shortenAddress(address)}
+              </p>
+              <p className="mt-1 font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted">
+                {t("connectedWallet")}
+              </p>
+            </div>
+
             <button
               type="button"
               role="menuitem"
-              onClick={handleAddNetwork}
-              className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text"
+              onClick={handleCopyAddress}
+              className={actionItemClass}
             >
-              {addNetworkLabel}
+              <Copy className={iconClass} aria-hidden />
+              <span>{copied ? t("copiedAddress") : t("copyAddress")}</span>
             </button>
+            <a
+              href={explorerHref}
+              target="_blank"
+              rel="noreferrer"
+              role="menuitem"
+              onClick={() => onOpenChange(false)}
+              className={`${actionItemClass} mt-1`}
+            >
+              <ExternalLink className={iconClass} aria-hidden />
+              <span>{t("viewOnExplorer")}</span>
+            </a>
+            <div className="my-2 h-px bg-white/[0.08]" aria-hidden />
             <button
               type="button"
               role="menuitem"
@@ -95,9 +107,13 @@ function WalletAccountMenu({
                 onDisconnect();
                 onOpenChange(false);
               }}
-              className="w-full px-3 py-2.5 text-left text-[13px] font-medium text-pv-muted transition-colors hover:bg-white/[0.06] hover:text-pv-text"
+              className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3.5 py-3 text-left text-[13px] font-medium text-pv-muted transition-[background-color,border-color,color] hover:border-white/[0.08] hover:bg-white/[0.04] hover:text-pv-text"
             >
-              {t("disconnect")}
+              <LogOut
+                className="h-4 w-4 shrink-0 text-pv-muted transition-colors group-hover:text-pv-text"
+                aria-hidden
+              />
+              <span>{t("disconnect")}</span>
             </button>
           </motion.div>
         ) : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { getAddress } from "viem";
 import { ensureGenlayerWalletChain, getWalletChainParams } from "./genlayer";
 
 interface WalletCtx {
@@ -18,6 +19,18 @@ const Ctx = createContext<WalletCtx>({
   address: null, isConnected: false, isConnecting: false, isCorrectNetwork: true,
   connect: async () => {}, disconnect: () => {}, switchNetwork: async () => {}, error: null,
 });
+
+function normalizeWalletAddress(address: string | null | undefined) {
+  if (!address) {
+    return null;
+  }
+
+  try {
+    return getAddress(address);
+  } catch {
+    return address;
+  }
+}
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
@@ -45,7 +58,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const ethereum = (window as any).ethereum;
         await ensureGenlayerWalletChain(ethereum);
         const accounts = await ethereum.request({ method: "eth_requestAccounts" });
-        if (accounts?.length > 0) setAddress(accounts[0]);
+        if (accounts?.length > 0) {
+          setAddress(normalizeWalletAddress(accounts[0]));
+        }
       } else {
         setError("no_wallet");
       }
@@ -62,14 +77,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined" && (window as any).ethereum) {
       const eth = (window as any).ethereum;
 
-      const handleAccounts = (accs: string[]) => setAddress(accs.length > 0 ? accs[0] : null);
+      const handleAccounts = (accs: string[]) =>
+        setAddress(accs.length > 0 ? normalizeWalletAddress(accs[0]) : null);
       const handleChainChanged = (id: string) => setChainId(id);
 
       eth.on("accountsChanged", handleAccounts);
       eth.on("chainChanged", handleChainChanged);
 
       eth.request({ method: "eth_accounts" }).then((accs: string[]) => {
-        if (accs.length > 0) setAddress(accs[0]);
+        if (accs.length > 0) {
+          setAddress(normalizeWalletAddress(accs[0]));
+        }
       }).catch((err: unknown) => {
         console.warn("Failed to restore wallet session", err);
         setError((current) => current ?? "error");
