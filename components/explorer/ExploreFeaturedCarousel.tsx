@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import {
   EXPLORE_FEATURED_SLIDE_IDS,
   exploreFeaturedSlideMedia,
@@ -49,6 +50,7 @@ function CarouselArrowIcon({ direction }: { direction: "prev" | "next" }) {
 
 export default function ExploreFeaturedCarousel() {
   const t = useTranslations("explore");
+  const router = useRouter();
   const slides = EXPLORE_FEATURED_SLIDE_IDS;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -191,6 +193,7 @@ export default function ExploreFeaturedCarousel() {
                     variant="ghost"
                     fullWidth={false}
                     className="!border !border-white/[0.18] !bg-white/[0.06] !text-pv-text shadow-none hover:!border-white/[0.28] hover:!bg-white/[0.1]"
+                    onClick={() => router.push("/emerging-narratives")}
                   >
                     {t("featuredCtaSecondary")}
                   </Button>

@@ -451,7 +451,7 @@
     "featuredCarouselNextAria": "Next spotlight",
     "featuredCarouselStatus": "Spotlight {current} of {total}",
     "featuredCtaPrimary": "JOIN CHALLENGE",
-    "featuredCtaSecondary": "ANALYZE STATS",
+    "featuredCtaSecondary": "MORE CHALLENGES",
     "featuredSlides": {
       "boxing": {
         "imageAlt": "Featured boxing event artwork",
@@ -896,5 +896,10 @@
       "waiting_opponent": "Waiting for a fixed rival before DM opens.",
       "multi_challenger": "Multi-challenger VS — XMTP is 1v1 only for now."
     }
+  },
+  "emergingNarratives": {
+    "title": "EMERGING NARRATIVES",
+    "lead": "Opportunities to generate new challenges from emerging signals and storylines.",
+    "comingSoon": "COMMING SOON"
   }
 }

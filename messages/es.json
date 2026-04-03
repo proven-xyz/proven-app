@@ -901,5 +901,10 @@
       "waiting_opponent": "Esperando rival fijo antes de abrir el DM.",
       "multi_challenger": "VS multi-rival — XMTP por ahora es solo 1v1."
     }
+  },
+  "emergingNarratives": {
+    "title": "EMERGING NARRATIVES",
+    "lead": "Oportunidades para generar nuevos desafíos a partir de señales y narrativas emergentes.",
+    "comingSoon": "PROXIMAMENTE"
   }
 }
