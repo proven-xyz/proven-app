@@ -200,6 +200,7 @@ export default function CreatePage() {
   const [visibility, setVisibility] =
     useState<CreateClaimParams["visibility"]>("public");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [sourceDraftOpen, setSourceDraftOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [loadingParent, setLoadingParent] = useState(false);
   const [created, setCreated] = useState<number | null>(null);
@@ -1107,190 +1108,221 @@ export default function CreatePage() {
             glass
             noPad
             glow="none"
-            className="!rounded-2xl border border-white/[0.12] w-full"
+            className="!rounded-2xl border border-white/[0.12] w-full overflow-hidden"
           >
-            <div className="space-y-5 p-6 sm:p-8">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                  <h2 className="flex min-w-0 flex-1 items-center gap-2.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
-                    <span
-                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
-                      aria-hidden
-                    >
-                      <Wand2 size={16} strokeWidth={2} />
-                    </span>
-                    <span className="min-w-0">{t("sourceDraftTitle")}</span>
-                  </h2>
-                  <span className="shrink-0 rounded-full border border-white/[0.1] bg-zinc-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                    {t("sourceDraftOptionalBadge")}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
-                  <p className="min-w-0 max-w-2xl flex-1 text-sm leading-relaxed text-pv-muted">
+            <button
+              type="button"
+              onClick={() => setSourceDraftOpen((value) => !value)}
+              aria-expanded={sourceDraftOpen}
+              className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.02] sm:px-8 sm:py-6"
+            >
+              <div className="flex min-w-0 gap-3">
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+                  aria-hidden
+                >
+                  <Wand2 size={16} strokeWidth={2} />
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <h3 className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
+                    {t("sourceDraftTitle")}
+                  </h3>
+                  <p className="text-[10px] leading-relaxed text-pv-muted sm:text-[11px]">
                     {t("sourceDraftHint")}
                   </p>
-                  <Button
-                    variant="ghost"
-                    fullWidth={false}
-                    onClick={handleGenerateFromSource}
-                    loading={draftLoading}
-                    disabled={!normalizedSourceUrl || draftLoading}
-                    className="w-full shrink-0 self-start rounded-xl px-5 py-3 font-display text-[11px] font-bold uppercase tracking-[0.16em] transition-[background-color,border-color,color,box-shadow,transform,filter] duration-200 ease-out sm:w-auto sm:self-center !border-white/[0.22] !bg-white/[0.06] !text-pv-text/90 enabled:hover:-translate-y-px enabled:hover:!border-transparent enabled:hover:!bg-pv-emerald enabled:hover:!text-pv-bg enabled:hover:!brightness-[1.06] enabled:hover:!shadow-[0_6px_20px_-4px_rgba(78,222,163,0.32)] enabled:active:translate-y-0 enabled:active:scale-[0.98] enabled:active:!shadow-none focus-visible:!outline-none enabled:focus-visible:!ring-2 enabled:focus-visible:!ring-pv-emerald/40 enabled:focus-visible:!ring-offset-2 enabled:focus-visible:!ring-offset-pv-bg disabled:hover:!translate-y-0 disabled:hover:!border-white/[0.22] disabled:hover:!bg-white/[0.06] disabled:hover:!text-pv-text/90 disabled:hover:!brightness-100 disabled:hover:!shadow-none"
-                  >
-                    {draftLoading ? t("sourceDraftGenerating") : t("sourceDraftGenerate")}
-                  </Button>
                 </div>
               </div>
+              <ChevronDown
+                size={20}
+                className={`shrink-0 text-pv-muted transition-transform duration-200 ease-out ${
+                  sourceDraftOpen ? "rotate-180" : ""
+                }`}
+                aria-hidden
+              />
+            </button>
 
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                  {t("sourceDraftInputLabel")}
-                </label>
-                <input
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder={t("verificationUrlPlaceholder")}
-                  value={url}
-                  onChange={(event) => setUrl(event.target.value)}
-                  className="form-field-pv min-h-[3.25rem] font-mono text-xs"
-                />
-                <p className="text-xs leading-relaxed text-pv-muted">
-                  {t("sourceDraftInputHint")}
-                </p>
-              </div>
-
-              {draftError ? (
-                <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.08] px-4 py-3 text-sm text-amber-200">
-                  {draftError}
+            <motion.div
+              initial={false}
+              animate={{
+                height: sourceDraftOpen ? "auto" : 0,
+                opacity: sourceDraftOpen ? 1 : 0,
+              }}
+              transition={{
+                height: {
+                  duration: 0.34,
+                  ease: [0.25, 0.46, 0.45, 0.94],
+                },
+                opacity: {
+                  duration: 0.22,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
+              }}
+              className={`overflow-hidden ${!sourceDraftOpen ? "pointer-events-none" : ""}`}
+              aria-hidden={!sourceDraftOpen}
+            >
+              <div className="space-y-5 border-t border-white/[0.08] px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                    {t("sourceDraftInputLabel")}
+                  </label>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      spellCheck={false}
+                      placeholder={t("verificationUrlPlaceholder")}
+                      value={url}
+                      onChange={(event) => setUrl(event.target.value)}
+                      className="form-field-pv min-h-[3.25rem] flex-1 font-mono text-xs"
+                    />
+                    <Button
+                      variant="ghost"
+                      fullWidth={false}
+                      onClick={handleGenerateFromSource}
+                      loading={draftLoading}
+                      disabled={!normalizedSourceUrl || draftLoading}
+                      className="w-full shrink-0 self-start rounded-xl px-5 py-3 font-display text-[11px] font-bold uppercase tracking-[0.16em] transition-[background-color,border-color,color,box-shadow,transform,filter] duration-200 ease-out sm:w-auto sm:self-center !border-white/[0.22] !bg-white/[0.06] !text-pv-text/90 enabled:hover:-translate-y-px enabled:hover:!border-transparent enabled:hover:!bg-pv-emerald enabled:hover:!text-pv-bg enabled:hover:!brightness-[1.06] enabled:hover:!shadow-[0_6px_20px_-4px_rgba(78,222,163,0.32)] enabled:active:translate-y-0 enabled:active:scale-[0.98] enabled:active:!shadow-none focus-visible:!outline-none enabled:focus-visible:!ring-2 enabled:focus-visible:!ring-pv-emerald/40 enabled:focus-visible:!ring-offset-2 enabled:focus-visible:!ring-offset-pv-bg disabled:hover:!translate-y-0 disabled:hover:!border-white/[0.22] disabled:hover:!bg-white/[0.06] disabled:hover:!text-pv-text/90 disabled:hover:!brightness-100 disabled:hover:!shadow-none"
+                    >
+                      {draftLoading ? t("sourceDraftGenerating") : t("sourceDraftGenerate")}
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-relaxed text-pv-muted">
+                    {t("sourceDraftInputHint")}
+                  </p>
                 </div>
-              ) : null}
 
-              {draftResult ? (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-pv-emerald/20 bg-pv-emerald/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald">
-                        {t(`sourceDraftSourceTypes.${draftResult.sourceType}`)}
-                      </span>
-                      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                        {t("sourceDraftSummaryLabel")}
-                      </span>
+                {draftError ? (
+                  <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.08] px-4 py-3 text-sm text-amber-200">
+                    {draftError}
+                  </div>
+                ) : null}
+
+                {draftResult ? (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-pv-emerald/20 bg-pv-emerald/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald">
+                          {t(`sourceDraftSourceTypes.${draftResult.sourceType}`)}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                          {t("sourceDraftSummaryLabel")}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm leading-relaxed text-pv-text/90">
+                        {draftResult.sourceSummary}
+                      </p>
                     </div>
-                    <p className="mt-3 text-sm leading-relaxed text-pv-text/90">
-                      {draftResult.sourceSummary}
-                    </p>
+
+                    <div className="grid gap-4">
+                      {draftResult.candidates.map((candidate, index) => {
+                        const draftDeadline = new Date(candidate.deadlineAt);
+                        const hasDeadline = Number.isFinite(draftDeadline.getTime());
+
+                        return (
+                          <div
+                            key={`${candidate.claimText}-${index}`}
+                            className="rounded-2xl border border-white/[0.08] bg-pv-surface2 p-4 sm:p-5"
+                          >
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="rounded-full border border-pv-cyan/25 bg-pv-cyan/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-cyan">
+                                    {tCat(normalizeCategoryId(candidate.category))}
+                                  </span>
+                                  <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                                    {candidate.confidenceScore}/100
+                                  </span>
+                                </div>
+                                <h3 className="mt-3 font-display text-xl font-bold tracking-tight text-pv-text">
+                                  {candidate.claimText}
+                                </h3>
+                              </div>
+                              <Button
+                                variant="primary"
+                                fullWidth={false}
+                                onClick={() => applySourceDraft(candidate)}
+                                disabled={isApplyingDraft}
+                                className="rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em]"
+                              >
+                                {t("sourceDraftUse")}
+                              </Button>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                  {t("sourceDraftSideA")}
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-pv-text/90">
+                                  {candidate.sideA}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                  {t("sourceDraftSideB")}
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-pv-text/90">
+                                  {candidate.sideB}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                              <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                  {t("sourceDraftDeadline")}
+                                </div>
+                                <div className="mt-2 text-sm font-medium text-pv-text/90">
+                                  {hasDeadline
+                                    ? `${draftDeadline.toLocaleString(locale === "en" ? "en-US" : "es-AR", {
+                                        year: "numeric",
+                                        month: "short",
+                                        day: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })} (${candidate.timezone})`
+                                    : candidate.deadlineAt}
+                                </div>
+                              </div>
+                              <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                  {t("sourceDraftPrimarySource")}
+                                </div>
+                                <div className="mt-2 break-all text-sm font-medium text-pv-text/90">
+                                  {candidate.primaryResolutionSource}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-4 rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
+                                {t("sourceDraftSettlementRule")}
+                              </div>
+                              <p className="mt-2 text-sm leading-relaxed text-pv-text/90">
+                                {candidate.settlementRule}
+                              </p>
+                            </div>
+
+                            {candidate.ambiguityFlags.length > 0 ? (
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                {candidate.ambiguityFlags.map((flag) => (
+                                  <span
+                                    key={flag}
+                                    className="rounded-full border border-amber-400/20 bg-amber-400/[0.08] px-2.5 py-1 text-[10px] font-medium text-amber-200"
+                                  >
+                                    {flag}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-
-                  <div className="grid gap-4">
-                    {draftResult.candidates.map((candidate, index) => {
-                      const draftDeadline = new Date(candidate.deadlineAt);
-                      const hasDeadline = Number.isFinite(draftDeadline.getTime());
-
-                      return (
-                        <div
-                          key={`${candidate.claimText}-${index}`}
-                          className="rounded-2xl border border-white/[0.08] bg-pv-surface2 p-4 sm:p-5"
-                        >
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="rounded-full border border-pv-cyan/25 bg-pv-cyan/[0.1] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-cyan">
-                                  {tCat(normalizeCategoryId(candidate.category))}
-                                </span>
-                                <span className="rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                                  {candidate.confidenceScore}/100
-                                </span>
-                              </div>
-                              <h3 className="mt-3 font-display text-xl font-bold tracking-tight text-pv-text">
-                                {candidate.claimText}
-                              </h3>
-                            </div>
-                            <Button
-                              variant="primary"
-                              fullWidth={false}
-                              onClick={() => applySourceDraft(candidate)}
-                              disabled={isApplyingDraft}
-                              className="rounded-xl px-4 py-3 text-[11px] font-bold uppercase tracking-[0.16em]"
-                            >
-                              {t("sourceDraftUse")}
-                            </Button>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
-                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                                {t("sourceDraftSideA")}
-                              </div>
-                              <div className="mt-2 text-sm font-medium text-pv-text/90">
-                                {candidate.sideA}
-                              </div>
-                            </div>
-                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
-                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                                {t("sourceDraftSideB")}
-                              </div>
-                              <div className="mt-2 text-sm font-medium text-pv-text/90">
-                                {candidate.sideB}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
-                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                                {t("sourceDraftDeadline")}
-                              </div>
-                              <div className="mt-2 text-sm font-medium text-pv-text/90">
-                                {hasDeadline
-                                  ? `${draftDeadline.toLocaleString(locale === "en" ? "en-US" : "es-AR", {
-                                      year: "numeric",
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })} (${candidate.timezone})`
-                                  : candidate.deadlineAt}
-                              </div>
-                            </div>
-                            <div className="rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
-                              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                                {t("sourceDraftPrimarySource")}
-                              </div>
-                              <div className="mt-2 break-all text-sm font-medium text-pv-text/90">
-                                {candidate.primaryResolutionSource}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 rounded-xl border border-white/[0.08] bg-pv-bg/60 p-3">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted">
-                              {t("sourceDraftSettlementRule")}
-                            </div>
-                            <p className="mt-2 text-sm leading-relaxed text-pv-text/90">
-                              {candidate.settlementRule}
-                            </p>
-                          </div>
-
-                          {candidate.ambiguityFlags.length > 0 ? (
-                            <div className="mt-4 flex flex-wrap gap-2">
-                              {candidate.ambiguityFlags.map((flag) => (
-                                <span
-                                  key={flag}
-                                  className="rounded-full border border-amber-400/20 bg-amber-400/[0.08] px-2.5 py-1 text-[10px] font-medium text-amber-200"
-                                >
-                                  {flag}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            </motion.div>
           </GlassCard>
         </AnimatedItem>
       )}
@@ -1699,7 +1731,7 @@ export default function CreatePage() {
               type="button"
               onClick={() => setAdvancedOpen((value) => !value)}
               aria-expanded={advancedOpen}
-              className="flex w-full items-start justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.02] sm:px-8 sm:py-6"
+              className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left transition-colors hover:bg-white/[0.02] sm:px-8 sm:py-6"
             >
               <div className="flex min-w-0 gap-3">
                 <span

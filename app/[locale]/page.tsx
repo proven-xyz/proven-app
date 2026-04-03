@@ -394,7 +394,7 @@ export default function HomePage() {
                 animate="visible"
               >
                 {/* Line 1: PROVE IT */}
-                <span className="block overflow-hidden text-[clamp(3.1rem,8vw,5rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
+                <span className="block overflow-hidden text-[clamp(3.4rem,8.5vw,5.2rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
                   {["PROVE", "IT"].map((word) => (
                     <motion.span key={word} variants={kineticLetter} className="inline-block mr-[0.25em]">
                       {word}
@@ -402,7 +402,7 @@ export default function HomePage() {
                   ))}
                 </span>
                 {/* Line 2: ON-CHAIN. */}
-                <span className="block overflow-hidden text-[clamp(3.1rem,8vw,5rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
+                <span className="block overflow-hidden text-[clamp(3.4rem,8.5vw,5.2rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
                   <motion.span variants={kineticLetter} className="inline-block whitespace-nowrap">
                     {t("emptyHeroTitleOnChainSegment")}
                   </motion.span>
@@ -410,7 +410,7 @@ export default function HomePage() {
                 {/* Rhythmic pause */}
                 <span className="block h-2 lg:h-3" aria-hidden />
                 {/* Line 3: WITH PROVEN. — smaller payoff/accent */}
-                <span className="block overflow-hidden text-[clamp(2.4rem,6.5vw,3.8rem)] lg:text-[clamp(2.8rem,4.5vw,4.2rem)]">
+                <span className="block overflow-hidden text-[clamp(2.7rem,7vw,4rem)] lg:text-[clamp(2.8rem,4.5vw,4.2rem)]">
                   <motion.span variants={kineticLetter} className="inline-block mr-[0.25em] font-medium text-pv-muted">
                     {t("emptyHeroTitleLine2Lead")}
                   </motion.span>
