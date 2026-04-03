@@ -50,6 +50,17 @@
   ::selection {
     background: rgba(78, 222, 163, 0.22);
   }
+
+  /**
+   * Puntero tipo “mano” en botones nativos. El preflight de Tailwind no lo aplica por defecto,
+   * y sin esto el cursor suele quedar en flecha aunque el elemento sea clicable.
+   */
+  button:enabled {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
@@ -70,7 +81,8 @@
            transition-[transform,box-shadow,border-color,color,background-color] duration-200 ease-out
            hover:-translate-y-px hover:border-white/[0.28] hover:text-pv-text
            hover:shadow-[0_4px_18px_-6px_rgba(0,0,0,0.45)]
-           active:translate-y-0 active:scale-[0.98];
+           active:translate-y-0 active:scale-[0.98]
+           disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   .btn-cyan {
@@ -110,12 +122,12 @@
            hover:-translate-y-px hover:bg-pv-danger/[0.12]
            hover:shadow-[0_4px_16px_-4px_rgba(239,68,68,0.2)]
            active:translate-y-0 active:scale-[0.98]
-           disabled:opacity-40;
+           disabled:cursor-not-allowed disabled:opacity-40;
   }
 
   /* Navbar / compact emerald actions (not full-width) */
   .btn-compact-primary {
-    @apply cursor-pointer rounded font-bold text-pv-bg bg-pv-emerald
+    @apply rounded font-bold text-pv-bg bg-pv-emerald
            transition-[transform,box-shadow,filter] duration-200 ease-out
            hover:-translate-y-px hover:brightness-[1.06]
            hover:shadow-[0_4px_14px_-4px_rgba(78,222,163,0.3)]

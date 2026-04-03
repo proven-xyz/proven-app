@@ -1110,31 +1110,36 @@ export default function CreatePage() {
             className="!rounded-2xl border border-white/[0.12] w-full"
           >
             <div className="space-y-5 p-6 sm:p-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <h2 className="flex items-center gap-2.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                  <h2 className="flex min-w-0 flex-1 items-center gap-2.5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
                     <span
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
                       aria-hidden
                     >
                       <Wand2 size={16} strokeWidth={2} />
                     </span>
-                    {t("sourceDraftTitle")}
+                    <span className="min-w-0">{t("sourceDraftTitle")}</span>
                   </h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-relaxed text-pv-muted">
+                  <span className="shrink-0 rounded-full border border-white/[0.1] bg-zinc-500/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                    {t("sourceDraftOptionalBadge")}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+                  <p className="min-w-0 max-w-2xl flex-1 text-sm leading-relaxed text-pv-muted">
                     {t("sourceDraftHint")}
                   </p>
+                  <Button
+                    variant="ghost"
+                    fullWidth={false}
+                    onClick={handleGenerateFromSource}
+                    loading={draftLoading}
+                    disabled={!normalizedSourceUrl || draftLoading}
+                    className="w-full shrink-0 self-start rounded-xl px-5 py-3 font-display text-[11px] font-bold uppercase tracking-[0.16em] transition-[background-color,border-color,color,box-shadow,transform,filter] duration-200 ease-out sm:w-auto sm:self-center !border-white/[0.22] !bg-white/[0.06] !text-pv-text/90 enabled:hover:-translate-y-px enabled:hover:!border-transparent enabled:hover:!bg-pv-emerald enabled:hover:!text-pv-bg enabled:hover:!brightness-[1.06] enabled:hover:!shadow-[0_6px_20px_-4px_rgba(78,222,163,0.32)] enabled:active:translate-y-0 enabled:active:scale-[0.98] enabled:active:!shadow-none focus-visible:!outline-none enabled:focus-visible:!ring-2 enabled:focus-visible:!ring-pv-emerald/40 enabled:focus-visible:!ring-offset-2 enabled:focus-visible:!ring-offset-pv-bg disabled:hover:!translate-y-0 disabled:hover:!border-white/[0.22] disabled:hover:!bg-white/[0.06] disabled:hover:!text-pv-text/90 disabled:hover:!brightness-100 disabled:hover:!shadow-none"
+                  >
+                    {draftLoading ? t("sourceDraftGenerating") : t("sourceDraftGenerate")}
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  fullWidth={false}
-                  onClick={handleGenerateFromSource}
-                  loading={draftLoading}
-                  disabled={!normalizedSourceUrl || draftLoading}
-                  className="rounded-xl px-5 py-3 font-display text-[11px] font-bold uppercase tracking-[0.16em]"
-                >
-                  {draftLoading ? t("sourceDraftGenerating") : t("sourceDraftGenerate")}
-                </Button>
               </div>
 
               <div className="space-y-2">
@@ -1721,7 +1726,25 @@ export default function CreatePage() {
               />
             </button>
 
-            {advancedOpen && (
+            <motion.div
+              initial={false}
+              animate={{
+                height: advancedOpen ? "auto" : 0,
+                opacity: advancedOpen ? 1 : 0,
+              }}
+              transition={{
+                height: {
+                  duration: 0.34,
+                  ease: [0.25, 0.46, 0.45, 0.94],
+                },
+                opacity: {
+                  duration: 0.22,
+                  ease: [0.25, 0.1, 0.25, 1],
+                },
+              }}
+              className={`overflow-hidden ${!advancedOpen ? "pointer-events-none" : ""}`}
+              aria-hidden={!advancedOpen}
+            >
               <div className="space-y-8 border-t border-white/[0.08] px-6 pb-6 pt-6 sm:px-8 sm:pb-8">
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
                   <ListboxField
@@ -1831,7 +1854,7 @@ export default function CreatePage() {
                   </div>
                 </div>
               </div>
-            )}
+            </motion.div>
           </GlassCard>
         </AnimatedItem>
 

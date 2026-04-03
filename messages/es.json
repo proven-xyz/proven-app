@@ -26,8 +26,8 @@
     "sourceContract": "lectura on-chain"
   },
   "header": {
-    "challenge": "+ Desafiar",
-    "challengeMobile": "Desafiar",
+    "challenge": "+ Desafío",
+    "challengeMobile": "Desafío",
     "explore": "Explorador",
     "launchApp": "Abrir app",
     "myVS": "Dashboard",
@@ -292,6 +292,7 @@
     "minimumStakeHint": "La apuesta minima para el demo es {amount} GEN.",
     "sourceGuidance": "Guia para la fuente de verificacion",
     "sourceDraftTitle": "Crear desde fuente",
+    "sourceDraftOptionalBadge": "Opcional",
     "sourceDraftHint": "Pega una URL confiable y PROVEN va a proponer claims listos para desafiar, revisar y publicar.",
     "sourceDraftGenerate": "Generar drafts",
     "sourceDraftGenerating": "Generando...",

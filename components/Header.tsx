@@ -150,7 +150,7 @@ export default function Header() {
       });
     }
     return items;
-  }, [t, xmtpNavEnabled]);
+  }, [t, xmtpNavEnabled, locale]);
 
   useEffect(() => {
     if (!walletMenuOpen) return;
