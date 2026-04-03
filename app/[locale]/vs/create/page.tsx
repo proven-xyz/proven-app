@@ -98,6 +98,8 @@ const VISIBILITY_TOGGLE_OPTIONS = [
 
 const STAKE_PRESET_AMOUNTS = [MIN_STAKE, 5, 10, 25] as const;
 const SOURCE_DRAFTS_ENABLED = process.env.NEXT_PUBLIC_FEATURE_SOURCE_DRAFTS === "1";
+const CLAIM_MODERATION_ENABLED =
+  process.env.NEXT_PUBLIC_FEATURE_CLAIM_MODERATION === "1";
 
 function isPresetStakeAmount(value: number): boolean {
   return (STAKE_PRESET_AMOUNTS as readonly number[]).includes(value);
@@ -696,6 +698,71 @@ export default function CreatePage() {
       visibility,
       invite_key: inviteKey,
     };
+
+    if (CLAIM_MODERATION_ENABLED) {
+      try {
+        const response = await fetch("/api/claim-moderation", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            locale,
+            input: {
+              question,
+              creator_position: creatorPos,
+              opponent_position: opponentPos,
+              category,
+              settlement_rule: settlementRule.trim(),
+              resolution_url: normalizedSourceUrl,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          toast.error(t("moderationCheckFailed"));
+          return;
+        }
+
+        const moderation = (await response.json()) as {
+          decision?: "allow" | "review" | "block";
+          violationCodes?: string[];
+          confidence?: number;
+        };
+
+        const codeLabels = (moderation.violationCodes || [])
+          .map((code) => {
+            try {
+              return t(`moderationCodes.${code}` as any);
+            } catch {
+              return code;
+            }
+          })
+          .filter(Boolean);
+
+        const codesLabel =
+          codeLabels.length > 0 ? ` (${codeLabels.join(", ")})` : "";
+
+        if (moderation.decision === "block") {
+          toast.error(
+            t("moderationBlocked", {
+              codesLabel,
+            })
+          );
+          return;
+        }
+
+        if (moderation.decision === "review") {
+          toast.error(
+            t("moderationNeedsReview", {
+              codesLabel,
+            })
+          );
+          return;
+        }
+      } catch {
+        toast.error(t("moderationCheckFailed"));
+        return;
+      }
+    }
 
     let releaseLock: (() => void) | undefined;
     try {
