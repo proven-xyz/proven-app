@@ -477,7 +477,7 @@ export default function ExploreClient() {
   const renderOpenChallenges = () => {
     if (loading) {
       return (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <ArenaCardSkeleton />
           <ArenaCardSkeleton />
           <ArenaCardSkeleton />
@@ -510,7 +510,7 @@ export default function ExploreClient() {
     }
 
     return (
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredOpenChallenges.map((vs) => (
           <motion.div
             key={vs.id}
@@ -544,7 +544,7 @@ export default function ExploreClient() {
 
     if (opportunitiesLoading) {
       return (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <IntelligenceDossierSkeleton />
           <IntelligenceDossierSkeleton />
           <IntelligenceDossierSkeleton />
@@ -574,7 +574,7 @@ export default function ExploreClient() {
     }
 
     return (
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filteredOpportunities.map((opportunity) => (
           <motion.div
             key={opportunity.id}
