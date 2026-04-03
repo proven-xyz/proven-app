@@ -227,6 +227,10 @@
     "moderationCheckFailed": "Moderation check failed. Try again in a moment.",
     "moderationBlocked": "This claim can't be published under the current policy{codesLabel}.",
     "moderationNeedsReview": "This claim needs review and can't be published yet{codesLabel}.",
+    "moderationRunCheck": "Run policy check",
+    "moderationNeedsMoreInfo": "Fill in the claim to run the policy check.",
+    "moderationNeedsCheck": "Policy check not run yet for these terms.",
+    "moderationUpToDate": "Policy check is up to date.",
     "moderationCodes": {
       "death_self_harm": "Self-harm / death",
       "violence_harm": "Violence / harm",
@@ -511,6 +515,30 @@
       "settlement_specific": "Specific settlement rule",
       "structured_category": "Structured category",
       "sufficient_time": "Enough time before deadline"
+    },
+    "moderationLabel": "Moderation",
+    "moderationAnalyzing": "Analyzing with AI…",
+    "moderationAllowed": "Allowed by policy.",
+    "moderationIdle": "Complete the claim to run a policy check.",
+    "moderationUnavailable": "Moderation temporarily unavailable.",
+    "moderationRateLimited": "Moderation rate-limited. Retry in {seconds}s.",
+    "moderationConfidence": "Confidence: {value}/100",
+    "moderationCheckedJustNow": "Checked just now.",
+    "moderationCheckedSecondsAgo": "Checked {seconds}s ago.",
+    "moderationCheckedMinutesAgo": "Checked {minutes}m ago.",
+    "moderationBlockedGeneric": "Blocked by policy.",
+    "moderationReviewPending": "Needs manual review before publishing.",
+    "moderationBlockedByCode": {
+      "death_self_harm": "Self-harm / death",
+      "violence_harm": "Violence / harm",
+      "hate_harassment": "Hate / harassment",
+      "sexual_minors": "Sexual content involving minors",
+      "nonconsensual_sexual": "Non-consensual sexual content",
+      "illegal_facilitation": "Illegal facilitation",
+      "doxxing_personal_data": "Doxxing / personal data",
+      "medical_privacy": "Medical privacy",
+      "graphic_content": "Graphic content",
+      "other_policy": "Other policy issue"
     }
   },
   "settlement": {

@@ -157,6 +157,7 @@ export default function CreatePage() {
   const { address, isConnected, connect } = useWallet();
   const t = useTranslations("create");
   const tc = useTranslations("common");
+  const tQuality = useTranslations("quality");
   const tCat = useTranslations("categories");
   const tVsDetail = useTranslations("vsDetail");
   const locale = useLocale();
@@ -218,6 +219,17 @@ export default function CreatePage() {
   const [draftError, setDraftError] = useState("");
   const [lastDraftedUrl, setLastDraftedUrl] = useState("");
   const [sourceSeedUrl, setSourceSeedUrl] = useState("");
+  const [moderationLoading, setModerationLoading] = useState(false);
+  const [moderationMessageKey, setModerationMessageKey] = useState("");
+  const [moderationDecision, setModerationDecision] = useState<
+    "allow" | "review" | "block" | ""
+  >("");
+  const [moderationCodes, setModerationCodes] = useState<string[]>([]);
+  const [moderationConfidence, setModerationConfidence] = useState<number>(0);
+  const [moderationCheckedAtMs, setModerationCheckedAtMs] = useState(0);
+  const [moderationCooldownUntilMs, setModerationCooldownUntilMs] = useState(0);
+  const [moderationAttempted, setModerationAttempted] = useState(false);
+  const lastModerationKeyRef = useRef("");
   const [isApplyingDraft, startApplyingDraft] = useTransition();
   const [rematchSource, setRematchSource] = useState<VSData | null>(null);
   const [hydratedFromRematch, setHydratedFromRematch] = useState(false);
@@ -378,6 +390,95 @@ export default function CreatePage() {
     },
     [category, creatorPos, customDeadline, opponentPos, question, settlementRule, url]
   );
+
+  const moderationKey = useMemo(() => {
+    const parts = [
+      question.trim(),
+      creatorPos.trim(),
+      opponentPos.trim(),
+      category.trim(),
+      settlementRule.trim(),
+      normalizedSourceUrl.trim(),
+    ];
+    return parts.join("|");
+  }, [
+    category,
+    creatorPos,
+    normalizedSourceUrl,
+    opponentPos,
+    question,
+    settlementRule,
+  ]);
+
+  const moderationInputReady = useMemo(() => {
+    return (
+      question.trim().length > 0 &&
+      creatorPos.trim().length > 0 &&
+      opponentPos.trim().length > 0 &&
+      category.trim().length > 0 &&
+      settlementRule.trim().length > 0 &&
+      normalizedSourceUrl.trim().length > 0
+    );
+  }, [category, creatorPos, normalizedSourceUrl, opponentPos, question, settlementRule]);
+
+  const isModerationApproved = useMemo(() => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return true;
+    }
+    return moderationDecision === "allow";
+  }, [moderationDecision]);
+
+  const isModerationUpToDate = useMemo(() => {
+    if (!CLAIM_MODERATION_ENABLED) return false;
+    return moderationKey === lastModerationKeyRef.current && Boolean(moderationDecision);
+  }, [moderationDecision, moderationKey]);
+
+  useEffect(() => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return;
+    }
+    if (!moderationAttempted) {
+      return;
+    }
+    if (moderationLoading) {
+      return;
+    }
+    if (!lastModerationKeyRef.current) {
+      return;
+    }
+    if (moderationKey === lastModerationKeyRef.current) {
+      return;
+    }
+    setModerationLoading(false);
+    setModerationDecision("");
+    setModerationMessageKey("");
+    setModerationCodes([]);
+    setModerationConfidence(0);
+    setModerationCheckedAtMs(0);
+    setModerationCooldownUntilMs(0);
+    setModerationAttempted(false);
+  }, [moderationAttempted, moderationKey, moderationLoading]);
+
+  useEffect(() => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return;
+    }
+    if (!moderationCooldownUntilMs || Date.now() >= moderationCooldownUntilMs) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      const remaining = moderationCooldownUntilMs - Date.now();
+      if (remaining <= 0) {
+        window.clearInterval(intervalId);
+        setModerationMessageKey("rate_limited:0");
+        return;
+      }
+      const seconds = Math.max(1, Math.ceil(remaining / 1000));
+      setModerationMessageKey(`rate_limited:${seconds}`);
+    }, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [moderationCooldownUntilMs]);
+
   const lastRecommendedTemplateRef = useRef(recommendedSettlementTemplate);
   const initializedRecommendedTemplateRef = useRef(false);
 
@@ -632,6 +733,164 @@ export default function CreatePage() {
     setSourceSeedUrl("");
   }, [requestSourceDrafts, sourceSeedUrl]);
 
+  const runClaimModeration = useCallback(async (): Promise<boolean> => {
+    if (!CLAIM_MODERATION_ENABLED) {
+      return true;
+    }
+
+    if (!moderationInputReady) {
+      setModerationLoading(false);
+      setModerationMessageKey("");
+      setModerationDecision("");
+      setModerationCodes([]);
+      setModerationConfidence(0);
+      setModerationCheckedAtMs(0);
+      setModerationAttempted(false);
+      lastModerationKeyRef.current = "";
+      return true;
+    }
+
+    if (moderationCooldownUntilMs && Date.now() < moderationCooldownUntilMs) {
+      const seconds = Math.max(
+        1,
+        Math.ceil((moderationCooldownUntilMs - Date.now()) / 1000)
+      );
+      setModerationDecision("review");
+      setModerationMessageKey(`rate_limited:${seconds}`);
+      return false;
+    }
+
+    if (moderationKey === lastModerationKeyRef.current && moderationDecision) {
+      return moderationDecision === "allow";
+    }
+
+    setModerationLoading(true);
+    setModerationMessageKey("");
+    setModerationCodes([]);
+    setModerationConfidence(0);
+    setModerationCheckedAtMs(0);
+    setModerationAttempted(true);
+
+    try {
+      const response = await fetch("/api/claim-moderation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          locale,
+          input: {
+            question,
+            creator_position: creatorPos,
+            opponent_position: opponentPos,
+            category,
+            settlement_rule: settlementRule.trim(),
+            resolution_url: normalizedSourceUrl,
+          },
+        }),
+      });
+
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            decision?: "allow" | "review" | "block";
+            violationCodes?: string[];
+          confidence?: number;
+          }
+        | { error?: { message?: string } }
+        | null;
+
+      if (response.status === 429) {
+        const retryAfter = Number.parseInt(
+          response.headers.get("retry-after") || "",
+          10
+        );
+        const seconds =
+          Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : 35;
+        setModerationDecision("review");
+        setModerationCooldownUntilMs(Date.now() + seconds * 1000);
+        setModerationMessageKey(`rate_limited:${seconds}`);
+        lastModerationKeyRef.current = moderationKey;
+        return false;
+      }
+
+      if (!response.ok) {
+        toast.error(t("moderationCheckFailed"));
+        setModerationDecision("");
+        lastModerationKeyRef.current = "";
+        return false;
+      }
+
+      const decision =
+        payload && "decision" in payload ? payload.decision ?? "review" : "review";
+      const codes =
+        payload && "violationCodes" in payload && Array.isArray(payload.violationCodes)
+          ? payload.violationCodes
+          : [];
+      const confidence =
+        payload && "confidence" in payload && typeof payload.confidence === "number"
+          ? payload.confidence
+          : 0;
+      const topCode = typeof codes[0] === "string" ? codes[0] : "";
+
+      lastModerationKeyRef.current = moderationKey;
+      setModerationDecision(decision);
+      setModerationCodes(codes as string[]);
+      setModerationConfidence(confidence);
+      setModerationCheckedAtMs(Date.now());
+      const msgKey =
+        decision === "review"
+          ? topCode || "review"
+          : decision === "block"
+            ? topCode || "other_policy"
+            : "";
+      setModerationMessageKey(msgKey);
+
+      const codeLabels = (codes as string[])
+        .map((code) => {
+          try {
+            return tQuality(`moderationBlockedByCode.${code}` as never);
+          } catch {
+            return code;
+          }
+        })
+        .filter(Boolean);
+      const codesLabel =
+        codeLabels.length > 0 ? ` (${codeLabels.join(", ")})` : "";
+
+      if (decision === "block") {
+        toast.error(t("moderationBlocked", { codesLabel }));
+        return false;
+      }
+      if (decision === "review") {
+        toast.error(t("moderationNeedsReview", { codesLabel }));
+        return false;
+      }
+      return true;
+    } catch {
+      toast.error(t("moderationCheckFailed"));
+      lastModerationKeyRef.current = "";
+      setModerationDecision("");
+      return false;
+    } finally {
+      setModerationLoading(false);
+    }
+  }, [
+    category,
+    creatorPos,
+    locale,
+    moderationCooldownUntilMs,
+    moderationDecision,
+    moderationCodes,
+    moderationConfidence,
+    moderationCheckedAtMs,
+    moderationInputReady,
+    moderationKey,
+    normalizedSourceUrl,
+    opponentPos,
+    question,
+    settlementRule,
+    t,
+    tQuality,
+  ]);
+
   async function handleSubmit() {
     if (!question || !creatorPos || !opponentPos) {
       toast.error(t("fillAllFields"));
@@ -700,66 +959,8 @@ export default function CreatePage() {
     };
 
     if (CLAIM_MODERATION_ENABLED) {
-      try {
-        const response = await fetch("/api/claim-moderation", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            locale,
-            input: {
-              question,
-              creator_position: creatorPos,
-              opponent_position: opponentPos,
-              category,
-              settlement_rule: settlementRule.trim(),
-              resolution_url: normalizedSourceUrl,
-            },
-          }),
-        });
-
-        if (!response.ok) {
-          toast.error(t("moderationCheckFailed"));
-          return;
-        }
-
-        const moderation = (await response.json()) as {
-          decision?: "allow" | "review" | "block";
-          violationCodes?: string[];
-          confidence?: number;
-        };
-
-        const codeLabels = (moderation.violationCodes || [])
-          .map((code) => {
-            try {
-              return t(`moderationCodes.${code}` as any);
-            } catch {
-              return code;
-            }
-          })
-          .filter(Boolean);
-
-        const codesLabel =
-          codeLabels.length > 0 ? ` (${codeLabels.join(", ")})` : "";
-
-        if (moderation.decision === "block") {
-          toast.error(
-            t("moderationBlocked", {
-              codesLabel,
-            })
-          );
-          return;
-        }
-
-        if (moderation.decision === "review") {
-          toast.error(
-            t("moderationNeedsReview", {
-              codesLabel,
-            })
-          );
-          return;
-        }
-      } catch {
-        toast.error(t("moderationCheckFailed"));
+      const moderationOk = await runClaimModeration();
+      if (!moderationOk) {
         return;
       }
     }
@@ -2022,13 +2223,71 @@ export default function CreatePage() {
                   stakeAmount={stake}
                   walletAddress={ticketWalletAddress ?? undefined}
                 />
-                <ClaimStrengthCard input={claimStrengthInput} />
+                <ClaimStrengthCard
+                  input={claimStrengthInput}
+                  moderation={
+                    CLAIM_MODERATION_ENABLED
+                      ? {
+                          status: moderationLoading
+                            ? "checking"
+                            : moderationAttempted &&
+                                moderationInputReady &&
+                                !isModerationApproved
+                              ? "blocked"
+                              : moderationDecision === "allow"
+                                ? "allowed"
+                                : "idle",
+                          message:
+                            moderationAttempted &&
+                            moderationInputReady &&
+                            !isModerationApproved
+                              ? moderationMessageKey
+                              : undefined,
+                          violationCodes: moderationCodes,
+                          confidence: moderationConfidence,
+                          checkedAtMs: moderationCheckedAtMs || undefined,
+                        }
+                      : undefined
+                  }
+                />
+                {CLAIM_MODERATION_ENABLED ? (
+                  <div className="rounded-2xl border border-white/[0.10] bg-white/[0.02] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
+                          {tQuality("moderationLabel")}
+                        </div>
+                        <div className="mt-1 text-xs text-pv-muted">
+                          {moderationInputReady
+                            ? isModerationUpToDate
+                              ? t("moderationUpToDate")
+                              : t("moderationNeedsCheck")
+                            : t("moderationNeedsMoreInfo")}
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        fullWidth={false}
+                        onClick={() => void runClaimModeration()}
+                        disabled={!moderationInputReady || moderationLoading}
+                        loading={moderationLoading}
+                        className="shrink-0 rounded-xl px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] !border-white/[0.22] !bg-white/[0.06] !text-pv-text/90 enabled:hover:!bg-white/[0.10]"
+                      >
+                        {t("moderationRunCheck")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 {isConnected || isCreateDemoSession ? (
                   <Button
                     variant="primary"
                     onClick={handleSubmit}
-                    loading={loading || mockOverlayPhase === "loading"}
-                    disabled={isFormMockBusy}
+                    loading={
+                      loading ||
+                      mockOverlayPhase === "loading" ||
+                      moderationLoading
+                    }
+                    disabled={isFormMockBusy || moderationLoading}
                     className="rounded-2xl py-5 font-display text-sm font-bold uppercase tracking-widest"
                   >
                     {mockOverlayPhase === "loading" || loading ? (

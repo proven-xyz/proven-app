@@ -229,6 +229,10 @@
     "moderationCheckFailed": "Falló el chequeo de moderación. Inténtalo de nuevo en un momento.",
     "moderationBlocked": "Este claim no se puede publicar bajo la política actual{codesLabel}.",
     "moderationNeedsReview": "Este claim requiere revisión y todavía no se puede publicar{codesLabel}.",
+    "moderationRunCheck": "Ejecutar chequeo",
+    "moderationNeedsMoreInfo": "Completá el claim para ejecutar el chequeo de política.",
+    "moderationNeedsCheck": "Todavía no se ejecutó el chequeo para estos términos.",
+    "moderationUpToDate": "El chequeo está al día.",
     "moderationCodes": {
       "death_self_harm": "Autolesión / muerte",
       "violence_harm": "Violencia / daño",
@@ -515,6 +519,30 @@
       "settlement_specific": "Regla de settlement especifica",
       "structured_category": "Categoria estructurada",
       "sufficient_time": "Tiempo suficiente antes del deadline"
+    },
+    "moderationLabel": "Moderación",
+    "moderationAnalyzing": "Analizando con IA…",
+    "moderationAllowed": "Permitido por la política.",
+    "moderationIdle": "Completá el claim para ejecutar el chequeo de política.",
+    "moderationUnavailable": "Moderación no disponible por un momento.",
+    "moderationRateLimited": "Moderación limitada. Reintentá en {seconds}s.",
+    "moderationConfidence": "Confianza: {value}/100",
+    "moderationCheckedJustNow": "Chequeado recién.",
+    "moderationCheckedSecondsAgo": "Chequeado hace {seconds}s.",
+    "moderationCheckedMinutesAgo": "Chequeado hace {minutes}m.",
+    "moderationBlockedGeneric": "Bloqueado por la política.",
+    "moderationReviewPending": "Requiere revisión manual antes de publicar.",
+    "moderationBlockedByCode": {
+      "death_self_harm": "Autolesión / muerte",
+      "violence_harm": "Violencia / daño",
+      "hate_harassment": "Odio / acoso",
+      "sexual_minors": "Contenido sexual con menores",
+      "nonconsensual_sexual": "Contenido sexual no consensuado",
+      "illegal_facilitation": "Facilitación de actividad ilegal",
+      "doxxing_personal_data": "Doxxing / datos personales",
+      "medical_privacy": "Privacidad médica",
+      "graphic_content": "Contenido gráfico",
+      "other_policy": "Otro problema de política"
     }
   },
   "settlement": {
