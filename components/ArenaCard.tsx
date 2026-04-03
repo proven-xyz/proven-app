@@ -163,7 +163,7 @@ export default function ArenaCard({
       </div>
 
       <div className="relative z-10 min-w-0 flex-1">
-        <h3 className="line-clamp-3 font-display text-xl font-bold uppercase leading-tight tracking-tight text-pv-text sm:text-2xl">
+        <h3 className="line-clamp-2 font-display text-xl font-bold uppercase leading-tight tracking-tight text-pv-text sm:text-2xl">
           {vs.question}
         </h3>
         <div className="mt-3 space-y-3">

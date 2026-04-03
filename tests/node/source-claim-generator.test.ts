@@ -26,7 +26,7 @@ test("sanitizeGeneratedDrafts keeps valid unique candidates only", () => {
       sourceSummary: "OpenAI published a future launch update.",
       candidates: [
         {
-          category: "tech",
+          category: "culture",
           claimText: "Will OpenAI publish the announced update before June 30, 2026?",
           sideA: "OpenAI publishes it before June 30, 2026",
           sideB: "OpenAI does not publish it before June 30, 2026",
@@ -39,7 +39,7 @@ test("sanitizeGeneratedDrafts keeps valid unique candidates only", () => {
           confidenceScore: 91,
         },
         {
-          category: "tech",
+          category: "culture",
           claimText: "Will OpenAI publish the announced update before June 30, 2026?",
           sideA: "Duplicate",
           sideB: "Duplicate",
@@ -55,7 +55,7 @@ test("sanitizeGeneratedDrafts keeps valid unique candidates only", () => {
   });
 
   assert.equal(result.candidates.length, 1);
-  assert.equal(result.candidates[0]?.category, "tech");
+  assert.equal(result.candidates[0]?.category, "culture");
   assert.equal(result.candidates[0]?.confidenceScore, 91);
 });
 

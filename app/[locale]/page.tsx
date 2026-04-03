@@ -355,7 +355,7 @@ export default function HomePage() {
                 fill
                 priority
                 quality={85}
-                className="object-cover opacity-[0.62] scale-[1.08] object-[50%_49%]"
+                className="object-cover opacity-[0.62] scale-[1.08] object-[50%_100%]"
                 sizes="100vw"
               />
             </div>
@@ -374,18 +374,18 @@ export default function HomePage() {
             {/* Center scrim — keeps text readable without killing the image */}
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_55%_at_50%_38%,rgba(14,14,14,0.75)_0%,rgba(14,14,14,0.35)_35%,transparent_68%)]" />
 
-            {/* Feathering on edges: hides the “image boundary” against the page background */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-pv-bg/95 via-pv-bg/45 to-transparent sm:h-36" />
+            {/* Feathering on edges: smooth fade so the image never looks "cut" */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-pv-bg/95 via-pv-bg/45 to-transparent sm:h-40" />
             <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-pv-bg via-pv-bg/45 to-transparent sm:w-32" />
             <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-pv-bg via-pv-bg/45 to-transparent sm:w-32" />
 
             {/* Bottom edge fade */}
-            <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-pv-bg/70 via-pv-bg/25 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-pv-bg/95 via-pv-bg/45 to-transparent sm:h-28" />
           </div>
 
           {/* Text panel — centered so the backdrop stays visible */}
-          <div className="relative z-10 mx-auto flex min-h-[inherit] w-full max-w-[1200px] items-center justify-center px-4 sm:px-6 lg:px-8 pt-[env(safe-area-inset-top,0px)]">
-            <div className="w-full max-w-[640px] py-14 sm:py-16 lg:py-20 text-center">
+          <div className="relative z-10 mx-auto flex min-h-[90vh] w-full max-w-[1200px] items-center justify-center px-4 sm:px-6 lg:px-8 pt-[env(safe-area-inset-top,0px)] sm:min-h-[inherit]">
+            <div className="w-full max-w-[640px] pt-14 pb-28 sm:py-16 lg:py-20 text-center">
               {/* Headline — 3 lines, reduced size, payoff line smaller */}
               <motion.h1
                 className="mb-6 flex flex-col gap-1 text-center font-display font-bold leading-[0.92] tracking-tight text-pv-text"
@@ -394,7 +394,7 @@ export default function HomePage() {
                 animate="visible"
               >
                 {/* Line 1: PROVE IT */}
-                <span className="block overflow-hidden text-[clamp(3.1rem,8vw,5rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
+                <span className="block overflow-hidden text-[clamp(3.4rem,8.5vw,5.2rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
                   {["PROVE", "IT"].map((word) => (
                     <motion.span key={word} variants={kineticLetter} className="inline-block mr-[0.25em]">
                       {word}
@@ -402,7 +402,7 @@ export default function HomePage() {
                   ))}
                 </span>
                 {/* Line 2: ON-CHAIN. */}
-                <span className="block overflow-hidden text-[clamp(3.1rem,8vw,5rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
+                <span className="block overflow-hidden text-[clamp(3.4rem,8.5vw,5.2rem)] lg:text-[clamp(3.8rem,5.2vw,5.8rem)]">
                   <motion.span variants={kineticLetter} className="inline-block whitespace-nowrap">
                     {t("emptyHeroTitleOnChainSegment")}
                   </motion.span>
@@ -410,7 +410,7 @@ export default function HomePage() {
                 {/* Rhythmic pause */}
                 <span className="block h-2 lg:h-3" aria-hidden />
                 {/* Line 3: WITH PROVEN. — smaller payoff/accent */}
-                <span className="block overflow-hidden text-[clamp(2.4rem,6.5vw,3.8rem)] lg:text-[clamp(2.8rem,4.5vw,4.2rem)]">
+                <span className="block overflow-hidden text-[clamp(2.7rem,7vw,4rem)] lg:text-[clamp(2.8rem,4.5vw,4.2rem)]">
                   <motion.span variants={kineticLetter} className="inline-block mr-[0.25em] font-medium text-pv-muted">
                     {t("emptyHeroTitleLine2Lead")}
                   </motion.span>
@@ -479,6 +479,7 @@ export default function HomePage() {
                 labelPosition="below"
                 size="lg"
                 color="emerald"
+                  labelClassName="text-[12px]"
                 className="items-center"
               />
             </div>
@@ -489,6 +490,7 @@ export default function HomePage() {
                 labelPosition="below"
                 size="lg"
                 color="emerald"
+                  labelClassName="text-[12px]"
                 className="items-center"
               />
             </div>
@@ -500,6 +502,7 @@ export default function HomePage() {
                 size="lg"
                 color="gold"
                 suffix="GEN"
+                  labelClassName="text-[12px]"
                 className="items-center"
               />
             </div>
@@ -564,19 +567,19 @@ export default function HomePage() {
                         />
                       ) : null}
                     </div>
-                    <div className="relative z-10">
-                      <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
-                        {stepLabel}
-                      </div>
-                      <div className="mb-3 flex items-start gap-4">
-                        {renderIcon("h-12 w-12 sm:h-14 sm:w-14")}
+                    <div className="relative z-10 flex min-w-0 flex-1 items-start gap-4 md:items-center">
+                      {renderIcon("h-12 w-12 shrink-0 sm:h-14 sm:w-14")}
+                      <div className="min-w-0">
+                        <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
+                          {stepLabel}
+                        </div>
                         <h3 className="font-display text-xl font-bold leading-tight tracking-tight text-pv-text sm:text-2xl md:text-3xl">
                           {title.replace(/^\d+\.\s*/, "")}
                         </h3>
+                        <p className="mt-2 max-w-prose text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+                          {description}
+                        </p>
                       </div>
-                      <p className="max-w-prose text-sm leading-relaxed text-pv-muted sm:text-[15px]">
-                        {description}
-                      </p>
                     </div>
                     <div className="relative z-10 mt-6 h-px bg-gradient-to-r from-pv-emerald/40 to-transparent opacity-40" />
                     <div className="relative z-10 mt-4 flex items-center justify-between gap-3">
@@ -628,7 +631,7 @@ export default function HomePage() {
                       ) : null}
                     </div>
                     <div className="relative z-10">
-                      <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-muted">
+                      <div className="mb-3 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
                         {stepLabel}
                       </div>
                       <div className="mb-4">{renderIcon("h-10 w-10 sm:h-11 sm:w-11")}</div>
@@ -670,11 +673,11 @@ export default function HomePage() {
                   <div className="relative z-10 flex min-w-0 flex-1 items-start gap-4 md:items-center">
                     {renderIcon("h-11 w-11 shrink-0 sm:h-12 sm:w-12")}
                     <div className="min-w-0">
-                      <div className="mb-1 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-muted">
+                      <div className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald">
                         {stepLabel}
                       </div>
                       <h3 className="font-display text-xl font-medium tracking-tighter text-pv-text sm:text-2xl md:text-3xl">
-                        {title}
+                        {title.replace(/^\d+\.\s*/, "")}
                       </h3>
                       <p className="mt-2 max-w-2xl text-sm leading-relaxed text-pv-muted sm:text-[15px]">
                         {description}

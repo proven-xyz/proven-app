@@ -478,6 +478,8 @@ Core endpoints:
 | `CRON_SECRET` | Protects cron endpoints | Server-only |
 | `GEMINI_API_KEY` | Claim drafting API key | Server-only |
 | `CLAIM_DRAFT_MODEL` | Claim drafting model override | Defaults to `gemini-2.5-flash` |
+| `NEXT_PUBLIC_FEATURE_CLAIM_MODERATION` | Enables claim moderation gate in create flow | Optional |
+| `CLAIM_MODERATION_MODEL` | Claim moderation model override | Defaults to `gemini-2.5-flash` |
 
 All `NEXT_PUBLIC_*` variables are exposed to the browser. Use [`.env.example`](.env.example) as the safe starting template.
 

@@ -304,18 +304,38 @@ function buildDesignPreviewRematchChain(
   resolutionSummary: string,
 ): VSData[] {
   // Dos rondas mock para que se vea "Rematch" en el card sin depender de on-chain.
+  const isGpt5Vs =
+    base.question.startsWith("GPT-5 Announced by OpenAI before ");
+
+  const round1BaseQuestion = isGpt5Vs
+    ? base.question.replace(/before\s+[A-Za-z]+\b.*/i, "before February")
+    : base.question.includes("March")
+      ? base.question.replace("March", "January")
+      : base.question;
+
+  const round2BaseQuestion = isGpt5Vs
+    ? base.question.replace(/before\s+[A-Za-z]+\b.*/i, "before June")
+    : base.question;
+
   const round1Base: VSData = {
     ...base,
     id: base.id - 100,
-    question: base.question.includes("March")
-      ? base.question.replace("March", "January")
-      : base.question,
+    question: round1BaseQuestion,
+    creator_position: isGpt5Vs
+      ? "OpenAI announces GPT-5 before February"
+      : base.creator_position,
+    opponent_position: isGpt5Vs
+      ? "No official announcement before February"
+      : base.opponent_position,
     resolution_summary: resolutionSummary,
   };
+
   const round2Base: VSData = {
     ...base,
     id: base.id - 101,
-    question: base.question,
+    question: round2BaseQuestion,
+    creator_position: isGpt5Vs ? "OpenAI announces GPT-5 before June" : base.creator_position,
+    opponent_position: isGpt5Vs ? "No official announcement before June" : base.opponent_position,
     resolution_summary: resolutionSummary,
   };
 
@@ -326,7 +346,7 @@ function buildDesignPreviewRematchChain(
   const round3Base: VSData = {
     ...base,
     id: base.id - 102,
-    question: "BTC Price will break $100k before April 30",
+    question: "BTC Price will break $100k before August 31",
     resolution_summary: resolutionSummary,
   };
 
@@ -383,10 +403,6 @@ function ProgressBar({
   const progressPercent = isResolved ? 100 : ((stepIndex + 1) / total) * 100;
   const phaseCurrent = isResolved ? total : stepIndex + 1;
 
-  // Expanding timeline: active phase gets more visual weight
-  const phaseWeights = steps.map((_, i) => (i === stepIndex ? 2 : 1));
-  const totalWeight = phaseWeights.reduce((a, b) => a + b, 0);
-
   const cellClass = (isCurrent: boolean, isDone: boolean) =>
     `flex h-full min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border px-3 py-3 text-left transition-all duration-300 sm:min-h-0 sm:py-3.5 ${
       interactive ? "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/35 " : ""
@@ -409,14 +425,30 @@ function ProgressBar({
           {steps.map((_, i) => {
             const isDone = isResolved || i < stepIndex;
             const isCurrent = !isResolved && i === stepIndex;
+            const shouldFill = isDone || isCurrent;
             return (
               <motion.div
                 key={i}
-                className={`h-full rounded-full ${isDone ? "bg-pv-emerald" : isCurrent ? "bg-pv-emerald animate-phase-glow" : "bg-white/[0.06]"}`}
+                className="relative flex-1 h-full overflow-hidden rounded-full bg-white/[0.06]"
                 initial={false}
-                animate={{ flex: phaseWeights[i] }}
-                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              />
+                style={{ transformOrigin: "left center" }}
+              >
+                <motion.div
+                  className={`absolute inset-0 rounded-full ${
+                    isDone ? "bg-pv-emerald" : isCurrent ? "bg-pv-emerald animate-phase-glow" : ""
+                  }`}
+                  initial={false}
+                  style={{ transformOrigin: "left center" }}
+                  animate={{
+                    scaleX: shouldFill ? 1 : 0,
+                    opacity: shouldFill ? 1 : 0,
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                />
+              </motion.div>
             );
           })}
         </div>
@@ -1550,6 +1582,8 @@ export default function VSDetailPage() {
                             : undefined
                         }
                         compact
+                        showPhaseBadge={false}
+                        timeClassName="text-base sm:text-lg lg:text-xl"
                       />
                     </div>
                   </div>
@@ -1752,36 +1786,41 @@ export default function VSDetailPage() {
 
               {canAccept && (
                 <GlassCard glass className="!rounded-2xl border border-white/[0.12]">
-                  <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
-                    <Input
-                      label={t("challengeStake")}
-                      type="number"
-                      min={MIN_STAKE}
-                      step="1"
-                      value={challengeStake}
-                      onChange={(event) => setChallengeStake(event.target.value)}
-                    />
-                    <Button
-                      variant="fuch"
-                      onClick={handleAccept}
-                      loading={actionLoading === "accept"}
-                      disabled={!hasValidChallengeStake}
-                    >
-                      {actionLoading === "accept"
-                        ? t("accepting")
-                        : t("acceptAndStake", {
-                            amount: hasValidChallengeStake ? challengeStakeValue : vs.stake_amount,
-                          })}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-pv-muted mt-3">
-                    {fixedPayoutPreview !== null
-                      ? t("challengeStakeHintFixed", { payout: fixedPayoutPreview })
-                      : t("challengeStakeHintHeadToHead")}
-                  </p>
-                  <p className="text-xs text-pv-muted mt-2">
-                    {t("minimumStakeHint", { amount: MIN_STAKE })}
-                  </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end">
+                      <Input
+                        label={t("challengeStake")}
+                        type="number"
+                        min={MIN_STAKE}
+                        step="1"
+                        value={challengeStake}
+                        onChange={(event) => setChallengeStake(event.target.value)}
+                      />
+                      <Button
+                        variant="fuch"
+                        onClick={handleAccept}
+                        loading={actionLoading === "accept"}
+                        disabled={!hasValidChallengeStake}
+                        className={
+                          actionLoading === "accept"
+                            ? "opacity-70 brightness-[0.85] saturate-[0.75] pointer-events-none"
+                            : ""
+                        }
+                      >
+                        {actionLoading === "accept"
+                          ? t("accepting")
+                          : t("acceptAndStake", {
+                              amount: hasValidChallengeStake ? challengeStakeValue : vs.stake_amount,
+                            })}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-pv-muted mt-3">
+                      {fixedPayoutPreview !== null
+                        ? t("challengeStakeHintFixed", { payout: fixedPayoutPreview })
+                        : t("challengeStakeHintHeadToHead")}
+                    </p>
+                    <p className="text-xs text-pv-muted mt-2">
+                      {t("minimumStakeHint", { amount: MIN_STAKE })}
+                    </p>
                 </GlassCard>
               )}
 
@@ -2089,8 +2128,8 @@ export default function VSDetailPage() {
                       className="!rounded-2xl border border-white/[0.12]"
                     >
                       <div className="p-5 sm:p-6">
-                        <div className="mb-4 flex flex-col gap-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between">
-                          <div className="min-w-0 flex-1">
+                        <div className="mb-4 flex flex-col gap-3 sm:mb-5">
+                          <div className="min-w-0">
                             <div className="flex min-w-0 flex-wrap items-center gap-3">
                               <h2 className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
                                 {t("rivalry")}
@@ -2100,17 +2139,20 @@ export default function VSDetailPage() {
                               {t("rivalryHint")}
                             </p>
                           </div>
+
                           {!isSampleVS &&
                             (vs.state === "resolved" || vs.state === "cancelled") && (
-                              <Link href={`/vs/create?rematch=${vs.id}`}>
-                                <Button
-                                  variant="emerald"
-                                  fullWidth={false}
-                                  size="sm"
-                                >
-                                  {t("createRematch")}
-                                </Button>
-                              </Link>
+                              <div className="w-full flex justify-center">
+                                <Link href={`/vs/create?rematch=${vs.id}`}>
+                                  <Button
+                                    variant="emerald"
+                                    fullWidth={false}
+                                    size="sm"
+                                  >
+                                    {t("createRematch")}
+                                  </Button>
+                                </Link>
+                              </div>
                             )}
                         </div>
 

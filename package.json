@@ -12,7 +12,7 @@
     "test:integration": "node scripts/run-integration-tests.mjs",
     "test:integration:localnet": "node scripts/run-integration-tests.mjs --network localnet",
     "test:integration:studionet": "node scripts/run-integration-tests.mjs --network studionet",
-    "test:smoke": "node --import tsx --test tests/node/api-validation.test.ts tests/node/challenge-opportunities.test.ts tests/node/claim-quality.test.ts tests/node/contract-smoke.test.ts tests/node/db-index.test.ts tests/node/explore-filters.test.ts tests/node/source-claim-generator.test.ts tests/node/vs-xmtp-eligibility.test.ts tests/node/xmtp-installation-limit-error.test.ts",
+    "test:smoke": "node --import tsx --test tests/node/api-validation.test.ts tests/node/challenge-opportunities.test.ts tests/node/claim-moderation-route.test.ts tests/node/claim-moderation-sanitize.test.ts tests/node/claim-quality.test.ts tests/node/contract-smoke.test.ts tests/node/db-index.test.ts tests/node/explore-filters.test.ts tests/node/source-claim-generator.test.ts tests/node/vs-xmtp-eligibility.test.ts tests/node/xmtp-installation-limit-error.test.ts",
     "contract:stage": "node scripts/run-staged-contract-workflow.mjs",
     "contract:stage:deploy": "node scripts/run-staged-contract-workflow.mjs --deploy-bradbury --write-env",
     "start": "next start",
@@ -34,6 +34,7 @@
     "nextjs-toploader": "^3.9.17",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "server-only": "^0.0.1",
     "sonner": "^1.7.0",
     "viem": "^2.47.6"
   },

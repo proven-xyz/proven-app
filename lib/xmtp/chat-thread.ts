@@ -88,42 +88,88 @@ export function classifyXmtpThreadError(err: unknown): {
   return { kind: "unknown", message };
 }
 
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string
+): Promise<T> {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      const id = setTimeout(() => {
+        clearTimeout(id);
+        reject(new Error(`${label}_TIMEOUT`));
+      }, timeoutMs);
+    }),
+  ]);
+}
+
 /**
  * Sincroniza conversaciones permitidas, abre o crea el DM 1v1, ajusta consent
  * si sigue en `Unknown`, sincroniza el hilo y devuelve mensajes ordenados.
  */
 export async function ensureVsDmThread(
   client: XmtpClientInstance,
-  peerAddress: string
+  peerAddress: string,
+  { timeoutMs = 20000 }: { timeoutMs?: number } = {}
 ): Promise<{ dm: Dm; messages: DecodedMessage[] }> {
   const id = peerIdentifierFromAddress(peerAddress);
 
-  await client.conversations.syncAll([ConsentState.Allowed]);
+  await withTimeout(
+    client.conversations.syncAll([ConsentState.Allowed]),
+    timeoutMs,
+    "XMTP_SYNC_ALL"
+  );
 
-  let conversation = await client.conversations.fetchDmByIdentifier(id);
+  let conversation = await withTimeout(
+    client.conversations.fetchDmByIdentifier(id),
+    timeoutMs,
+    "XMTP_FETCH_DM"
+  );
 
   if (!conversation) {
     const env = client.env ?? (getXmtpEnv() as XmtpEnv);
-    const canMap = await Client.canMessage([id], env);
+    const canMap = await withTimeout(
+      Client.canMessage([id], env),
+      timeoutMs,
+      "XMTP_CAN_MESSAGE"
+    );
     const can =
       canMap.get(id.identifier) ??
       Array.from(canMap.values()).some(Boolean);
     if (!can) {
       throw new XmtpPeerUnreachableError();
     }
-    conversation = await client.conversations.createDmWithIdentifier(id);
+    conversation = await withTimeout(
+      client.conversations.createDmWithIdentifier(id),
+      timeoutMs,
+      "XMTP_CREATE_DM"
+    );
   }
 
-  const consent = await conversation.consentState();
+  const consent = await withTimeout(
+    conversation.consentState(),
+    timeoutMs,
+    "XMTP_CONSENT_STATE"
+  );
   if (consent === ConsentState.Unknown) {
-    await conversation.updateConsentState(ConsentState.Allowed);
+    await withTimeout(
+      conversation.updateConsentState(ConsentState.Allowed),
+      timeoutMs,
+      "XMTP_UPDATE_CONSENT"
+    );
   }
 
-  await conversation.sync();
+  await withTimeout(conversation.sync(), timeoutMs, "XMTP_DM_SYNC");
 
-  const raw = await conversation.messages({
-    limit: XMTP_THREAD_MESSAGE_LIMIT,
-  });
+  const raw = await withTimeout(
+    conversation.messages({
+      limit: XMTP_THREAD_MESSAGE_LIMIT,
+    }),
+    timeoutMs,
+    "XMTP_MESSAGES"
+  );
   const messages = sortDecodedMessagesBySentAt(raw);
 
   return { dm: conversation, messages };

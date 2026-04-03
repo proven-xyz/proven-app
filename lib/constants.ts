@@ -161,7 +161,7 @@ export function formatDeadline(ts: number, locale = "es"): string {
   });
 }
 
-export function getTimeRemaining(deadline: number) {
+export function getTimeRemaining(deadline: number, locale: "es" | "en" = "es") {
   const now = Math.floor(Date.now() / 1000);
   const t = Math.max(0, deadline - now);
   const d = Math.floor(t / 86400);
@@ -169,9 +169,20 @@ export function getTimeRemaining(deadline: number) {
   const m = Math.floor((t % 3600) / 60);
   const s = t % 60;
   const pad = (n: number) => String(n).padStart(2, "0");
+  const dayLabel =
+    locale === "en"
+      ? d === 1
+        ? "day"
+        : "days"
+      : d === 1
+        ? "día"
+        : "días";
   return {
     expired: t <= 0,
-    text: t <= 0 ? "00:00:00" : `${d > 0 ? d + "d " : ""}${pad(h)}:${pad(m)}:${pad(s)}`,
+    text:
+      t <= 0
+        ? "00:00:00"
+        : `${d > 0 ? `${d} ${dayLabel} ` : ""}${pad(h)}:${pad(m)}:${pad(s)}`,
     total: t,
   };
 }

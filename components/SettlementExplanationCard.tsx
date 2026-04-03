@@ -92,12 +92,20 @@ export default function SettlementExplanationCard({
     >
       <div className="p-5 sm:p-6">
         <div className="space-y-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-pv-emerald/85">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-3.5">
+            <span
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-pv-emerald/10 text-pv-emerald"
+              aria-hidden
+            >
+              <ScrollText size={14} />
+            </span>
+            <div className="min-w-0 space-y-1">
+              <h3 className="font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:tracking-[0.2em]">
                 {t("title")}
-              </div>
-              <p className="mt-1 text-sm leading-relaxed text-pv-muted">{t("hint")}</p>
+              </h3>
+              <p className="text-[10px] leading-relaxed text-pv-muted sm:text-[11px]">
+                {t("hint")}
+              </p>
             </div>
           </div>
 

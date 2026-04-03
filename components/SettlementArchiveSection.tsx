@@ -196,13 +196,18 @@ export default function SettlementArchiveSection({
               <Link
                 key={row.vs.id}
                 href={`/vs/${row.vs.id}`}
-                className="group flex flex-col gap-6 border border-transparent bg-[#131313] p-5 transition-all duration-300 hover:border-pv-emerald/20 hover:bg-pv-surface md:flex-row md:flex-nowrap md:items-center md:justify-between md:gap-8 md:p-6"
+                className="group flex gap-6 border border-transparent bg-[#131313] p-5 transition-all duration-300 hover:border-pv-emerald/20 hover:bg-pv-surface md:flex-row md:flex-nowrap md:items-center md:justify-between md:gap-8 md:p-6"
               >
-                <div className="flex min-w-0 flex-1 items-start gap-6 md:min-w-[280px] md:items-center lg:min-w-[320px]">
-                  <span className="shrink-0 font-display text-sm tabular-nums text-pv-emerald/50">
+                {/* Columna izquierda: enumeración centrada verticalmente */}
+                <div className="flex shrink-0 items-center self-stretch">
+                  <span className="font-display text-base sm:text-lg tabular-nums text-pv-emerald/60">
                     #{row.vs.id}
                   </span>
-                  <div className="min-w-0">
+                </div>
+
+                {/* Columna derecha: título / canal arriba, datos a la derecha (o debajo en mobile) */}
+                <div className="flex min-w-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-8">
+                  <div className="min-w-0 max-w-full md:max-w-[55%] lg:max-w-[50%]">
                     <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted">
                       {tCat(row.vs.category)} / {t("archiveTerminalChannel")}
                     </span>
@@ -210,61 +215,59 @@ export default function SettlementArchiveSection({
                       {row.vs.question}
                     </span>
                   </div>
-                </div>
-                <div className="flex flex-1 flex-wrap items-center gap-8 sm:gap-10 md:justify-end">
-                  <div className="text-center md:min-w-[4.5rem]">
-                    <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
-                      {t("archiveColPool")}
-                    </span>
-                    <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
-                      {getVSTotalPot(row.vs)}
-                      <span className="ml-0.5 text-sm font-normal text-pv-muted">GEN</span>
-                    </span>
+
+                  <div className="flex flex-nowrap items-stretch gap-6 sm:gap-8 md:flex-none md:min-w-[260px] lg:min-w-[300px]">
+                    <div className="text-center min-w-[4.5rem]">
+                      <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
+                        {t("archiveColPool")}
+                      </span>
+                      <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
+                        {getVSTotalPot(row.vs)}
+                        <span className="ml-0.5 text-sm font-normal text-pv-muted">GEN</span>
+                      </span>
+                    </div>
+                    <div className="text-center min-w-[4.5rem]">
+                      <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
+                        {t("archiveColChallengers")}
+                      </span>
+                      <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
+                        {getVSChallengerCount(row.vs)}
+                      </span>
+                    </div>
+                    <div className="text-center min-w-[5.5rem]">
+                      <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
+                        {t("archiveColState")}
+                      </span>
+                      <span
+                        className={`font-display text-lg font-medium sm:text-xl ${
+                          row.vs.state === "accepted"
+                            ? "text-pv-emerald"
+                            : row.vs.state === "open"
+                              ? "text-pv-text"
+                              : "text-pv-muted"
+                        }`}
+                      >
+                        {stateLabel(row.vs, t)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-center md:min-w-[4.5rem]">
-                    <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
-                      {t("archiveColChallengers")}
-                    </span>
-                    <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
-                      {getVSChallengerCount(row.vs)}
-                    </span>
-                  </div>
-                  <div className="text-center md:min-w-[5.5rem]">
-                    <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
-                      {t("archiveColState")}
-                    </span>
-                    <span
-                      className={`font-display text-lg font-medium sm:text-xl ${
-                        row.vs.state === "accepted"
-                          ? "text-pv-emerald"
-                          : row.vs.state === "open"
-                            ? "text-pv-text"
-                            : "text-pv-muted"
-                      }`}
-                    >
-                      {stateLabel(row.vs, t)}
-                    </span>
-                  </div>
-                </div>
-                <div className="hidden shrink-0 md:flex md:w-10 md:justify-end">
-                  <PlusCircle
-                    className="h-7 w-7 text-pv-muted opacity-0 transition-all group-hover:opacity-100 group-hover:text-pv-emerald"
-                    strokeWidth={1.25}
-                    aria-hidden
-                  />
                 </div>
               </Link>
             ) : (
               <div
                 key={row.id}
-                className="group flex flex-col gap-6 border border-white/[0.06] bg-[#131313] p-5 transition-all duration-300 hover:border-pv-emerald/20 hover:bg-pv-surface md:flex-row md:flex-nowrap md:items-center md:justify-between md:gap-8 md:p-6"
+                className="group flex gap-6 border border-white/[0.06] bg-[#131313] p-5 transition-all duration-300 hover:border-pv-emerald/20 hover:bg-pv-surface md:flex-row md:flex-nowrap md:items-center md:justify-between md:gap-8 md:p-6"
               >
-                <div className="flex min-w-0 flex-1 items-start gap-6 md:min-w-[280px] md:items-center lg:min-w-[320px]">
-                  <span className="shrink-0 font-display text-sm tabular-nums text-pv-emerald/50">
-                    #
-                    {row.id.replace("demo-", "")}
+                {/* Columna izquierda: enumeración demo centrada verticalmente */}
+                <div className="flex shrink-0 items-center self-stretch">
+                  <span className="font-display text-base sm:text-lg tabular-nums text-pv-emerald/60">
+                    #{row.id.replace("demo-", "")}
                   </span>
-                  <div className="min-w-0">
+                </div>
+
+                {/* Columna derecha: título / contexto arriba, datos a la derecha (o debajo en mobile) */}
+                <div className="flex min-w-0 flex-1 flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-8">
+                  <div className="min-w-0 max-w-full md:max-w-[55%] lg:max-w-[50%]">
                     <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted">
                       {t(row.contextKey)}
                     </span>
@@ -272,47 +275,41 @@ export default function SettlementArchiveSection({
                       {t(row.titleKey)}
                     </span>
                   </div>
-                </div>
-                <div className="flex flex-1 flex-wrap items-center gap-8 sm:gap-10 md:justify-end">
-                  <div className="text-center md:min-w-[4.5rem]">
-                    <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
-                      {t(row.col1LabelKey)}
-                    </span>
-                    <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
-                      {row.col1Value}
-                    </span>
+
+                  <div className="flex flex-nowrap items-stretch gap-6 sm:gap-8 md:flex-none md:min-w-[260px] lg:min-w-[300px]">
+                    <div className="text-center min-w-[4.5rem]">
+                      <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
+                        {t(row.col1LabelKey)}
+                      </span>
+                      <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
+                        {row.col1Value}
+                      </span>
+                    </div>
+                    <div className="text-center min-w-[4.5rem]">
+                      <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
+                        {t(row.col2LabelKey)}
+                      </span>
+                      <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
+                        {row.col2Value}
+                      </span>
+                    </div>
+                    <div className="text-center min-w-[5.5rem] md:px-1">
+                      <span
+                        className={`mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide ${
+                          row.col3Accent ? "text-pv-emerald" : "text-pv-muted"
+                        }`}
+                      >
+                        {t(row.col3LabelKey)}
+                      </span>
+                      <span
+                        className={`font-display text-lg font-medium sm:text-xl ${
+                          row.pulse ? "animate-pulse text-pv-emerald" : ""
+                        } ${row.col3Accent ? "text-pv-emerald" : "text-pv-text"}`}
+                      >
+                        {t(row.col3StateKey)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-center md:min-w-[4.5rem]">
-                    <span className="mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide text-pv-muted">
-                      {t(row.col2LabelKey)}
-                    </span>
-                    <span className="font-display text-lg font-medium tabular-nums text-pv-text sm:text-xl">
-                      {row.col2Value}
-                    </span>
-                  </div>
-                  <div className="text-center md:min-w-[5.5rem] md:px-1">
-                    <span
-                      className={`mb-1 block font-mono text-[10px] font-bold uppercase tracking-wide ${
-                        row.col3Accent ? "text-pv-emerald" : "text-pv-muted"
-                      }`}
-                    >
-                      {t(row.col3LabelKey)}
-                    </span>
-                    <span
-                      className={`font-display text-lg font-medium sm:text-xl ${
-                        row.pulse ? "animate-pulse text-pv-emerald" : ""
-                      } ${row.col3Accent ? "text-pv-emerald" : "text-pv-text"}`}
-                    >
-                      {t(row.col3StateKey)}
-                    </span>
-                  </div>
-                </div>
-                <div className="hidden shrink-0 md:flex md:w-10 md:justify-end">
-                  <PlusCircle
-                    className="h-7 w-7 text-pv-muted opacity-0 transition-all group-hover:opacity-100 group-hover:text-pv-emerald"
-                    strokeWidth={1.25}
-                    aria-hidden
-                  />
                 </div>
               </div>
             )
