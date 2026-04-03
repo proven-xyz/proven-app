@@ -276,6 +276,8 @@ export default function Header() {
                 </Link>
               </div>
 
+              <HeaderNetworkStatus enabled />
+
               {isConnected && !isCorrectNetwork && (
                 <button
                   type="button"
@@ -286,17 +288,14 @@ export default function Header() {
                 </button>
               )}
               {isConnected && address ? (
-                <div className="flex items-center gap-2">
-                  <HeaderNetworkStatus enabled={isCorrectNetwork} />
-                  <WalletAccountMenu
-                    address={address}
-                    open={walletMenuOpen}
-                    onOpenChange={setWalletMenuOpen}
-                    onDisconnect={disconnect}
-                    containerRef={walletMenuDesktopRef}
-                    buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
-                  />
-                </div>
+                <WalletAccountMenu
+                  address={address}
+                  open={walletMenuOpen}
+                  onOpenChange={setWalletMenuOpen}
+                  onDisconnect={disconnect}
+                  containerRef={walletMenuDesktopRef}
+                  buttonClassName="chip font-mono text-[11px] text-pv-emerald border-pv-emerald/[0.25] focus-ring"
+                />
               ) : (
                 <button
                   type="button"
@@ -329,6 +328,8 @@ export default function Header() {
                 </Link>
               </div>
 
+              <HeaderNetworkStatus enabled compact />
+
               {isConnected && !isCorrectNetwork && (
                 <button
                   type="button"
@@ -339,17 +340,14 @@ export default function Header() {
                 </button>
               )}
               {isConnected && address ? (
-                <div className="flex items-center gap-1.5">
-                  <HeaderNetworkStatus enabled={isCorrectNetwork} compact />
-                  <WalletAccountMenu
-                    address={address}
-                    open={walletMenuOpen}
-                    onOpenChange={setWalletMenuOpen}
-                    onDisconnect={disconnect}
-                    containerRef={walletMenuMobileRef}
-                    buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
-                  />
-                </div>
+                <WalletAccountMenu
+                  address={address}
+                  open={walletMenuOpen}
+                  onOpenChange={setWalletMenuOpen}
+                  onDisconnect={disconnect}
+                  containerRef={walletMenuMobileRef}
+                  buttonClassName="chip font-mono text-[10px] text-pv-emerald border-pv-emerald/[0.25]"
+                />
               ) : (
                 <button
                   type="button"

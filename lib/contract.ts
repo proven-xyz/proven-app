@@ -6,18 +6,21 @@ import {
   createGenlayerClient,
   ensureGenlayerWalletChain,
   getEndpoint,
+  getBaseConfiguredNetworkAlias,
   getConfiguredNetworkAlias,
+  getConfiguredContractAddress,
   getGenlayerChain,
   getConsensusMainContractAddress,
-  GENLAYER_CONSENSUS_MAIN_ABI,
+  getConsensusMainAbi,
 } from "./genlayer";
 import { normalizeCategoryId } from "./constants";
 
-export const CONTRACT_ADDRESS = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  "0x0000000000000000000000000000000000000000") as any;
-
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const GEN_UNIT = BigInt("1000000000000000000");
+
+export const CONTRACT_ADDRESS = getConfiguredContractAddress(
+  getBaseConfiguredNetworkAlias()
+) as any;
 
 function genToWei(gen: number): bigint {
   if (!Number.isFinite(gen) || gen < 0) {
@@ -38,6 +41,17 @@ function normalizeWriteValueForNetwork(value: bigint): bigint {
   }
 
   return value;
+}
+
+function getActiveContractAddress() {
+  return getConfiguredContractAddress() as any;
+}
+
+function shouldBypassIndexedApi() {
+  return (
+    typeof window !== "undefined" &&
+    getConfiguredNetworkAlias() !== getBaseConfiguredNetworkAlias()
+  );
 }
 
 export interface ClaimChallenger {
@@ -463,7 +477,7 @@ function getConsensusAddTransactionArgs(wallet: string, functionName: string, ar
     defaultNumberOfInitialValidators?: number;
   };
   const calldata = buildConsensusTransactionData(functionName, args);
-  const addTransactionInput = (GENLAYER_CONSENSUS_MAIN_ABI as any[]).find(
+  const addTransactionInput = (getConsensusMainAbi() as any[]).find(
     (entry) => entry?.type === "function" && entry?.name === "addTransaction"
   ) as { inputs?: Array<{ name?: string; type?: string }> } | undefined;
   const inputCount = Array.isArray(addTransactionInput?.inputs)
@@ -472,7 +486,7 @@ function getConsensusAddTransactionArgs(wallet: string, functionName: string, ar
 
   const baseArgs = [
     wallet,
-    CONTRACT_ADDRESS,
+    getActiveContractAddress(),
     BigInt(chain.defaultNumberOfInitialValidators ?? 5),
     BigInt(chain.defaultConsensusMaxRotations ?? 3),
     calldata,
@@ -527,6 +541,36 @@ function buildConsensusTransactionData(functionName: string, args: unknown[]) {
   return genlayerAbi.transactions.serialize([callData, false]);
 }
 
+async function getAllVSSnapshotDirect(): Promise<VSFeedSnapshot> {
+  const count = await getClaimCount();
+  if (count <= 0) {
+    return {
+      items: [],
+      cache: makeContractFreshness(),
+    };
+  }
+
+  const pageSize = 50;
+  const pages = await Promise.all(
+    Array.from({ length: Math.ceil(count / pageSize) }, (_, index) =>
+      getVSSummaries(index * pageSize + 1, pageSize)
+    )
+  );
+
+  return {
+    items: pages.flat().sort((a, b) => b.id - a.id),
+    cache: makeContractFreshness(),
+  };
+}
+
+async function getUserVSSnapshotDirect(address: string): Promise<VSFeedSnapshot> {
+  const results = await getUserVSSummaries(address);
+  return {
+    items: results.sort((a, b) => b.id - a.id),
+    cache: makeContractFreshness(),
+  };
+}
+
 async function sendBrowserWriteTransaction(
   wallet: string,
   functionName: string,
@@ -546,7 +590,7 @@ async function sendBrowserWriteTransaction(
     from: wallet,
     to: getConsensusMainContractAddress(),
     data: encodeFunctionData({
-      abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+      abi: getConsensusMainAbi() as any,
       functionName: "addTransaction",
       args: getConsensusAddTransactionArgs(wallet, functionName, args) as any,
     }),
@@ -606,7 +650,7 @@ export async function finalizeGenlayerTx(
     from: wallet,
     to: getConsensusMainContractAddress(),
     data: encodeFunctionData({
-      abi: GENLAYER_CONSENSUS_MAIN_ABI as any,
+      abi: getConsensusMainAbi() as any,
       functionName: "finalizeTransaction",
       args: [genlayerTxId as `0x${string}`],
     }),
@@ -722,7 +766,7 @@ async function sendRpcWriteTransaction(
 ) {
   const client = createGenlayerClient(wallet);
   return client.writeContract({
-    address: CONTRACT_ADDRESS,
+    address: getActiveContractAddress(),
     functionName,
     args: args as any,
     value,
@@ -764,7 +808,7 @@ async function readApiJson<T>(
 async function readContractValue<T>(functionName: string, args: unknown[]): Promise<T> {
   const client = createGenlayerClient();
   return (await client.readContract({
-    address: CONTRACT_ADDRESS,
+    address: getActiveContractAddress(),
     functionName,
     args: args as any,
   })) as unknown as T;
@@ -783,7 +827,7 @@ async function requestIndexedClaimRefresh(
   claimId: number,
   inviteKey = ""
 ) {
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || shouldBypassIndexedApi()) {
     return;
   }
 
@@ -1176,15 +1220,20 @@ export async function getVSSnapshot(
   const inviteKey = options.inviteKey?.trim() ?? "";
 
   if (typeof window !== "undefined") {
-    const path = inviteKey
-      ? `/api/vs/${vsId}?invite=${encodeURIComponent(inviteKey)}`
-      : `/api/vs/${vsId}`;
-    const response = await readApiJson<{ item: VSData; cache?: VSCacheFreshness | null }>(path);
-    if (response?.item) {
-      return {
-        item: response.item,
-        cache: response.cache ?? null,
-      };
+    if (!shouldBypassIndexedApi()) {
+      const path = inviteKey
+        ? `/api/vs/${vsId}?invite=${encodeURIComponent(inviteKey)}`
+        : `/api/vs/${vsId}`;
+      const response = await readApiJson<{
+        item: VSData;
+        cache?: VSCacheFreshness | null;
+      }>(path);
+      if (response?.item) {
+        return {
+          item: response.item,
+          cache: response.cache ?? null,
+        };
+      }
     }
 
     if (inviteKey) {
@@ -1246,6 +1295,10 @@ export async function getAllVSSnapshot(options: {
   forceRefresh?: boolean;
 } = {}): Promise<VSFeedSnapshot> {
   if (typeof window !== "undefined") {
+    if (shouldBypassIndexedApi()) {
+      return getAllVSSnapshotDirect();
+    }
+
     const path = options.forceRefresh ? "/api/vs?refresh=1" : "/api/vs";
     let response = await readApiJson<{
       items: VSData[];
@@ -1299,6 +1352,10 @@ export async function getUserVSSnapshot(
   } = {}
 ): Promise<VSFeedSnapshot> {
   if (typeof window !== "undefined") {
+    if (shouldBypassIndexedApi()) {
+      return getUserVSSnapshotDirect(address);
+    }
+
     const path = options.forceRefresh
       ? `/api/vs/user/${encodeURIComponent(address)}?refresh=1`
       : `/api/vs/user/${encodeURIComponent(address)}`;

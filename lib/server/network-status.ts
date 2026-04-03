@@ -1,4 +1,9 @@
-import { getEndpoint, getWalletChainParams } from "@/lib/genlayer";
+import {
+  getConfiguredNetworkAlias,
+  getEndpoint,
+  getWalletChainParams,
+  type SupportedGenlayerNetwork,
+} from "@/lib/genlayer";
 
 export type HeaderNetworkStatusState = "connected" | "stalled";
 
@@ -15,9 +20,16 @@ export type HeaderNetworkStatus = {
 const HEALTH_CACHE_MS = 4_000;
 const HEALTH_TIMEOUT_MS = 3_500;
 
-let cachedStatus: HeaderNetworkStatus | null = null;
-let cachedAt = 0;
-let inflightStatus: Promise<HeaderNetworkStatus> | null = null;
+type NetworkStatusCacheEntry = {
+  cachedStatus: HeaderNetworkStatus | null;
+  cachedAt: number;
+  inflightStatus: Promise<HeaderNetworkStatus> | null;
+};
+
+const NETWORK_STATUS_CACHE = new Map<
+  SupportedGenlayerNetwork,
+  NetworkStatusCacheEntry
+>();
 
 async function rpcRequest(
   endpoint: string,
@@ -55,9 +67,25 @@ async function rpcRequest(
   return payload.result;
 }
 
-async function probeNetworkStatus(): Promise<HeaderNetworkStatus> {
-  const endpoint = getEndpoint();
-  const chain = getWalletChainParams();
+function getNetworkStatusCacheEntry(network: SupportedGenlayerNetwork) {
+  let entry = NETWORK_STATUS_CACHE.get(network);
+  if (!entry) {
+    entry = {
+      cachedStatus: null,
+      cachedAt: 0,
+      inflightStatus: null,
+    };
+    NETWORK_STATUS_CACHE.set(network, entry);
+  }
+
+  return entry;
+}
+
+async function probeNetworkStatus(
+  network: SupportedGenlayerNetwork
+): Promise<HeaderNetworkStatus> {
+  const endpoint = getEndpoint(network);
+  const chain = getWalletChainParams(network);
   const startedAt = Date.now();
   const checkedAt = new Date().toISOString();
 
@@ -106,25 +134,28 @@ async function probeNetworkStatus(): Promise<HeaderNetworkStatus> {
   }
 }
 
-export async function getHeaderNetworkStatus(): Promise<HeaderNetworkStatus> {
+export async function getHeaderNetworkStatus(
+  network = getConfiguredNetworkAlias()
+): Promise<HeaderNetworkStatus> {
+  const cacheEntry = getNetworkStatusCacheEntry(network);
   const now = Date.now();
-  if (cachedStatus && now - cachedAt < HEALTH_CACHE_MS) {
-    return cachedStatus;
+  if (cacheEntry.cachedStatus && now - cacheEntry.cachedAt < HEALTH_CACHE_MS) {
+    return cacheEntry.cachedStatus;
   }
 
-  if (inflightStatus) {
-    return inflightStatus;
+  if (cacheEntry.inflightStatus) {
+    return cacheEntry.inflightStatus;
   }
 
-  inflightStatus = probeNetworkStatus()
+  cacheEntry.inflightStatus = probeNetworkStatus(network)
     .then((status) => {
-      cachedStatus = status;
-      cachedAt = Date.now();
+      cacheEntry.cachedStatus = status;
+      cacheEntry.cachedAt = Date.now();
       return status;
     })
     .finally(() => {
-      inflightStatus = null;
+      cacheEntry.inflightStatus = null;
     });
 
-  return inflightStatus;
+  return cacheEntry.inflightStatus;
 }

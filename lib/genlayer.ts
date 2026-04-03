@@ -20,7 +20,16 @@ type GenlayerNetworkConfig = {
   defaultConsensusMainContract: string;
 };
 
+type ResolvedNetworkOption = {
+  alias: SupportedGenlayerNetwork;
+  name: string;
+  shortName: string;
+  hasContract: boolean;
+};
+
 const DEFAULT_NETWORK_ALIAS: SupportedGenlayerNetwork = "testnet-bradbury";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const CLIENT_NETWORK_STORAGE_KEY = "proven.genlayer.network";
 
 const NETWORK_CONFIGS: Record<SupportedGenlayerNetwork, GenlayerNetworkConfig> = {
   localnet: {
@@ -64,7 +73,23 @@ const NETWORK_ALIASES: Record<string, SupportedGenlayerNetwork> = {
   "testnet-bradbury": "testnet-bradbury",
 };
 
-function normalizeNetworkAlias(
+const PUBLIC_NETWORK_CONTRACT_ADDRESSES: Partial<
+  Record<SupportedGenlayerNetwork, string | undefined>
+> = {
+  localnet: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS_LOCALNET,
+  studionet: process.env.NEXT_PUBLIC_CONTRACT_ADDRESS_STUDIONET,
+  "testnet-asimov": process.env.NEXT_PUBLIC_CONTRACT_ADDRESS_TESTNET_ASIMOV,
+  "testnet-bradbury": process.env.NEXT_PUBLIC_CONTRACT_ADDRESS_TESTNET_BRADBURY,
+};
+
+function trimNetworkName(networkName: string) {
+  return networkName
+    .replace(/^GenLayer\s+/i, "")
+    .replace(/\s+Chain$/i, "")
+    .trim();
+}
+
+export function parseSupportedGenlayerNetwork(
   network: string | undefined | null
 ): SupportedGenlayerNetwork | null {
   const normalized = String(network ?? "").trim().toLowerCase();
@@ -99,19 +124,19 @@ function inferNetworkAliasFromEndpoint(
 }
 
 function getConfiguredNetworkFromEnv() {
-  return normalizeNetworkAlias(
+  return parseSupportedGenlayerNetwork(
     process.env.NEXT_PUBLIC_GENLAYER_NETWORK || process.env.GENLAYER_NETWORK
   );
 }
 
-function getConfiguredEndpointFromEnv() {
+function getBaseConfiguredEndpointFromEnv() {
   return (
     process.env.NEXT_PUBLIC_GENLAYER_RPC ||
     (typeof window === "undefined" ? process.env.GENLAYER_RPC : undefined)
   );
 }
 
-function getConfiguredExplorerOverride() {
+function getBaseConfiguredExplorerOverride() {
   return (
     process.env.NEXT_PUBLIC_GENLAYER_EXPLORER ||
     process.env.GENLAYER_EXPLORER ||
@@ -119,37 +144,154 @@ function getConfiguredExplorerOverride() {
   );
 }
 
+function getBaseConfiguredMainContractOverride() {
+  return (
+    process.env.NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT ||
+    process.env.GENLAYER_MAIN_CONTRACT ||
+    undefined
+  );
+}
+
+function getBaseConfiguredContractAddressFromEnv() {
+  return process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || undefined;
+}
+
 function getBaseNetworkAlias(): SupportedGenlayerNetwork {
   return (
     getConfiguredNetworkFromEnv() ??
-    inferNetworkAliasFromEndpoint(getConfiguredEndpointFromEnv()) ??
+    inferNetworkAliasFromEndpoint(getBaseConfiguredEndpointFromEnv()) ??
     DEFAULT_NETWORK_ALIAS
   );
 }
 
-function getBaseNetworkConfig(): GenlayerNetworkConfig {
-  return NETWORK_CONFIGS[getBaseNetworkAlias()];
+function getStoredClientNetworkPreference() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return parseSupportedGenlayerNetwork(
+      window.localStorage.getItem(CLIENT_NETWORK_STORAGE_KEY)
+    );
+  } catch {
+    return null;
+  }
+}
+
+function resolveNetworkAlias(
+  network?: SupportedGenlayerNetwork | null
+): SupportedGenlayerNetwork {
+  return network ?? getStoredClientNetworkPreference() ?? getBaseNetworkAlias();
+}
+
+function getResolvedNetworkConfig(
+  network?: SupportedGenlayerNetwork | null
+): GenlayerNetworkConfig {
+  return NETWORK_CONFIGS[resolveNetworkAlias(network)];
 }
 
 export const GENLAYER_CONSENSUS_MAIN_ABI = (
-  getBaseNetworkConfig().chain as any
+  NETWORK_CONFIGS[getBaseNetworkAlias()].chain as any
 ).consensusMainContract.abi;
 
-export function getConfiguredNetworkAlias(): SupportedGenlayerNetwork {
+export function getBaseConfiguredNetworkAlias(): SupportedGenlayerNetwork {
   return getBaseNetworkAlias();
 }
 
-export function getConfiguredNetworkName() {
-  return getBaseNetworkConfig().chain.name;
+export function getConfiguredNetworkAlias(
+  network?: SupportedGenlayerNetwork | null
+): SupportedGenlayerNetwork {
+  return resolveNetworkAlias(network);
 }
 
-export function getEndpoint() {
-  const explicitEndpoint = getConfiguredEndpointFromEnv();
-  if (explicitEndpoint) {
-    return explicitEndpoint;
+export function getConfiguredNetworkName(
+  network?: SupportedGenlayerNetwork | null
+) {
+  return getResolvedNetworkConfig(network).chain.name;
+}
+
+export function setClientPreferredNetworkAlias(
+  network: SupportedGenlayerNetwork | null
+) {
+  if (typeof window === "undefined") {
+    return;
   }
 
-  return getBaseNetworkConfig().defaultRpc;
+  try {
+    const nextAlias = network && network !== getBaseNetworkAlias() ? network : null;
+    if (nextAlias) {
+      window.localStorage.setItem(CLIENT_NETWORK_STORAGE_KEY, nextAlias);
+    } else {
+      window.localStorage.removeItem(CLIENT_NETWORK_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage failures and let the page continue with the base env network.
+  }
+}
+
+export function isRuntimeNetworkOverrideActive() {
+  return getConfiguredNetworkAlias() !== getBaseNetworkAlias();
+}
+
+export function getConfiguredContractAddress(
+  network?: SupportedGenlayerNetwork | null
+) {
+  const resolvedNetwork = resolveNetworkAlias(network);
+  const explicitAddress = PUBLIC_NETWORK_CONTRACT_ADDRESSES[resolvedNetwork];
+  if (explicitAddress) {
+    return explicitAddress;
+  }
+
+  if (resolvedNetwork === getBaseNetworkAlias()) {
+    return getBaseConfiguredContractAddressFromEnv() || ZERO_ADDRESS;
+  }
+
+  return ZERO_ADDRESS;
+}
+
+export function hasConfiguredContractAddress(
+  network?: SupportedGenlayerNetwork | null
+) {
+  return getConfiguredContractAddress(network) !== ZERO_ADDRESS;
+}
+
+export function getSwitchableNetworkOptions(): ResolvedNetworkOption[] {
+  const preferredOrder: SupportedGenlayerNetwork[] = [
+    "studionet",
+    "testnet-bradbury",
+    "localnet",
+    "testnet-asimov",
+  ];
+
+  return preferredOrder
+    .map((alias) => {
+      const config = NETWORK_CONFIGS[alias];
+      return {
+        alias,
+        name: config.chain.name,
+        shortName: trimNetworkName(config.chain.name),
+        hasContract: hasConfiguredContractAddress(alias),
+      };
+    })
+    .filter((option) => option.hasContract || option.alias === getBaseNetworkAlias());
+}
+
+export function getConsensusMainAbi(
+  network?: SupportedGenlayerNetwork | null
+) {
+  return (getResolvedNetworkConfig(network).chain as any).consensusMainContract.abi;
+}
+
+export function getEndpoint(network?: SupportedGenlayerNetwork | null) {
+  const resolvedNetwork = resolveNetworkAlias(network);
+  if (resolvedNetwork === getBaseNetworkAlias()) {
+    const explicitEndpoint = getBaseConfiguredEndpointFromEnv();
+    if (explicitEndpoint) {
+      return explicitEndpoint;
+    }
+  }
+
+  return NETWORK_CONFIGS[resolvedNetwork].defaultRpc;
 }
 
 function isLocalEndpoint(endpoint?: string) {
@@ -165,25 +307,31 @@ function isLocalEndpoint(endpoint?: string) {
   }
 }
 
-export function getConsensusMainContractAddress() {
-  const selectedNetwork = getBaseNetworkConfig();
-  return (
-    process.env.NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT ||
-    process.env.GENLAYER_MAIN_CONTRACT ||
-    selectedNetwork.defaultConsensusMainContract
-  );
+export function getConsensusMainContractAddress(
+  network?: SupportedGenlayerNetwork | null
+) {
+  const resolvedNetwork = resolveNetworkAlias(network);
+  if (resolvedNetwork === getBaseNetworkAlias()) {
+    const override = getBaseConfiguredMainContractOverride();
+    if (override) {
+      return override;
+    }
+  }
+
+  return NETWORK_CONFIGS[resolvedNetwork].defaultConsensusMainContract;
 }
 
-function getChain(endpoint?: string) {
-  const baseNetwork = getBaseNetworkConfig();
-  const resolvedEndpoint = endpoint || getEndpoint() || baseNetwork.defaultRpc;
+function getChain(
+  endpoint?: string,
+  network?: SupportedGenlayerNetwork | null
+) {
+  const resolvedNetwork = resolveNetworkAlias(network);
+  const baseNetwork = NETWORK_CONFIGS[resolvedNetwork];
+  const resolvedEndpoint = endpoint || getEndpoint(resolvedNetwork) || baseNetwork.defaultRpc;
   const activeNetwork = isLocalEndpoint(resolvedEndpoint)
     ? NETWORK_CONFIGS.localnet
     : baseNetwork;
-  const mainContractAddress =
-    process.env.NEXT_PUBLIC_GENLAYER_MAIN_CONTRACT ||
-    process.env.GENLAYER_MAIN_CONTRACT ||
-    activeNetwork.defaultConsensusMainContract;
+  const mainContractAddress = getConsensusMainContractAddress(activeNetwork.alias);
 
   return {
     ...activeNetwork.chain,
@@ -203,33 +351,38 @@ function getChain(endpoint?: string) {
   };
 }
 
-export function getGenlayerChain() {
-  return getChain(getEndpoint());
+export function getGenlayerChain(network?: SupportedGenlayerNetwork | null) {
+  return getChain(getEndpoint(network), network);
 }
 
-export function getExplorerBaseUrl() {
-  return (getConfiguredExplorerOverride() || getBaseNetworkConfig().defaultExplorer).replace(
-    /\/+$/,
-    ""
-  );
+export function getExplorerBaseUrl(network?: SupportedGenlayerNetwork | null) {
+  const resolvedNetwork = resolveNetworkAlias(network);
+  const configuredOverride =
+    resolvedNetwork === getBaseNetworkAlias()
+      ? getBaseConfiguredExplorerOverride()
+      : undefined;
+
+  return (
+    configuredOverride || NETWORK_CONFIGS[resolvedNetwork].defaultExplorer
+  ).replace(/\/+$/, "");
 }
 
-export function getWalletChainParams() {
-  const selectedNetwork = getBaseNetworkConfig();
-  const endpoint = getEndpoint() || selectedNetwork.defaultRpc;
+export function getWalletChainParams(network?: SupportedGenlayerNetwork | null) {
+  const selectedNetwork = getResolvedNetworkConfig(network);
+  const endpoint = getEndpoint(selectedNetwork.alias) || selectedNetwork.defaultRpc;
   return {
     chainId: `0x${selectedNetwork.chain.id.toString(16)}`,
     chainName: selectedNetwork.chain.name,
     rpcUrls: [endpoint],
     nativeCurrency: selectedNetwork.chain.nativeCurrency,
-    blockExplorerUrls: [getExplorerBaseUrl()],
+    blockExplorerUrls: [getExplorerBaseUrl(selectedNetwork.alias)],
   };
 }
 
 export async function ensureGenlayerWalletChain(ethereum: {
   request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<unknown>;
-}) {
-  const params = getWalletChainParams();
+}, network?: SupportedGenlayerNetwork | null) {
+  const params = getWalletChainParams(network);
   const currentChainId = (await ethereum.request({
     method: "eth_chainId",
   })) as string;
@@ -295,11 +448,12 @@ function createClientWithoutConsensusNoise(factory: () => ReturnType<typeof crea
 }
 
 export function createGenlayerClient(accountAddress?: string) {
-  const endpoint = getEndpoint();
+  const network = getConfiguredNetworkAlias();
+  const endpoint = getEndpoint(network);
 
   return createClientWithoutConsensusNoise(() =>
     createClient({
-      chain: getChain(endpoint),
+      chain: getChain(endpoint, network),
       ...(accountAddress 
         ? { account: accountAddress as any}
         : { account: null as any}),
@@ -309,22 +463,26 @@ export function createGenlayerClient(accountAddress?: string) {
 
 export function createGenlayerClientWithKey(privateKey: string) {
   const account = createAccount(privateKey as any);
-  const endpoint = getEndpoint();
+  const network = getConfiguredNetworkAlias();
+  const endpoint = getEndpoint(network);
 
   return createClientWithoutConsensusNoise(() =>
     createClient({
-      chain: getChain(endpoint),
+      chain: getChain(endpoint, network),
       account,
     } as any)
   );
 }
 
-export function getExplorerUrl() {
-  return `${getExplorerBaseUrl()}/txs`;
+export function getExplorerUrl(network?: SupportedGenlayerNetwork | null) {
+  return `${getExplorerBaseUrl(network)}/txs`;
 }
 
-export function getExplorerTxUrl(txHash: string) {
-  return `${getExplorerBaseUrl()}/tx/${txHash}`;
+export function getExplorerTxUrl(
+  txHash: string,
+  network?: SupportedGenlayerNetwork | null
+) {
+  return `${getExplorerBaseUrl(network)}/tx/${txHash}`;
 }
 
 export { createAccount };
