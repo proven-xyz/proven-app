@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { ChevronDown, Compass } from "lucide-react";
+import { ChevronDown, CirclePlus, Compass } from "lucide-react";
 import {
   DASHBOARD_STAKE_HOLDING_IDS,
   DASHBOARD_STAKE_HOLDING_META,
@@ -13,11 +13,30 @@ import {
   type DashboardStakeHoldingId,
 } from "@/lib/dashboardStakeHoldingsMock";
 import {
+  DASHBOARD_EXPOSURE_LOAD_MORE,
+  DASHBOARD_EXPOSURE_PAGE_SIZE,
+  summarizeDashboardFilteredExposure,
+  type DashboardFilteredExposureSummary,
+} from "@/lib/dashboardUiPolicy";
+import {
   type VSData,
+  didUserLoseVS,
+  didUserWinVS,
   getVSChallengerCount,
+  getVSUserWinAmount,
   getVSTotalPot,
+  hasVSWinner,
   isVSPrivate,
 } from "@/lib/contract";
+import { isSampleVsIdForXmtp } from "@/lib/xmtp/vs-chat-eligibility";
+import {
+  DASHBOARD_CARD_SURFACE,
+  DASHBOARD_PANEL_SURFACE,
+  DASHBOARD_SKELETON_ROW,
+  DASHBOARD_STAT_CELL_SURFACE,
+  DASHBOARD_SURFACE_DASHED,
+  DASHBOARD_SURFACE_MUTED,
+} from "@/lib/dashboardSurface";
 
 const ease = [0.25, 0.1, 0.25, 1] as const;
 
@@ -115,10 +134,6 @@ function holdingMatchesDashboardSearch(
   return parts.some((p) => p.toLowerCase().includes(q));
 }
 
-/** Alineado con celdas de stats en `ArenaCard` (Explorer). */
-const HOLDING_STAT_CELL =
-  "rounded border border-white/[0.1] bg-white/[0.03] px-3 py-2.5 sm:px-3.5 sm:py-3";
-
 /** Mismo trazo que `public/icons/verify.svg`, con `currentColor` para `text-pv-emerald`. */
 function StakeHoldingVerifyIcon({ className }: { className?: string }) {
   return (
@@ -172,7 +187,7 @@ function StakeHoldingRow({
       : t("holdings.visibilityPublic");
 
   return (
-    <div className="rounded-lg border border-white/[0.12] bg-pv-surface">
+    <div className={DASHBOARD_CARD_SURFACE}>
       <div className="flex items-stretch gap-3 px-3 sm:gap-4 sm:px-4">
         <div className="flex shrink-0 items-center justify-center self-center py-3 sm:py-4">
           <StakeHoldingVerifyIcon className="h-9 w-9 text-pv-emerald sm:h-10 sm:w-10" />
@@ -194,7 +209,7 @@ function StakeHoldingRow({
             </p>
           </div>
           <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.12] bg-white/[0.04] text-pv-muted transition-[transform,color,border-color] duration-300 ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-pv-muted transition-[transform,color,border-color] duration-300 ${
               isOpen ? "text-pv-emerald border-pv-emerald/25" : ""
             }`}
           >
@@ -266,7 +281,7 @@ function StakeHoldingRow({
                   {t("holdings.positionSummaryLabel")}
                 </p>
                 <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:max-w-2xl sm:grid-cols-3 sm:gap-2.5">
-                  <div className={HOLDING_STAT_CELL}>
+                  <div className={DASHBOARD_STAT_CELL_SURFACE}>
                     <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("holdings.yourStake")}
                     </span>
@@ -275,7 +290,7 @@ function StakeHoldingRow({
                     </span>
                   </div>
                   <div
-                    className={`${HOLDING_STAT_CELL} border-pv-emerald/20 bg-pv-emerald/[0.06]`}
+                    className={`${DASHBOARD_STAT_CELL_SURFACE} border-pv-emerald/20 bg-pv-emerald/[0.06]`}
                   >
                     <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("holdings.winEstimate")}
@@ -284,7 +299,7 @@ function StakeHoldingRow({
                       {t(`${base}.winEstimate` as never)}
                     </span>
                   </div>
-                  <div className={HOLDING_STAT_CELL}>
+                  <div className={DASHBOARD_STAT_CELL_SURFACE}>
                     <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("holdings.returnMultiple")}
                     </span>
@@ -348,15 +363,111 @@ function StakeHoldingRow({
   );
 }
 
+function vsRowInsetPresenceClass(
+  vs: VSData,
+  viewerAddress?: string | null
+): string {
+  if (vs.state === "cancelled") {
+    return "shadow-[inset_3px_0_0_0_rgba(255,255,255,0.2)]";
+  }
+  if (vs.state !== "resolved" || !viewerAddress) return "";
+  if (didUserWinVS(vs, viewerAddress)) {
+    return "shadow-[inset_3px_0_0_0_rgba(78,222,163,0.72)]";
+  }
+  if (didUserLoseVS(vs, viewerAddress)) {
+    return "shadow-[inset_3px_0_0_0_rgba(248,113,113,0.52)]";
+  }
+  if (!hasVSWinner(vs)) {
+    return "shadow-[inset_3px_0_0_0_rgba(251,191,36,0.45)]";
+  }
+  return "";
+}
+
+function SettlementTeaser({
+  vs,
+  viewerAddress,
+  detailHref,
+}: {
+  vs: VSData;
+  viewerAddress?: string | null;
+  detailHref: string;
+}) {
+  const t = useTranslations("dashboard");
+  const linkClass =
+    "mt-2 inline-flex font-display text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald transition-colors hover:text-pv-emerald/90 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-surface sm:text-[11px]";
+
+  if (vs.state === "cancelled") {
+    return (
+      <div className="rounded-md border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 sm:px-4 sm:py-3">
+        <p className="font-mono text-[10px] leading-relaxed text-pv-muted sm:text-[11px]">
+          {t("holdings.settlementTeaserCancelled")}
+        </p>
+        <Link href={detailHref} className={linkClass}>
+          {t("holdings.settlementDetailsCta")}
+        </Link>
+      </div>
+    );
+  }
+
+  if (vs.state !== "resolved" || !viewerAddress) {
+    return null;
+  }
+
+  if (didUserWinVS(vs, viewerAddress)) {
+    const amount = getVSUserWinAmount(vs, viewerAddress);
+    return (
+      <div className="rounded-md border border-pv-emerald/25 bg-pv-emerald/[0.06] px-3 py-2.5 sm:px-4 sm:py-3">
+        <p className="font-mono text-[10px] leading-relaxed text-pv-text sm:text-[11px]">
+          {t("holdings.settlementTeaserWon", { amount: String(amount) })}
+        </p>
+        <Link href={detailHref} className={linkClass}>
+          {t("holdings.settlementDetailsCta")}
+        </Link>
+      </div>
+    );
+  }
+
+  if (didUserLoseVS(vs, viewerAddress)) {
+    return (
+      <div className="rounded-md border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 sm:px-4 sm:py-3">
+        <p className="font-mono text-[10px] leading-relaxed text-pv-muted sm:text-[11px]">
+          {t("holdings.settlementTeaserLost")}
+        </p>
+        <Link href={detailHref} className={linkClass}>
+          {t("holdings.settlementDetailsCta")}
+        </Link>
+      </div>
+    );
+  }
+
+  if (!hasVSWinner(vs)) {
+    return (
+      <div className="rounded-md border border-amber-400/25 bg-amber-400/[0.06] px-3 py-2.5 sm:px-4 sm:py-3">
+        <p className="font-mono text-[10px] leading-relaxed text-pv-muted sm:text-[11px]">
+          {t("holdings.settlementTeaserNoVerdict")}
+        </p>
+        <Link href={detailHref} className={linkClass}>
+          {t("holdings.settlementDetailsCta")}
+        </Link>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 function StakeHoldingVSRow({
   vs,
   isOpen,
   onToggle,
+  viewerAddress,
 }: {
   vs: VSData;
   isOpen: boolean;
   onToggle: () => void;
+  viewerAddress?: string | null;
 }) {
+  const reduceMotion = useReducedMotion();
   const t = useTranslations("dashboard");
   const tCat = useTranslations("categories");
   const tDetail = useTranslations("vsDetail");
@@ -400,15 +511,50 @@ function StakeHoldingVSRow({
       ? t("holdings.vsTitlePrivate", { id: idLabel })
       : t("holdings.vsTitleOpen", { id: idLabel });
 
-  const status: "open" | "accepted" | "resolved" =
-    vs.state === "open" || vs.state === "accepted" ? vs.state : "resolved";
-
   const footerStatusLabel =
-    status === "accepted"
-      ? t("holdings.status.accepted")
-      : status === "open"
-      ? t("holdings.status.open")
-      : t("holdings.status.resolved");
+    vs.state === "cancelled"
+      ? t("holdings.status.cancelled")
+      : vs.state === "accepted"
+        ? t("holdings.status.accepted")
+        : vs.state === "open"
+          ? t("holdings.status.open")
+          : t("holdings.status.resolved");
+
+  let outcomeBadge: ReactNode = null;
+  if (vs.state === "cancelled") {
+    outcomeBadge = (
+      <span className="inline-flex items-center rounded border border-white/[0.18] bg-white/[0.05] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+        {t("holdings.outcomeCancelled")}
+      </span>
+    );
+  } else if (vs.state === "resolved" && viewerAddress) {
+    if (didUserWinVS(vs, viewerAddress)) {
+      outcomeBadge = (
+        <span className="inline-flex items-center rounded border border-pv-emerald/35 bg-pv-emerald/10 px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-emerald sm:text-[10px]">
+          {t("holdings.outcomeWon")}
+        </span>
+      );
+    } else if (didUserLoseVS(vs, viewerAddress)) {
+      outcomeBadge = (
+        <span className="inline-flex items-center rounded border border-red-400/35 bg-red-400/10 px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-red-300 sm:text-[10px]">
+          {t("holdings.outcomeLost")}
+        </span>
+      );
+    } else if (!hasVSWinner(vs)) {
+      outcomeBadge = (
+        <span className="inline-flex items-center rounded border border-amber-400/35 bg-amber-400/10 px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-amber-200/90 sm:text-[10px]">
+          {t("holdings.outcomeSettledNeutral")}
+        </span>
+      );
+    }
+  }
+
+  const verifyIconClass =
+    vs.state === "cancelled"
+      ? "h-9 w-9 text-pv-muted sm:h-10 sm:w-10"
+      : vs.state === "resolved" && viewerAddress && didUserLoseVS(vs, viewerAddress)
+        ? "h-9 w-9 text-red-400/75 sm:h-10 sm:w-10"
+        : "h-9 w-9 text-pv-emerald sm:h-10 sm:w-10";
 
   const maxChallengers =
     typeof vs.max_challengers === "number" && vs.max_challengers > 0
@@ -446,10 +592,12 @@ function StakeHoldingVSRow({
   const detailHref = `/vs/${vs.id}`;
 
   return (
-    <div className="rounded-lg border border-white/[0.12] bg-pv-surface/80">
+    <div
+      className={`${DASHBOARD_CARD_SURFACE} ${vsRowInsetPresenceClass(vs, viewerAddress)}`}
+    >
       <div className="flex items-stretch gap-3 px-3 sm:gap-4 sm:px-4">
         <div className="flex shrink-0 items-center justify-center self-center py-3 sm:py-4">
-          <StakeHoldingVerifyIcon className="h-9 w-9 text-pv-emerald sm:h-10 sm:w-10" />
+          <StakeHoldingVerifyIcon className={verifyIconClass} />
         </div>
         <button
           id={buttonId}
@@ -468,7 +616,7 @@ function StakeHoldingVSRow({
             </p>
           </div>
           <span
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.12] bg-white/[0.04] text-pv-muted transition-[transform,color,border-color] duration-300 ${
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.04] text-pv-muted transition-[transform,color,border-color] duration-300 ${
               isOpen ? "text-pv-emerald border-pv-emerald/25" : ""
             }`}
           >
@@ -492,7 +640,7 @@ function StakeHoldingVSRow({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease }}
+            transition={{ duration: reduceMotion ? 0 : 0.28, ease }}
             className="overflow-hidden border-t border-white/[0.08]"
           >
             <div className="space-y-4 px-3 pb-4 pt-3 sm:space-y-5 sm:px-4 sm:pb-5 sm:pt-4">
@@ -508,6 +656,14 @@ function StakeHoldingVSRow({
                   ID #{vs.id}
                 </span>
               </div>
+
+              {vs.state === "cancelled" || vs.state === "resolved" ? (
+                <SettlementTeaser
+                  vs={vs}
+                  viewerAddress={viewerAddress}
+                  detailHref={detailHref}
+                />
+              ) : null}
 
               <div className="flex flex-col gap-2 border-b border-white/[0.06] pb-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-6 sm:gap-y-1">
                 <p className="min-w-0 flex-1 sm:max-w-[14rem]">
@@ -542,7 +698,7 @@ function StakeHoldingVSRow({
                   {t("holdings.positionSummaryLabel")}
                 </p>
                 <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:max-w-2xl sm:grid-cols-3 sm:gap-2.5">
-                  <div className={HOLDING_STAT_CELL}>
+                  <div className={DASHBOARD_STAT_CELL_SURFACE}>
                     <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("holdings.yourStake")}
                     </span>
@@ -551,7 +707,7 @@ function StakeHoldingVSRow({
                     </span>
                   </div>
                   <div
-                    className={`${HOLDING_STAT_CELL} border-pv-emerald/20 bg-pv-emerald/[0.06]`}
+                    className={`${DASHBOARD_STAT_CELL_SURFACE} border-pv-emerald/20 bg-pv-emerald/[0.06]`}
                   >
                     <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("holdings.winEstimate")}
@@ -560,7 +716,7 @@ function StakeHoldingVSRow({
                       {winEstimateDisplay}
                     </span>
                   </div>
-                  <div className={HOLDING_STAT_CELL}>
+                  <div className={DASHBOARD_STAT_CELL_SURFACE}>
                     <span className="block font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-pv-muted">
                       {t("holdings.returnMultiple")}
                     </span>
@@ -580,6 +736,7 @@ function StakeHoldingVSRow({
           <span className="inline-flex items-center rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
             {footerStatusLabel}
           </span>
+          {outcomeBadge}
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:gap-x-4">
             <span className="font-mono text-[10px] font-semibold tabular-nums text-pv-text sm:text-[11px]">
               {participantsLine}
@@ -587,9 +744,11 @@ function StakeHoldingVSRow({
             <span className="inline-flex items-center rounded border border-white/[0.1] bg-white/[0.03] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-text sm:text-[10px]">
               {visibilityLine}
             </span>
-            <span className="inline-flex items-center rounded border border-white/[0.14] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
-              DEMO
-            </span>
+            {isSampleVsIdForXmtp(vs.id) ? (
+              <span className="inline-flex items-center rounded border border-white/[0.14] bg-white/[0.04] px-2 py-0.5 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-pv-muted sm:text-[10px]">
+                {t("holdings.demoVsBadge")}
+              </span>
+            ) : null}
           </div>
         </div>
         <Link
@@ -603,20 +762,116 @@ function StakeHoldingVSRow({
   );
 }
 
-function StakeHoldingsColumn({
-  openId,
-  setOpenId,
-  headerExtra,
-  stakeHoldingsSearchQuery,
-  featuredVS,
+type StakeHoldingOpenKey = `mock:${DashboardStakeHoldingId}` | `vs:${number}`;
+
+function ExposureListSkeleton({ count }: { count: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className={`h-[4.5rem] animate-pulse ${DASHBOARD_SKELETON_ROW} motion-reduce:animate-none motion-reduce:opacity-90 sm:h-[5rem]`}
+          aria-hidden
+        />
+      ))}
+    </>
+  );
+}
+
+function FilteredExposureSummaryStrip({
+  summary,
 }: {
-  openId: DashboardStakeHoldingId | "featured" | null;
-  setOpenId: (id: DashboardStakeHoldingId | "featured" | null) => void;
-  headerExtra?: ReactNode;
-  stakeHoldingsSearchQuery: string;
-  featuredVS?: VSData | null;
+  summary: DashboardFilteredExposureSummary;
 }) {
   const t = useTranslations("dashboard");
+  const sep = (
+    <span className="text-pv-muted/40" aria-hidden>
+      {" "}
+      ·{" "}
+    </span>
+  );
+
+  return (
+    <div
+      role="region"
+      aria-label={t("holdings.exposureSummaryBarAria")}
+      className={`mb-3 flex flex-wrap items-baseline gap-x-0.5 ${DASHBOARD_SURFACE_MUTED} px-3 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-pv-muted sm:text-[11px]`}
+    >
+      <span className="tabular-nums text-pv-text">
+        {t("holdings.exposureSummaryOpen", { count: summary.openCount })}
+      </span>
+      {sep}
+      <span className="tabular-nums text-pv-text">
+        {t("holdings.exposureSummaryLive", { count: summary.liveCount })}
+      </span>
+      {sep}
+      <span className="tabular-nums text-pv-text">
+        {t("holdings.exposureSummaryClosed", { count: summary.closedCount })}
+      </span>
+      {summary.genAtRisk > 0 ? (
+        <>
+          {sep}
+          <span className="tabular-nums text-pv-emerald">
+            {t("holdings.exposureSummaryAtRisk", {
+              amount: String(Math.round(summary.genAtRisk)),
+            })}
+          </span>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function StakeHoldingsColumn({
+  openKey,
+  setOpenKey,
+  headerExtra,
+  stakeHoldingsSearchQuery,
+  filteredVsList,
+  showStakeHoldingsMocks,
+  exposureFilterKey,
+  onResetFilters,
+  totalDuelsCount,
+  exposureLoading,
+  exposureRefreshing,
+  viewerAddress,
+}: {
+  openKey: StakeHoldingOpenKey | null;
+  setOpenKey: (key: StakeHoldingOpenKey | null) => void;
+  headerExtra?: ReactNode;
+  stakeHoldingsSearchQuery: string;
+  filteredVsList: VSData[];
+  showStakeHoldingsMocks: boolean;
+  exposureFilterKey: string;
+  onResetFilters: () => void;
+  totalDuelsCount: number;
+  /** Primera carga sin snapshot aún: esqueleto y sin mocks ni “vacío”. */
+  exposureLoading: boolean;
+  /** Revalidación con datos en pantalla: atenuar lista y marcar busy. */
+  exposureRefreshing: boolean;
+  viewerAddress?: string | null;
+}) {
+  const t = useTranslations("dashboard");
+
+  const isInitialExposureLoad = exposureLoading && totalDuelsCount === 0;
+
+  const [visibleVsCount, setVisibleVsCount] = useState(DASHBOARD_EXPOSURE_PAGE_SIZE);
+
+  useEffect(() => {
+    setVisibleVsCount(DASHBOARD_EXPOSURE_PAGE_SIZE);
+  }, [exposureFilterKey]);
+
+  const visibleVsSlice = useMemo(
+    () => filteredVsList.slice(0, visibleVsCount),
+    [filteredVsList, visibleVsCount]
+  );
+
+  const hasMoreVs = filteredVsList.length > visibleVsCount;
+
+  const exposureSummary = useMemo(
+    () => summarizeDashboardFilteredExposure(filteredVsList, viewerAddress),
+    [filteredVsList, viewerAddress]
+  );
 
   const visibleHoldingIds = useMemo(
     () =>
@@ -627,65 +882,201 @@ function StakeHoldingsColumn({
   );
 
   useEffect(() => {
-    if (
-      openId !== null &&
-      openId !== "featured" &&
-      !visibleHoldingIds.includes(openId)
-    ) {
-      setOpenId(null);
+    if (openKey?.startsWith("mock:")) {
+      const id = openKey.slice("mock:".length) as DashboardStakeHoldingId;
+      if (!visibleHoldingIds.includes(id)) {
+        setOpenKey(null);
+      }
     }
-  }, [openId, visibleHoldingIds, setOpenId]);
+  }, [openKey, visibleHoldingIds, setOpenKey]);
 
   const mockSearchEmpty =
-    stakeHoldingsSearchQuery.trim().length > 0 && visibleHoldingIds.length === 0;
-  const listIsEmpty = !featuredVS && mockSearchEmpty;
+    !isInitialExposureLoad &&
+    stakeHoldingsSearchQuery.trim().length > 0 &&
+    visibleHoldingIds.length === 0;
+
+  const noVsMatchFilters =
+    !isInitialExposureLoad &&
+    filteredVsList.length === 0 &&
+    totalDuelsCount > 0 &&
+    !mockSearchEmpty;
+
+  const noDuelsAtAll =
+    !isInitialExposureLoad &&
+    filteredVsList.length === 0 &&
+    totalDuelsCount === 0 &&
+    !showStakeHoldingsMocks;
+
+  const mockOnlySearchEmpty =
+    !isInitialExposureLoad &&
+    mockSearchEmpty &&
+    showStakeHoldingsMocks &&
+    filteredVsList.length === 0;
+
+  const showMocksBlock =
+    !isInitialExposureLoad && showStakeHoldingsMocks && !mockSearchEmpty;
+
+  const pagingSummary =
+    !isInitialExposureLoad && filteredVsList.length > 0 ? (
+      visibleVsSlice.length < filteredVsList.length ? (
+        <p
+          className="mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-pv-muted sm:text-[11px]"
+          aria-live="polite"
+        >
+          {t("holdings.exposurePagingPartial", {
+            visible: visibleVsSlice.length,
+            total: filteredVsList.length,
+          })}
+        </p>
+      ) : (
+        <p
+          className="mb-1 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-pv-muted sm:text-[11px]"
+          aria-live="polite"
+        >
+          {t("holdings.exposurePagingAll", { total: filteredVsList.length })}
+        </p>
+      )
+    ) : null;
 
   return (
     <section
-      className="min-w-0 lg:col-span-7 xl:col-span-8"
+      id="dashboard-exposure"
+      className="min-w-0 scroll-mt-[calc(3.5rem+env(safe-area-inset-top,0px)+12px)] lg:col-span-7 xl:col-span-8"
       aria-label={t("holdings.sectionAria")}
     >
       <h2 className="mb-4 font-display text-xs font-bold uppercase tracking-[0.2em] text-pv-muted sm:text-sm sm:tracking-[0.22em]">
         {t("holdings.sectionTitle")}
       </h2>
-      {headerExtra ? <div className="mb-4">{headerExtra}</div> : null}
-      {listIsEmpty ? (
-        <p
-          className="rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm"
-          role="status"
-        >
-          {t("holdings.searchEmpty")}
-        </p>
-      ) : (
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {featuredVS ? (
-            <StakeHoldingVSRow
-              vs={featuredVS}
-              isOpen={openId === "featured"}
-              onToggle={() =>
-                setOpenId(openId === "featured" ? null : "featured")
-              }
-            />
-          ) : null}
-          {mockSearchEmpty ? (
-            <p
-              className="rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/30 px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm"
-              role="status"
-            >
-              {t("holdings.searchEmpty")}
+      {!isInitialExposureLoad && exposureSummary.filteredTotal > 0 ? (
+        <FilteredExposureSummaryStrip summary={exposureSummary} />
+      ) : null}
+      {headerExtra ? (
+        <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-40 mb-4 bg-pv-bg/92 py-2 backdrop-blur-md supports-[backdrop-filter]:bg-pv-bg/78">
+          {headerExtra}
+        </div>
+      ) : null}
+      {pagingSummary}
+      <div
+        className={`flex flex-col gap-3 sm:gap-4 ${exposureRefreshing && totalDuelsCount > 0 ? "opacity-60 transition-opacity duration-200" : ""}`}
+        aria-busy={exposureRefreshing && totalDuelsCount > 0}
+      >
+        {isInitialExposureLoad ? (
+          <div
+            className="flex flex-col gap-3 sm:gap-4"
+            role="status"
+            aria-label={t("holdings.listLoadingAria")}
+          >
+            <span className="sr-only">{t("holdings.listLoadingAria")}</span>
+            <ExposureListSkeleton count={DASHBOARD_EXPOSURE_PAGE_SIZE} />
+          </div>
+        ) : null}
+
+        {!isInitialExposureLoad && mockOnlySearchEmpty ? (
+          <p
+            className={`${DASHBOARD_SURFACE_DASHED} px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm`}
+            role="status"
+          >
+            {t("holdings.searchEmpty")}
+          </p>
+        ) : null}
+
+        {!isInitialExposureLoad && noVsMatchFilters ? (
+          <div
+            className={`${DASHBOARD_SURFACE_DASHED} px-4 py-6 text-center sm:px-6`}
+            role="status"
+          >
+            <p className="font-mono text-xs text-pv-muted sm:text-sm">
+              {t("filterNoResultsDesc")}
             </p>
-          ) : (
-            visibleHoldingIds.map((id) => (
+            <button
+              type="button"
+              onClick={onResetFilters}
+              className="focus-ring mt-4 inline-flex min-h-[44px] items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] px-4 py-2 font-display text-[10px] font-bold uppercase tracking-[0.16em] text-pv-text transition-colors hover:border-pv-emerald/35 hover:bg-pv-emerald/[0.08] hover:text-pv-emerald"
+            >
+              {t("resetFiltersAction")}
+            </button>
+          </div>
+        ) : null}
+
+        {!isInitialExposureLoad && noDuelsAtAll ? (
+          <div
+            className={`${DASHBOARD_SURFACE_DASHED} px-4 py-6 text-center sm:px-6`}
+            role="status"
+          >
+            <p className="font-mono text-xs text-pv-muted sm:text-sm">
+              {t("noVSDesc")}
+            </p>
+            <div className="mt-5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-center">
+              <Link
+                href="/vs/create"
+                className="focus-ring inline-flex min-h-[44px] items-center justify-center rounded-lg border border-pv-emerald/50 bg-pv-emerald px-5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.16em] text-pv-bg transition-colors hover:border-pv-emerald hover:bg-pv-emerald/90 sm:text-[11px]"
+              >
+                {t("holdings.emptyCtaCreate")}
+              </Link>
+              <Link
+                href="/explorer"
+                className="focus-ring inline-flex min-h-[44px] items-center justify-center rounded-lg border border-white/[0.1] bg-white/[0.04] px-5 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.16em] text-pv-text transition-colors hover:border-pv-emerald/35 hover:bg-pv-emerald/[0.08] hover:text-pv-emerald sm:text-[11px]"
+              >
+                {t("holdings.emptyCtaExplore")}
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        {!isInitialExposureLoad
+          ? visibleVsSlice.map((vs) => {
+              const rowKey = `vs:${vs.id}` as const;
+              return (
+                <StakeHoldingVSRow
+                  key={vs.id}
+                  vs={vs}
+                  isOpen={openKey === rowKey}
+                  onToggle={() => setOpenKey(openKey === rowKey ? null : rowKey)}
+                  viewerAddress={viewerAddress}
+                />
+              );
+            })
+          : null}
+
+        {!isInitialExposureLoad && hasMoreVs ? (
+          <button
+            type="button"
+            onClick={() =>
+              setVisibleVsCount((c) =>
+                Math.min(
+                  c + DASHBOARD_EXPOSURE_LOAD_MORE,
+                  filteredVsList.length
+                )
+              )
+            }
+            className={`focus-ring mx-auto mt-1 flex min-h-[44px] w-full max-w-md items-center justify-center ${DASHBOARD_SURFACE_MUTED} px-4 py-2.5 font-display text-[10px] font-bold uppercase tracking-[0.18em] text-pv-muted transition-colors hover:border-pv-emerald/30 hover:bg-pv-emerald/[0.08] hover:text-pv-emerald sm:text-[11px]`}
+          >
+            {t("holdings.loadMore")}
+          </button>
+        ) : null}
+
+        {!isInitialExposureLoad && mockSearchEmpty && !mockOnlySearchEmpty ? (
+          <p
+            className={`${DASHBOARD_SURFACE_DASHED} px-4 py-6 text-center font-mono text-xs text-pv-muted sm:text-sm`}
+            role="status"
+          >
+            {t("holdings.searchEmpty")}
+          </p>
+        ) : null}
+
+        {showMocksBlock
+          ? visibleHoldingIds.map((id) => (
               <StakeHoldingRow
                 key={id}
                 id={id}
-                isOpen={openId === id}
-                onToggle={() => setOpenId(openId === id ? null : id)}
+                isOpen={openKey === `mock:${id}`}
+                onToggle={() =>
+                  setOpenKey(openKey === `mock:${id}` ? null : `mock:${id}`)
+                }
               />
             ))
-          )}
-        </div>
-      )}
+          : null}
+      </div>
     </section>
   );
 }
@@ -707,7 +1098,7 @@ export function RiskAllocationProfileCard({
 
   return (
     <section
-      className={`rounded-lg border border-white/[0.12] bg-pv-surface p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5 ${className}`}
+      className={`${DASHBOARD_PANEL_SURFACE} ${className}`}
       aria-label={t("holdings.riskSectionAria")}
     >
       <h2 className="mb-5 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-text sm:text-[11px] sm:tracking-[0.2em]">
@@ -745,11 +1136,24 @@ export function RiskAllocationProfileCard({
   );
 }
 
-function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }) {
+function RiskAndActionsColumn({
+  wins,
+  losses,
+  asideRefreshing,
+}: {
+  wins: number;
+  losses: number;
+  asideRefreshing: boolean;
+}) {
   const t = useTranslations("dashboard");
 
   return (
-    <aside className="flex min-w-0 flex-col gap-4 lg:col-span-5 xl:col-span-4">
+    <aside
+      className={`flex min-w-0 flex-col gap-4 lg:col-span-5 xl:col-span-4 ${
+        asideRefreshing ? "opacity-60 transition-opacity duration-200" : ""
+      }`}
+      aria-busy={asideRefreshing}
+    >
       <RiskAllocationProfileCard
         wins={wins}
         losses={losses}
@@ -757,7 +1161,7 @@ function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }
       />
 
       <section
-        className="rounded-lg border border-white/[0.1] bg-pv-surface/50 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5"
+        className={DASHBOARD_PANEL_SURFACE}
         aria-label={t("holdings.quickActionsAria")}
       >
         <h2 className="mb-4 font-display text-xs font-bold uppercase tracking-[0.18em] text-pv-muted sm:mb-5 sm:text-sm sm:tracking-[0.2em]">
@@ -765,8 +1169,20 @@ function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3">
           <Link
+            href="/vs/create"
+            className="group flex min-h-[3.75rem] items-center justify-center gap-3 rounded-lg border border-pv-emerald/45 bg-pv-emerald/[0.08] px-4 py-3.5 text-center font-display text-xs font-bold uppercase leading-snug tracking-wide text-pv-emerald transition-[color,border-color,background-color] duration-300 hover:border-pv-emerald/65 hover:bg-pv-emerald/[0.14] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg sm:min-h-[4rem] sm:px-5 sm:text-sm"
+          >
+            <CirclePlus
+              size={22}
+              strokeWidth={2}
+              className="shrink-0 text-pv-emerald transition-colors duration-300 group-hover:text-pv-emerald"
+              aria-hidden
+            />
+            <span>{t("holdings.actionCreate")}</span>
+          </Link>
+          <Link
             href="/explorer"
-            className="group flex min-h-[3.75rem] items-center justify-center gap-3 rounded-lg border border-white/[0.15] bg-transparent px-4 py-3.5 text-center font-display text-xs font-bold uppercase leading-snug tracking-wide text-pv-muted transition-[color,border-color,background-color] duration-300 hover:border-white/[0.28] hover:bg-white/[0.04] hover:text-pv-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg sm:min-h-[4rem] sm:px-5 sm:text-sm"
+            className="group flex min-h-[3.75rem] items-center justify-center gap-3 rounded-lg border border-white/[0.1] bg-transparent px-4 py-3.5 text-center font-display text-xs font-bold uppercase leading-snug tracking-wide text-pv-muted transition-[color,border-color,background-color] duration-300 hover:border-white/[0.2] hover:bg-white/[0.04] hover:text-pv-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pv-emerald/40 focus-visible:ring-offset-2 focus-visible:ring-offset-pv-bg sm:min-h-[4rem] sm:px-5 sm:text-sm"
           >
             <Compass
               size={22}
@@ -778,7 +1194,7 @@ function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }
           </Link>
           <button
             type="button"
-            className="flex min-h-[3.75rem] w-full cursor-not-allowed items-center justify-center gap-3 rounded-lg border border-dashed border-white/[0.14] bg-pv-bg/20 px-4 py-3.5 text-center font-display text-xs font-bold uppercase leading-snug tracking-wide text-pv-muted opacity-90 sm:min-h-[4rem] sm:px-5 sm:text-sm"
+            className={`flex min-h-[3.75rem] w-full cursor-not-allowed items-center justify-center gap-3 ${DASHBOARD_SURFACE_DASHED} px-4 py-3.5 text-center font-display text-xs font-bold uppercase leading-snug tracking-wide text-pv-muted opacity-90 sm:col-span-2 sm:min-h-[4rem] sm:px-5 sm:text-sm`}
             disabled
             title={t("holdings.withdrawSoon")}
           >
@@ -796,7 +1212,7 @@ function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }
       </section>
 
       <section
-        className="rounded-lg border border-dashed border-white/[0.14] bg-pv-surface/60 px-4 py-8 text-center transition-colors duration-300 hover:border-white/[0.22] sm:py-9"
+        className={`${DASHBOARD_SURFACE_DASHED} px-4 py-8 text-center transition-colors duration-300 hover:border-white/[0.16] sm:py-9`}
         aria-label={t("holdings.friendsAria")}
       >
         <h2 className="font-display text-xs font-bold uppercase tracking-[0.22em] text-pv-muted">
@@ -813,31 +1229,56 @@ function RiskAndActionsColumn({ wins, losses }: { wins: number; losses: number }
 export default function DashboardPortfolioSection({
   stakeHoldingsHeaderExtra,
   stakeHoldingsSearchQuery = "",
-  featuredVS,
+  filteredVsList,
+  showStakeHoldingsMocks,
+  exposureFilterKey,
+  onResetFilters,
+  totalDuelsCount,
   wins = 0,
   losses = 0,
+  exposureLoading = false,
+  exposureRefreshing = false,
+  viewerAddress,
 }: {
   stakeHoldingsHeaderExtra?: ReactNode;
-  /** Misma cadena que el input de búsqueda del filtro VS (filtra filas de tenencias). */
+  /** Misma cadena que el input de búsqueda del filtro VS (filtra filas de tenencias mock). */
   stakeHoldingsSearchQuery?: string;
-  featuredVS?: VSData | null;
+  /** Lista de VS del usuario tras tabs + filtros Explore (fuente única Active Exposure). */
+  filteredVsList: VSData[];
+  showStakeHoldingsMocks: boolean;
+  /** Cambia cuando cambian filtros; resetea el paginado “Load more”. */
+  exposureFilterKey: string;
+  onResetFilters: () => void;
+  totalDuelsCount: number;
   wins?: number;
   losses?: number;
+  exposureLoading?: boolean;
+  exposureRefreshing?: boolean;
+  viewerAddress?: string | null;
 }) {
-  const [openId, setOpenId] = useState<DashboardStakeHoldingId | "featured" | null>(
-    null
-  );
+  const [openKey, setOpenKey] = useState<StakeHoldingOpenKey | null>(null);
 
   return (
     <div className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 xl:gap-12">
       <StakeHoldingsColumn
-        openId={openId}
-        setOpenId={setOpenId}
+        openKey={openKey}
+        setOpenKey={setOpenKey}
         headerExtra={stakeHoldingsHeaderExtra}
         stakeHoldingsSearchQuery={stakeHoldingsSearchQuery}
-        featuredVS={featuredVS}
+        filteredVsList={filteredVsList}
+        showStakeHoldingsMocks={showStakeHoldingsMocks}
+        exposureFilterKey={exposureFilterKey}
+        onResetFilters={onResetFilters}
+        totalDuelsCount={totalDuelsCount}
+        exposureLoading={exposureLoading}
+        exposureRefreshing={exposureRefreshing}
+        viewerAddress={viewerAddress}
       />
-      <RiskAndActionsColumn wins={wins} losses={losses} />
+      <RiskAndActionsColumn
+        wins={wins}
+        losses={losses}
+        asideRefreshing={exposureRefreshing && totalDuelsCount > 0}
+      />
     </div>
   );
 }

@@ -4,6 +4,14 @@ import { computeClaimQuality } from "@/lib/claimQuality";
 
 export type ExploreSort = "newest" | "highest" | "expiring" | "strength";
 
+/** Valores válidos en `?sort=` y chips de orden en Explore / Dashboard. */
+export const EXPLORE_SORT_OPTIONS: ExploreSort[] = [
+  "newest",
+  "highest",
+  "expiring",
+  "strength",
+];
+
 export interface ExploreFilterState {
   cat: string;
   minStake: number;
@@ -24,7 +32,6 @@ export const DEFAULT_EXPLORE_FILTERS: ExploreFilterState = {
 
 /** Valores permitidos para `minStake` (URL `?min=`) y chips del sidebar Explore */
 export const MIN_STAKE_OPTIONS = [0, 2, 5, 10, 20] as const;
-const SORT_OPTIONS: ExploreSort[] = ["newest", "highest", "expiring", "strength"];
 
 const VALID_CATEGORY_IDS = new Set<string>(CATEGORIES.map((c) => c.id));
 
@@ -50,7 +57,7 @@ export function parseExploreSearchParams(sp: URLSearchParams): ExploreFilterStat
   const minStake = normalizeExploreMinStake(minParsed);
 
   const sortRaw = (sp.get("sort") ?? "newest").toLowerCase();
-  const sort = SORT_OPTIONS.includes(sortRaw as ExploreSort)
+  const sort = EXPLORE_SORT_OPTIONS.includes(sortRaw as ExploreSort)
     ? (sortRaw as ExploreSort)
     : "newest";
 

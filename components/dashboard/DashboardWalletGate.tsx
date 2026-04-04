@@ -30,7 +30,7 @@ export default function DashboardWalletGate({
             glass
             noPad
             glow="none"
-            className="relative mx-auto max-w-md overflow-hidden !rounded-2xl border border-white/[0.12]"
+            className="relative mx-auto max-w-md overflow-hidden !rounded-2xl !border-white/[0.12] !bg-pv-surface !backdrop-blur-none"
             role="region"
           >
             <div

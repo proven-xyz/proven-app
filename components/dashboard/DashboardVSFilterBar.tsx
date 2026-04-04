@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, type KeyboardEvent } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { Search, X, ListFilter, RefreshCw } from "lucide-react";
+import { ListFilter, RefreshCw, Search, X } from "lucide-react";
 import { EXPLORE_PRIMARY_CATEGORY_ROW } from "@/lib/explorePrimaryCategories";
 import { MIN_STAKE_OPTIONS } from "@/lib/exploreFilters";
+import { DASHBOARD_PANEL_SURFACE } from "@/lib/dashboardSurface";
 
 /** Píldoras de pestaña (dashboard). */
 const filterPillBase =
@@ -21,6 +22,8 @@ const advancedPillActive = filterPillActive;
 const advancedPillInactive = filterPillInactive;
 
 export type DashboardVSTab = "all" | "active" | "done";
+
+const TAB_ORDER: DashboardVSTab[] = ["all", "active", "done"];
 
 type TabItem = { l: string; v: DashboardVSTab; count: number };
 
@@ -39,7 +42,8 @@ type DashboardVSFilterBarProps = {
 };
 
 /**
- * Barra de búsqueda + pestañas + Advanced (categorías y apuesta mínima), alineado con Explore.
+ * Barra de búsqueda + pestañas + Advanced (categorías y apuesta mínima).
+ * Sin orden ni filtros rápidos tipo Explore: el listado usa orden fijo en `applyExploreFilters`.
  */
 export default function DashboardVSFilterBar({
   tab,
@@ -59,10 +63,33 @@ export default function DashboardVSFilterBar({
   const tCache = useTranslations("cache");
   const tCat = useTranslations("categories");
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  const handleTabListKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Home") {
+      e.preventDefault();
+      onTabChange("all");
+      return;
+    }
+    if (e.key === "End") {
+      e.preventDefault();
+      onTabChange("done");
+      return;
+    }
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const i = TAB_ORDER.indexOf(tab);
+    if (i < 0) return;
+    const delta = e.key === "ArrowRight" ? 1 : -1;
+    onTabChange(TAB_ORDER[(i + delta + TAB_ORDER.length) % TAB_ORDER.length]);
+  };
+
+  const advDuration = reduceMotion ? 0 : 0.34;
+  const advOpacityDuration = reduceMotion ? 0 : 0.22;
 
   return (
     <section
-      className="rounded-lg border border-white/[0.1] bg-pv-surface p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)] sm:p-5"
+      className={DASHBOARD_PANEL_SURFACE}
       aria-label={tDash("tabsSectionAria")}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3 md:gap-4">
@@ -107,6 +134,7 @@ export default function DashboardVSFilterBar({
             className="flex flex-wrap items-center gap-2"
             role="tablist"
             aria-orientation="horizontal"
+            onKeyDown={handleTabListKeyDown}
           >
             {tabs.map(({ l, v, count }) => (
               <button
@@ -153,7 +181,7 @@ export default function DashboardVSFilterBar({
           >
             <RefreshCw
               size={16}
-              className={`text-pv-muted ${refreshing ? "animate-spin" : ""}`}
+              className={`text-pv-muted ${refreshing ? "animate-spin motion-reduce:animate-none" : ""}`}
               aria-hidden
             />
             {refreshing ? tCache("refreshing") : tCache("refresh")}
@@ -169,11 +197,11 @@ export default function DashboardVSFilterBar({
         }}
         transition={{
           height: {
-            duration: 0.34,
+            duration: advDuration,
             ease: [0.25, 0.46, 0.45, 0.94],
           },
           opacity: {
-            duration: 0.22,
+            duration: advOpacityDuration,
             ease: [0.25, 0.1, 0.25, 1],
           },
         }}

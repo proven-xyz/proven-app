@@ -617,7 +617,8 @@
     "title": "MI DASHBOARD",
     "total": "{count} total",
     "new": "+ Nuevo",
-    "record": "Record",
+    "challengesWonTitle": "Retos ganados",
+    "challengesLostTitle": "Retos perdidos",
     "winRate": "Win rate",
     "totalWon": "Ganado",
     "tabAll": "Todos",
@@ -640,6 +641,10 @@
     "connect": "Conectar",
     "connectExploreLink": "Ver retos públicos en Explorer",
     "eyebrow": "Tus apuestas en un solo lugar",
+    "jumpToExposure": "Ir a la lista de exposición",
+    "loadFailed": "No pudimos actualizar tu lista de desafíos. Podés reintentar o seguir con los últimos datos cargados.",
+    "loadFailedRetry": "Reintentar",
+    "listFreshnessAria": "Frescura del índice de tu lista de desafíos",
     "overviewSectionAria": "Resumen de la wallet",
     "overviewActiveTitle": "Apuestas activas totales",
     "overviewActiveValue": "14",
@@ -666,7 +671,8 @@
       "status": {
         "open": "Abierto",
         "accepted": "En vivo",
-        "resolved": "Resuelto"
+        "resolved": "Resuelto",
+        "cancelled": "Cancelado"
       },
       "yourStake": "Tu apuesta",
       "winEstimate": "Estimado si ganas",
@@ -679,7 +685,8 @@
       },
       "quickActionsAria": "Acciones rápidas",
       "quickActionsTitle": "Acciones rápidas",
-      "actionAnalysis": "Nuevo análisis",
+      "actionAnalysis": "Ver arena",
+      "actionCreate": "Nuevo desafío",
       "actionWithdraw": "Retirar",
       "withdrawSoon": "Próximamente",
       "friendsAria": "Amigos",
@@ -694,6 +701,27 @@
         "closed": "Cerrado"
       },
       "demoBadge": "Ejemplo",
+      "demoVsBadge": "VS demo",
+      "loadMore": "Cargar más",
+      "exposurePagingPartial": "Mostrando {visible} de {total} desafíos",
+      "exposurePagingAll": "Los {total} desafíos coinciden con tus filtros",
+      "listLoadingAria": "Cargando tus desafíos",
+      "exposureSummaryBarAria": "Resumen de desafíos filtrados",
+      "exposureSummaryOpen": "{count} abiertos",
+      "exposureSummaryLive": "{count} en vivo",
+      "exposureSummaryClosed": "{count} cerrados",
+      "exposureSummaryAtRisk": "{amount} GEN en riesgo",
+      "outcomeWon": "Ganaste",
+      "outcomeLost": "Perdiste",
+      "outcomeCancelled": "Cancelado",
+      "outcomeSettledNeutral": "Liquidado",
+      "settlementTeaserWon": "Ganaste este desafío. Abonado: {amount} GEN.",
+      "settlementTeaserLost": "Este desafío se liquidó en contra de tu posición.",
+      "settlementTeaserCancelled": "Este desafío se canceló antes de un resultado final.",
+      "settlementTeaserNoVerdict": "Figura como resuelto en tu lista — abre el desafío para ver cómo falló PROVEN.",
+      "settlementDetailsCta": "Detalle de liquidación",
+      "emptyCtaCreate": "Crear un desafío",
+      "emptyCtaExplore": "Explorar la arena",
       "vsTitlePrivate": "Desafío privado {id}",
       "vsTitleOpen": "Desafío {id}",
       "items": {
@@ -726,7 +754,7 @@
         }
       }
     },
-    "statsSectionAria": "Resumen de rendimiento",
+    "statsSectionAria": "Resumen de rendimiento: retos ganados, retos perdidos, win rate y total ganado",
     "tabsSectionAria": "Buscar y filtrar tus desafíos"
   },
   "vsDetail": {

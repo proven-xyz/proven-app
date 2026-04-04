@@ -252,6 +252,31 @@ export function didUserChallengeVS(vs: VSData, address?: string | null) {
   return vs.opponent !== ZERO_ADDRESS && isSameAddress(vs.opponent, address);
 }
 
+/**
+ * GEN que esta dirección tiene comprometidos en el VS (creador o retador).
+ * En pools con varios retadores sin desglose por dirección, reparte `total_challenger_stake`
+ * por igual entre `challenger_count` como aproximación para agregados de UI.
+ */
+export function getVSUserCommittedStake(vs: VSData, address?: string | null): number {
+  if (!address) {
+    return 0;
+  }
+  if (isSameAddress(vs.creator, address)) {
+    if (typeof vs.creator_stake === "number" && vs.creator_stake > 0) {
+      return vs.creator_stake;
+    }
+    return typeof vs.stake_amount === "number" && vs.stake_amount > 0 ? vs.stake_amount : 0;
+  }
+  if (!didUserChallengeVS(vs, address)) {
+    return 0;
+  }
+  const n = Math.max(1, getVSChallengerCount(vs));
+  if (typeof vs.total_challenger_stake === "number" && vs.total_challenger_stake > 0) {
+    return n <= 1 ? vs.total_challenger_stake : Math.floor(vs.total_challenger_stake / n);
+  }
+  return typeof vs.stake_amount === "number" && vs.stake_amount > 0 ? vs.stake_amount : 0;
+}
+
 export function hasVSWinner(vs: VSData) {
   if (vs.winner_side === "creator" || vs.winner_side === "challengers") {
     return true;

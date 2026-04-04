@@ -613,7 +613,8 @@
     "title": "MY DASHBOARD",
     "total": "{count} total",
     "new": "+ New",
-    "record": "Record (W-L)",
+    "challengesWonTitle": "Challenges won",
+    "challengesLostTitle": "Challenges lost",
     "winRate": "Win Rate",
     "totalWon": "Total Winnings",
     "tabAll": "All",
@@ -636,6 +637,10 @@
     "connect": "Connect",
     "connectExploreLink": "Browse active claims in the Arena",
     "eyebrow": "All your bets in one place",
+    "jumpToExposure": "Jump to exposure list",
+    "loadFailed": "We couldn't refresh your challenge list. You can retry or keep working with the last loaded data.",
+    "loadFailedRetry": "Try again",
+    "listFreshnessAria": "Index freshness for your challenge list",
     "overviewSectionAria": "Wallet overview",
     "overviewActiveTitle": "Capital at Risk",
     "overviewActiveValue": "14",
@@ -662,7 +667,8 @@
       "status": {
         "open": "Open",
         "accepted": "Live",
-        "resolved": "Settled"
+        "resolved": "Settled",
+        "cancelled": "Cancelled"
       },
       "yourStake": "Your stake",
       "winEstimate": "Win estimate",
@@ -675,7 +681,8 @@
       },
       "quickActionsAria": "Quick actions",
       "quickActionsTitle": "Quick actions",
-      "actionAnalysis": "New analysis",
+      "actionAnalysis": "Browse arena",
+      "actionCreate": "New challenge",
       "actionWithdraw": "Withdraw",
       "withdrawSoon": "Coming soon",
       "friendsAria": "Friends",
@@ -690,6 +697,27 @@
         "closed": "Closed"
       },
       "demoBadge": "Sample",
+      "demoVsBadge": "Demo VS",
+      "loadMore": "Load more",
+      "exposurePagingPartial": "Showing {visible} of {total} challenges",
+      "exposurePagingAll": "All {total} challenges match your filters",
+      "listLoadingAria": "Loading your challenges",
+      "exposureSummaryBarAria": "Summary of filtered challenges",
+      "exposureSummaryOpen": "{count} open",
+      "exposureSummaryLive": "{count} live",
+      "exposureSummaryClosed": "{count} closed",
+      "exposureSummaryAtRisk": "{amount} GEN at risk",
+      "outcomeWon": "You won",
+      "outcomeLost": "You lost",
+      "outcomeCancelled": "Cancelled",
+      "outcomeSettledNeutral": "Settled",
+      "settlementTeaserWon": "You won this challenge. Credited: {amount} GEN.",
+      "settlementTeaserLost": "This challenge settled against your position.",
+      "settlementTeaserCancelled": "This challenge was cancelled before a final outcome.",
+      "settlementTeaserNoVerdict": "Marked settled in your list — open the challenge to see how PROVEN ruled.",
+      "settlementDetailsCta": "Settlement details",
+      "emptyCtaCreate": "Create a challenge",
+      "emptyCtaExplore": "Browse the arena",
       "vsTitlePrivate": "Private challenge {id}",
       "vsTitleOpen": "Challenge {id}",
       "items": {
@@ -722,7 +750,7 @@
         }
       }
     },
-    "statsSectionAria": "Performance summary",
+    "statsSectionAria": "Performance summary: challenges won, challenges lost, win rate, and total winnings",
     "tabsSectionAria": "Search and filter your challenges"
   },
   "vsDetail": {
