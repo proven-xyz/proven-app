@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -20,8 +20,8 @@ import PageTransition, { AnimatedItem } from "@/components/PageTransition";
 import { Button, GlassCard } from "@/components/ui";
 import MessagesWalletGate from "@/components/xmtp/MessagesWalletGate";
 import MessagesPageHero from "@/components/xmtp/MessagesPageHero";
+import VsXmtpPanel from "@/components/xmtp/VsXmtpPanel";
 import {
-  ArrowRight,
   ChevronRight,
   Radio,
   Lock,
@@ -29,6 +29,7 @@ import {
   Clock,
   Ban,
   AlertCircle,
+  MessageCircle,
 } from "lucide-react";
 
 function truncateQuestion(q: string, max = 72): string {
@@ -38,7 +39,12 @@ function truncateQuestion(q: string, max = 72): string {
 }
 
 const HUB_SHELL = "mx-auto w-full max-w-[720px] px-4 pb-16 sm:px-6";
+const HUB_SHELL_WIDE =
+  "mx-auto w-full max-w-[1280px] px-4 pb-16 sm:px-6 lg:px-8";
 const CONTENT_DIVIDER = "mt-6 border-t border-white/[0.06] pt-8 sm:mt-8 sm:pt-10";
+
+const HUB_SPLIT_SHELL =
+  "mt-6 flex min-h-[min(72vh,680px)] flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[linear-gradient(165deg,rgba(255,255,255,0.04),rgba(0,0,0,0.22))] shadow-[0_28px_80px_-36px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:mt-8 md:flex-row";
 
 function ChannelListSkeleton({ ariaLabel }: { ariaLabel: string }) {
   return (
@@ -112,7 +118,49 @@ export default function MessagesHub() {
     return { eligible: el, other: rest };
   }, [duels]);
 
+  const [hubListTab, setHubListTab] = useState<"active" | "pending">("active");
+
+  useEffect(() => {
+    if (eligible.length > 0 && other.length === 0) {
+      setHubListTab("active");
+    } else if (eligible.length === 0 && other.length > 0) {
+      setHubListTab("pending");
+    }
+  }, [eligible.length, other.length]);
+
+  const [selectedVsId, setSelectedVsId] = useState<number | null>(null);
+  const hubChatPanelRef = useRef<HTMLDivElement>(null);
+
+  const selectedVs = useMemo(
+    () => duels.find((d) => d.id === selectedVsId) ?? null,
+    [duels, selectedVsId]
+  );
+
+  useEffect(() => {
+    if (selectedVsId == null) return;
+    if (!duels.some((d) => d.id === selectedVsId)) {
+      setSelectedVsId(null);
+    }
+  }, [duels, selectedVsId]);
+
+  useEffect(() => {
+    if (selectedVsId == null) return;
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    hubChatPanelRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [selectedVsId]);
+
   const participating = duels.length > 0;
+  const showHubSplit =
+    participating && !loadError && (eligible.length > 0 || other.length > 0);
+  const showActiveInColumn =
+    eligible.length > 0 &&
+    (hubListTab === "active" || other.length === 0);
+  const showPendingInColumn =
+    other.length > 0 && (hubListTab === "pending" || eligible.length === 0);
 
   if (!featureOn) {
     return (
@@ -153,12 +201,12 @@ export default function MessagesHub() {
 
   return (
     <PageTransition>
-      <div className={HUB_SHELL}>
+      <div className={HUB_SHELL_WIDE}>
         <AnimatedItem>
           <MessagesPageHero className="pt-2 sm:pt-4" />
         </AnimatedItem>
 
-        <div className={CONTENT_DIVIDER}>
+        <div className={showHubSplit ? "mt-6 sm:mt-8" : CONTENT_DIVIDER}>
           {loading && (
             <ChannelListSkeleton ariaLabel={t("loadingAria")} />
           )}
@@ -249,199 +297,322 @@ export default function MessagesHub() {
             </AnimatedItem>
           )}
 
-          {!loading && !loadError && participating && eligible.length === 0 && (
+          {!loading && !loadError && showHubSplit && (
             <AnimatedItem>
-              <GlassCard className="mb-6 border border-pv-emerald/[0.18] bg-pv-emerald/[0.04] sm:mb-8">
-                <p className="font-display text-xs font-bold uppercase tracking-[0.12em] text-pv-text sm:text-sm">
-                  {t("hubDisabledTitle")}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-pv-muted sm:text-[15px]">
-                  {t("hubDisabledDesc")}
-                </p>
-              </GlassCard>
-            </AnimatedItem>
-          )}
+              <div className={HUB_SPLIT_SHELL}>
+                <div className="flex w-full flex-col border-b border-white/[0.06] md:max-h-[min(72vh,680px)] md:w-[400px] md:shrink-0 md:border-b-0 md:border-r md:border-white/[0.06]">
+                  <div className="border-b border-white/[0.06] bg-black/30 px-5 py-5 sm:px-6">
+                    <div className="flex flex-wrap items-center gap-2.5 gap-y-2">
+                      <h2 className="font-display text-lg font-bold uppercase tracking-tight text-pv-text sm:text-xl">
+                        {t("title")}
+                      </h2>
+                      <span className="rounded border border-white/[0.1] bg-white/[0.04] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-pv-muted">
+                        {t("hubSplitBadge")}
+                      </span>
+                    </div>
+                    <p className="mt-2.5 text-[11px] leading-relaxed text-pv-muted">
+                      {t("hubSplitLead")}
+                    </p>
+                  </div>
 
-          {!loading && !loadError && participating && eligible.length > 0 && (
-            <AnimatedItem>
-              <section
-                aria-labelledby="messages-active-heading"
-                className="mb-10 sm:mb-12"
-              >
-                <h2
-                  id="messages-active-heading"
-                  className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-pv-emerald/90 sm:text-[11px] sm:tracking-[0.22em]"
-                >
-                  {t("sectionActive")}
-                </h2>
-                <p className="mt-2 max-w-2xl text-[11px] leading-relaxed text-pv-muted">
-                  {t("sectionActiveHelp")}
-                </p>
-                <ul className="mt-4 space-y-3 sm:mt-5">
-                  {eligible.map((vs, i) => {
-                    const peer = getVsXmtpPeerAddress(vs, address);
-                    const href = `/vs/${vs.id}#${VS_XMTP_CHAT_ANCHOR_ID}`;
-                    const pot = getVSTotalPot(vs);
-                    return (
-                      <li key={vs.id}>
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            duration: 0.35,
-                            delay: i * 0.05,
-                            ease: [0.25, 0.46, 0.45, 0.94],
-                          }}
-                          whileHover={{ y: -1 }}
-                        >
-                          <Link
-                            href={href}
-                            className="group block rounded-xl border border-pv-emerald/[0.22] bg-gradient-to-br from-pv-emerald/[0.07] to-transparent p-4 transition-colors hover:border-pv-emerald/40 hover:from-pv-emerald/[0.1] sm:p-5"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <p className="font-display text-sm font-bold leading-snug text-pv-text transition-colors group-hover:text-pv-emerald sm:text-[15px]">
-                                  {truncateQuestion(vs.question)}
-                                </p>
-                                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-mono text-pv-muted">
-                                  {peer && (
-                                    <span>vs {shortenAddress(peer)}</span>
-                                  )}
-                                  {pot > 0 && (
-                                    <span className="text-pv-gold/80">
-                                      {pot} GEN
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <ArrowRight
-                                className="mt-0.5 shrink-0 text-pv-emerald/70 transition-colors group-hover:text-pv-emerald"
-                                size={18}
-                                aria-hidden
-                              />
-                            </div>
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span className="inline-flex items-center gap-1.5 rounded border border-pv-emerald/[0.28] bg-pv-emerald/[0.1] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-pv-emerald">
-                                <Zap size={8} aria-hidden />
-                                {t("badgeLive")}
-                              </span>
-                              <span className="font-mono text-[10px] uppercase tracking-wider text-pv-muted">
-                                VS #{vs.id}
-                              </span>
-                            </div>
-                          </Link>
-                        </motion.div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            </AnimatedItem>
-          )}
+                  {eligible.length > 0 && other.length > 0 ? (
+                    <div
+                      className="flex border-b border-white/[0.06] bg-black/20 px-1"
+                      role="tablist"
+                      aria-label={t("title")}
+                    >
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={hubListTab === "active"}
+                        id="messages-hub-tab-active"
+                        aria-controls="messages-hub-tabpanel"
+                        onClick={() => setHubListTab("active")}
+                        className={`flex-1 px-2 py-2.5 text-center font-display text-[10px] font-bold uppercase tracking-[0.16em] transition-colors sm:tracking-[0.18em] ${
+                          hubListTab === "active"
+                            ? "border-b-2 border-pv-emerald bg-pv-emerald/[0.08] text-pv-emerald"
+                            : "border-b-2 border-transparent text-pv-muted hover:bg-white/[0.04] hover:text-pv-text"
+                        }`}
+                      >
+                        {t("sectionActive")}
+                      </button>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={hubListTab === "pending"}
+                        id="messages-hub-tab-pending"
+                        aria-controls="messages-hub-tabpanel"
+                        onClick={() => setHubListTab("pending")}
+                        className={`flex-1 px-2 py-2.5 text-center font-display text-[10px] font-bold uppercase tracking-[0.16em] transition-colors sm:tracking-[0.18em] ${
+                          hubListTab === "pending"
+                            ? "border-b-2 border-pv-emerald bg-pv-emerald/[0.08] text-pv-emerald"
+                            : "border-b-2 border-transparent text-pv-muted hover:bg-white/[0.04] hover:text-pv-text"
+                        }`}
+                      >
+                        {t("sectionPending")}
+                      </button>
+                    </div>
+                  ) : null}
 
-          {!loading && !loadError && participating && other.length > 0 && (
-            <AnimatedItem>
-              <section
-                aria-labelledby="messages-pending-heading"
-                className={
-                  eligible.length > 0
-                    ? "mt-10 border-t border-white/[0.06] pt-10 sm:mt-12 sm:pt-12"
-                    : ""
-                }
-              >
-                <h2
-                  id="messages-pending-heading"
-                  className="font-display text-[10px] font-bold uppercase tracking-[0.2em] text-pv-muted sm:text-[11px] sm:tracking-[0.22em]"
-                >
-                  {t("sectionPending")}
-                </h2>
-                <p className="mt-2 max-w-2xl text-[11px] leading-relaxed text-pv-muted">
-                  {t("sectionPendingHelp")}
-                </p>
-                <ul className="mt-4 space-y-3 sm:mt-5">
-                  {other.map((vs, i) => {
-                    const reason =
-                      getVsXmtpUnavailableReason(vs) ?? "not_accepted";
-                    const isWaiting = reason === "not_accepted";
-                    const StateIcon = isWaiting ? Clock : Ban;
-                    return (
-                      <li key={vs.id}>
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            duration: 0.3,
-                            delay: 0.08 + i * 0.04,
-                            ease: [0.25, 0.46, 0.45, 0.94],
-                          }}
-                        >
-                          <Link
-                            href={`/vs/${vs.id}`}
-                            aria-label={`${t("viewVs")} — VS ${vs.id}`}
-                            className={`group block rounded-xl border bg-pv-surface2/35 p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] transition-[border-color,background-color,box-shadow] duration-200 ease-out sm:p-5 ${
-                              isWaiting
-                                ? "border-amber-400/15 hover:border-amber-400/28 hover:bg-amber-400/[0.04]"
-                                : "border-white/[0.1] hover:border-white/[0.18] hover:bg-pv-surface2/50"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3 sm:gap-4">
-                              <div
-                                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border sm:h-11 sm:w-11 ${
-                                  isWaiting
-                                    ? "border-amber-400/25 bg-amber-400/[0.1] text-amber-200/85"
-                                    : "border-white/[0.1] bg-white/[0.04] text-pv-muted"
-                                }`}
-                                aria-hidden
+                  <div
+                    id="messages-hub-tabpanel"
+                    role="tabpanel"
+                    aria-label={
+                      eligible.length > 0 && other.length > 0
+                        ? hubListTab === "active"
+                          ? t("sectionActive")
+                          : t("sectionPending")
+                        : showActiveInColumn
+                          ? t("sectionActive")
+                          : t("sectionPending")
+                    }
+                    className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                  >
+                    {showActiveInColumn ? (
+                      <ul className="divide-y divide-white/[0.06]">
+                        {eligible.map((vs, i) => {
+                          const peer = getVsXmtpPeerAddress(vs, address);
+                          const vsPageHref = `/vs/${vs.id}#${VS_XMTP_CHAT_ANCHOR_ID}`;
+                          const pot = getVSTotalPot(vs);
+                          const isSelected = selectedVsId === vs.id;
+                          return (
+                            <li key={vs.id}>
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{
+                                  duration: 0.32,
+                                  delay: i * 0.04,
+                                  ease: [0.25, 0.46, 0.45, 0.94],
+                                }}
                               >
-                                <StateIcon
-                                  size={18}
-                                  strokeWidth={1.75}
-                                  className="opacity-90"
-                                />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="font-display text-[13px] font-bold leading-snug text-pv-text transition-colors group-hover:text-pv-text sm:text-sm">
-                                  {truncateQuestion(vs.question, 72)}
-                                </p>
-                                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                                  <span
-                                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
-                                      isWaiting
-                                        ? "border-amber-400/30 bg-amber-400/[0.06] text-amber-200/95"
-                                        : "border-white/[0.1] bg-white/[0.04] text-pv-muted"
+                                <div
+                                  className={`border-l-[3px] border-l-pv-emerald transition-[background-color,box-shadow] ${
+                                    isSelected
+                                      ? "bg-pv-emerald/[0.1] ring-1 ring-inset ring-pv-emerald/35"
+                                      : "bg-pv-emerald/[0.05]"
+                                  }`}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-pressed={isSelected}
+                                    aria-controls="messages-hub-chat-panel"
+                                    aria-label={t("hubSelectThreadAria", {
+                                      id: vs.id,
+                                    })}
+                                    onClick={() => setSelectedVsId(vs.id)}
+                                    className={`focus-ring w-full px-5 pb-4 pt-5 text-left outline-none transition-colors sm:px-6 ${
+                                      isSelected
+                                        ? ""
+                                        : "hover:bg-pv-emerald/[0.07]"
                                     }`}
                                   >
-                                    {isWaiting
-                                      ? t("badgeAwaiting")
-                                      : t("badgeNoComms")}
-                                  </span>
-                                  <span className="font-mono text-[10px] leading-snug text-pv-muted [overflow-wrap:anywhere]">
-                                    {t(`reason.${reason}`)}
-                                  </span>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <span className="font-display text-sm font-bold tabular-nums tracking-tight text-pv-emerald sm:text-[15px]">
+                                        VS #{vs.id}
+                                      </span>
+                                      <span className="inline-flex shrink-0 items-center gap-1 rounded border border-pv-emerald/30 bg-pv-emerald/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-pv-emerald">
+                                        <Zap size={10} aria-hidden />
+                                        {t("badgeLive")}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-pv-text">
+                                      {truncateQuestion(vs.question)}
+                                    </p>
+                                    <div className="mt-3 text-[10px] font-mono uppercase tracking-tight text-pv-muted">
+                                      {peer
+                                        ? t("withPeer", {
+                                            address: shortenAddress(peer),
+                                          })
+                                        : null}
+                                      {peer && pot > 0 ? " · " : ""}
+                                      {pot > 0 ? (
+                                        <span className="text-pv-gold/85">
+                                          {pot} GEN
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  </button>
+                                  <div className="flex justify-end border-t border-white/[0.06] px-5 py-3 sm:px-6">
+                                    <Link
+                                      href={vsPageHref}
+                                      className="group focus-ring inline-flex min-h-[44px] items-center gap-1 rounded-md font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-emerald transition-colors hover:text-pv-emerald/85"
+                                    >
+                                      {t("viewVs")}
+                                      <ChevronRight
+                                        size={14}
+                                        strokeWidth={2.25}
+                                        className="transition-transform duration-200 group-hover:translate-x-0.5"
+                                        aria-hidden
+                                      />
+                                    </Link>
+                                  </div>
                                 </div>
-                                <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
-                                  <span className="font-mono text-[10px] font-medium tabular-nums text-pv-muted/85">
-                                    VS #{vs.id}
-                                  </span>
-                                  <span className="inline-flex shrink-0 items-center gap-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted transition-colors group-hover:text-pv-emerald">
-                                    {t("viewVs")}
-                                    <ChevronRight
-                                      size={14}
-                                      strokeWidth={2.25}
-                                      className="transition-transform duration-200 group-hover:translate-x-0.5"
-                                      aria-hidden
-                                    />
-                                  </span>
+                              </motion.div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+
+                    {showPendingInColumn ? (
+                      <ul className="divide-y divide-white/[0.06]">
+                        {other.map((vs, i) => {
+                          const reason =
+                            getVsXmtpUnavailableReason(vs) ?? "not_accepted";
+                          const isWaiting = reason === "not_accepted";
+                          const StateIcon = isWaiting ? Clock : Ban;
+                          const isSelected = selectedVsId === vs.id;
+                          return (
+                            <li key={vs.id}>
+                              <motion.div
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{
+                                  duration: 0.28,
+                                  delay: 0.06 + i * 0.035,
+                                  ease: [0.25, 0.46, 0.45, 0.94],
+                                }}
+                              >
+                                <div
+                                  className={`border-l-[3px] transition-[background-color,box-shadow] ${
+                                    isWaiting
+                                      ? isSelected
+                                        ? "border-l-amber-400/70 bg-amber-400/[0.1] ring-1 ring-inset ring-amber-400/25"
+                                        : "border-l-amber-400/55 bg-amber-400/[0.04]"
+                                      : isSelected
+                                        ? "border-l-white/25 bg-white/[0.06] ring-1 ring-inset ring-white/15"
+                                        : "border-l-white/[0.12] bg-transparent"
+                                  }`}
+                                >
+                                  <button
+                                    type="button"
+                                    aria-pressed={isSelected}
+                                    aria-controls="messages-hub-chat-panel"
+                                    aria-label={t("hubSelectThreadAria", {
+                                      id: vs.id,
+                                    })}
+                                    onClick={() => setSelectedVsId(vs.id)}
+                                    className={`focus-ring w-full px-5 pb-4 pt-5 text-left outline-none transition-colors sm:px-6 ${
+                                      isWaiting && !isSelected
+                                        ? "hover:bg-amber-400/[0.06]"
+                                        : !isWaiting && !isSelected
+                                          ? "hover:bg-white/[0.04]"
+                                          : ""
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <span
+                                        className={`font-display text-sm font-bold tabular-nums tracking-tight sm:text-[15px] ${
+                                          isWaiting
+                                            ? "text-amber-200/90"
+                                            : "text-pv-muted"
+                                        }`}
+                                      >
+                                        VS #{vs.id}
+                                      </span>
+                                      <StateIcon
+                                        size={16}
+                                        strokeWidth={1.75}
+                                        className={`shrink-0 ${
+                                          isWaiting
+                                            ? "text-amber-200/75"
+                                            : "text-pv-muted/80"
+                                        }`}
+                                        aria-hidden
+                                      />
+                                    </div>
+                                    <p className="mt-2 line-clamp-2 text-sm font-medium leading-snug text-pv-text">
+                                      {truncateQuestion(vs.question, 72)}
+                                    </p>
+                                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                      <span
+                                        className={`inline-flex items-center rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${
+                                          isWaiting
+                                            ? "border-amber-400/35 bg-amber-400/[0.08] text-amber-200/95"
+                                            : "border-white/[0.1] bg-white/[0.04] text-pv-muted"
+                                        }`}
+                                      >
+                                        {isWaiting
+                                          ? t("badgeAwaiting")
+                                          : t("badgeNoComms")}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1.5 font-mono text-[10px] leading-snug text-pv-muted [overflow-wrap:anywhere]">
+                                      {t(`reason.${reason}`)}
+                                    </p>
+                                  </button>
+                                  <div className="flex justify-end border-t border-white/[0.06] px-5 py-3 sm:px-6">
+                                    <Link
+                                      href={`/vs/${vs.id}`}
+                                      aria-label={`${t("viewVs")} — VS ${vs.id}`}
+                                      className="group focus-ring inline-flex min-h-[44px] items-center gap-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-pv-muted transition-colors hover:text-pv-emerald"
+                                    >
+                                      {t("viewVs")}
+                                      <ChevronRight
+                                        size={14}
+                                        strokeWidth={2.25}
+                                        className="transition-transform duration-200 group-hover:translate-x-0.5"
+                                        aria-hidden
+                                      />
+                                    </Link>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          </Link>
-                        </motion.div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
+                              </motion.div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div
+                  ref={hubChatPanelRef}
+                  id="messages-hub-chat-panel"
+                  className="flex min-h-[min(52dvh,320px)] flex-1 flex-col bg-black/[0.12] scroll-mt-20 md:min-h-0"
+                >
+                  {eligible.length === 0 ? (
+                    <div className="border-b border-amber-400/25 bg-amber-400/[0.06] px-5 py-4 sm:px-6">
+                      <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-pv-text">
+                        {t("hubDisabledTitle")}
+                      </p>
+                      <p className="mt-1.5 text-xs leading-relaxed text-pv-muted sm:text-sm">
+                        {t("hubDisabledDesc")}
+                      </p>
+                    </div>
+                  ) : null}
+                  {selectedVs ? (
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-4 md:p-5">
+                      <VsXmtpPanel vs={selectedVs} embedded />
+                    </div>
+                  ) : (
+                    <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 sm:px-10">
+                      <div className="max-w-md text-center">
+                        <div
+                          className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl border border-pv-emerald/25 bg-pv-emerald/[0.08]"
+                          aria-hidden
+                        >
+                          <MessageCircle
+                            className="text-pv-emerald"
+                            size={24}
+                            strokeWidth={1.75}
+                          />
+                        </div>
+                        <h3 className="mt-6 font-display text-xs font-bold uppercase tracking-[0.2em] text-pv-text sm:text-sm">
+                          {t("hubPanelTitle")}
+                        </h3>
+                        <p className="mt-2 text-sm leading-relaxed text-pv-muted sm:text-[15px]">
+                          {t("hubPanelBody")}
+                        </p>
+                        <p className="mt-8 font-mono text-[9px] uppercase tracking-[0.22em] text-pv-muted/70">
+                          {t("hubPanelMeta")}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </AnimatedItem>
           )}
         </div>
