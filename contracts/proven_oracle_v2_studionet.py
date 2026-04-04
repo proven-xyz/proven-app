@@ -8,9 +8,11 @@ from urllib.parse import urlparse
 
 from genlayer import *
 
-# NOTE: `gl.message.value` returns 0 on Bradbury testnet.
-# Stake amounts are passed as explicit arguments; the EVM layer
-# handles actual GEN transfer independently.
+# NOTE: This Studio-only variant is intended for the browser demo flow where
+# stake amounts are logical-only and writes send native value 0.
+#
+# Keep the full claim lifecycle and AI resolution logic intact, but skip native
+# GEN transfers so Studio resolution does not fail with `inbalance`.
 
 ST_OPEN = "open"
 ST_ACTIVE = "active"
@@ -240,7 +242,7 @@ class Claim:
     challenger_requested_resolve: bool
 
 
-class ProvenOracleV2Contract(gl.Contract):
+class ProvenOracleV2StudionetContract(gl.Contract):
     claims: TreeMap[u256, Claim]
     claim_count: u256
     ch_addr: TreeMap[u256, Address]
@@ -392,9 +394,10 @@ class ProvenOracleV2Contract(gl.Contract):
         return u256(claim.creator_stake - claim.reserved_creator_liability)
 
     def _transfer(self, addr: Address, amount: u256):
-        if amount <= u256(0):
-            return
-        gl.get_contract_at(addr).emit_transfer(value=amount)
+        # Studio browser writes intentionally use value=0, so there is no native
+        # balance to move back out of the contract. Preserve the state flow but
+        # make transfers a no-op for this demo-only variant.
+        return
 
     def _default_settlement_rule(self, category: str, market_type: str) -> str:
         if category == CATEGORY_SPORTS:

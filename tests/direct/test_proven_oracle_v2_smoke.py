@@ -407,3 +407,58 @@ def test_new_contract_caps_challenges_at_one_opponent(
     direct_vm.value = 4
     with direct_vm.expect_revert("Maximum challengers reached"):
         contract.challenge_claim(claim_id, 4)
+
+
+def test_new_contract_resolves_with_supported_nondet_api(
+    direct_vm,
+    direct_deploy,
+    direct_alice,
+    direct_bob,
+):
+    contract = direct_deploy("contracts/proven_oracle_v2.py")
+    direct_vm.warp("2026-04-01T00:00:00Z")
+
+    claim_id = _create_claim(
+        contract,
+        direct_vm,
+        direct_alice,
+        5,
+        deadline=_unix("2026-04-02T00:00:00Z"),
+    )
+
+    direct_vm.sender = direct_bob
+    direct_vm.value = 3
+    contract.challenge_claim(claim_id, 3)
+
+    direct_vm.mock_web(
+        r".*example\.com/market.*",
+        {
+            "status": 200,
+            "body": "Official market update: BTC closed above 100k by the deadline.",
+        },
+    )
+    direct_vm.mock_llm(
+        r".*Will BTC close above 100k by the deadline\?.*",
+        '{"verdict":"CREATOR_WINS","confidence":91,"explanation":"The linked source confirms BTC closed above the threshold by the deadline."}',
+    )
+
+    direct_vm.warp("2026-04-03T00:00:00Z")
+    direct_vm.value = 0
+
+    direct_vm.sender = direct_alice
+    contract.request_resolve(claim_id)
+
+    direct_vm.sender = direct_bob
+    contract.request_resolve(claim_id)
+
+    claim = contract.get_claim(claim_id)
+    assert claim["state"] == "resolved"
+    assert claim["winner_side"] == "creator"
+    assert claim["resolve_attempts"] == 1
+    assert claim["confidence"] == 91
+    assert (
+        claim["resolution_summary"]
+        == "The linked source confirms BTC closed above the threshold by the deadline."
+    )
+    assert claim["creator_requested_resolve"] is False
+    assert claim["challenger_requested_resolve"] is False
