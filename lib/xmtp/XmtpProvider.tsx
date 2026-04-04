@@ -73,6 +73,31 @@ const XmtpCtx = createContext<XmtpContextValue>(defaultValue);
 const XMTP_TAB_LOCK_CHANNEL = "proven-xmtp-tab-lock";
 const XMTP_TAB_LOCK_KEY = "proven-xmtp-tab-owner";
 
+function isXmtpOpfsStorageError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : String(error ?? "");
+
+  return /NoModificationAllowedError|sync access handle|createSyncAccessHandle|FileSystemSyncAccessHandle|OPFS/i.test(
+    message
+  );
+}
+
+function createXmtpInitTimeout(timeoutMs: number) {
+  return new Promise<never>((_, reject) =>
+    setTimeout(
+      () =>
+        reject(
+          new Error(
+            "XMTP client initialization timed out. Try closing other tabs or clearing site data."
+          )
+        ),
+      timeoutMs
+    )
+  );
+}
+
 function acquireTabLock(tabId: string): { acquired: boolean; release: () => void } {
   if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
     return { acquired: true, release: () => {} };
@@ -263,17 +288,34 @@ export function XmtpProvider({ children }: { children: React.ReactNode }) {
         const signer = createXmtpSignerFromEthereum(ethereum, address);
         const opts = getXmtpClientCreateOptions();
         const XMTP_INIT_TIMEOUT_MS = 15_000;
-        const clientPromise = Client.create(signer, {
+        const clientOptions = {
           env: opts.env as XmtpEnv,
           appVersion: opts.appVersion,
-        } as Parameters<typeof Client.create>[1]);
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("XMTP client initialization timed out. Try closing other tabs or clearing site data.")),
-            XMTP_INIT_TIMEOUT_MS
-          )
-        );
-        newClient = await Promise.race([clientPromise, timeoutPromise]);
+        } as Parameters<typeof Client.create>[1];
+        const clientPromise = Client.create(signer, clientOptions);
+        try {
+          newClient = await Promise.race([
+            clientPromise,
+            createXmtpInitTimeout(XMTP_INIT_TIMEOUT_MS),
+          ]);
+        } catch (initializationError) {
+          if (!isXmtpOpfsStorageError(initializationError)) {
+            throw initializationError;
+          }
+
+          console.warn(
+            "XMTP OPFS storage unavailable, retrying with in-memory storage.",
+            initializationError
+          );
+
+          newClient = await Promise.race([
+            Client.create(signer, {
+              ...clientOptions,
+              dbPath: null,
+            } as Parameters<typeof Client.create>[1]),
+            createXmtpInitTimeout(XMTP_INIT_TIMEOUT_MS),
+          ]);
+        }
 
         if (myGen !== initGenRef.current) {
           newClient.close();

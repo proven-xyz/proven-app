@@ -28,6 +28,120 @@ const MEDIA_SOURCE_HOSTS = [
   "coinmarketcap.com",
   "weather.com",
 ];
+const RELATIVE_CHANGE_VERBS = [
+  "increase",
+  "increases",
+  "increased",
+  "decrease",
+  "decreases",
+  "decreased",
+  "rise",
+  "rises",
+  "rose",
+  "drop",
+  "drops",
+  "dropped",
+  "fall",
+  "falls",
+  "fell",
+  "gain",
+  "gains",
+  "gained",
+  "lose",
+  "loses",
+  "lost",
+  "jump",
+  "jumps",
+  "jumped",
+  "climb",
+  "climbs",
+  "climbed",
+  "surge",
+  "surges",
+  "surged",
+  "dip",
+  "dips",
+  "dipped",
+  "move",
+  "moves",
+  "moved",
+  "change",
+  "changes",
+  "changed",
+  "aumenta",
+  "aumente",
+  "aumentará",
+  "sube",
+  "suba",
+  "subirá",
+  "incrementa",
+  "incremente",
+  "disminuye",
+  "disminuya",
+  "baja",
+  "baje",
+  "bajará",
+  "cae",
+  "caiga",
+  "caerá",
+  "subir",
+  "bajar",
+  "cambiar",
+] as const;
+const RELATIVE_BASELINE_PHRASES = [
+  "from now",
+  "from its current",
+  "from the current",
+  "compared to now",
+  "compared with now",
+  "during the next",
+  "over the next",
+  "within the next",
+  "over the following",
+  "during the following",
+  "in the next",
+  "next ",
+  "following ",
+  "desde ahora",
+  "comparado con ahora",
+  "durante los siguientes",
+  "durante las siguientes",
+  "durante el siguiente",
+  "durante la siguiente",
+  "en los siguientes",
+  "en las siguientes",
+  "en el siguiente",
+  "en la siguiente",
+  "proximos ",
+  "proximas ",
+  "próximos ",
+  "próximas ",
+] as const;
+const RELATIVE_DELTA_MARKERS = [
+  "increase by",
+  "decrease by",
+  "rise by",
+  "drop by",
+  "fall by",
+  "gain by",
+  "lose by",
+  "move by",
+  "change by",
+  "aumenta ",
+  "aumente ",
+  "sube ",
+  "suba ",
+  "incrementa ",
+  "incremente ",
+  "disminuye ",
+  "disminuya ",
+  "baja ",
+  "baje ",
+  "cae ",
+  "caiga ",
+] as const;
+const SHORT_WINDOW_CHANGE_REJECTION =
+  "This source is better suited for deadline-based checks than short-window change tracking. Try a claim that asks whether a value is above, below, present, absent, or officially announced at the deadline.";
 
 type ClaimDraftRequest = {
   sourceUrl: string;
@@ -78,6 +192,50 @@ function getHostname(sourceUrl: string) {
   } catch {
     return "";
   }
+}
+
+function normalizeDraftText(input: string) {
+  return input
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function includesAnyPhrase(text: string, phrases: readonly string[]) {
+  return phrases.some((phrase) => text.includes(phrase));
+}
+
+function hasRelativeChangePattern(text: string) {
+  const normalized = normalizeDraftText(text);
+  const hasChangeVerb = includesAnyPhrase(normalized, RELATIVE_CHANGE_VERBS);
+  if (!hasChangeVerb) {
+    return false;
+  }
+
+  const hasBaselinePhrase = includesAnyPhrase(normalized, RELATIVE_BASELINE_PHRASES);
+  const hasDeltaMarker = includesAnyPhrase(normalized, RELATIVE_DELTA_MARKERS);
+  const hasWindowLength =
+    /\b\d+(?:[.,]\d+)?\s*(?:minutes?|mins?|hours?|hrs?|days?|dias?|días?)\b/.test(
+      normalized
+    ) || /\b\d+(?:[.,]\d+)?\s*(?:%|percent|°|deg|degrees|usd|\$|points?|pts?)\b/.test(normalized);
+
+  return hasDeltaMarker || (hasBaselinePhrase && hasWindowLength);
+}
+
+function isUnsupportedDraftShape(candidate: {
+  claimText: string;
+  sideA: string;
+  sideB: string;
+  settlementRule: string;
+}) {
+  const combined = [
+    candidate.claimText,
+    candidate.sideA,
+    candidate.sideB,
+    candidate.settlementRule,
+  ].join("\n");
+
+  return hasRelativeChangePattern(combined);
 }
 
 export function isBlockedSourceHost(sourceUrl: string) {
@@ -160,6 +318,9 @@ function createDraftPrompt(args: {
     "- timezone should be explicit, usually UTC.",
     "- category must be one of: sports, weather, crypto, culture, custom.",
     "- Prefer narrow, challenge-ready outcomes over broad speculative ones.",
+    "- Prefer claims that can be resolved from a single read of the primary source at the deadline.",
+    "- Do not generate claims that require knowing what the source said earlier, comparing against 'now', or tracking a value over the next few minutes or hours.",
+    "- Avoid relative movement claims like 'rise by X', 'increase by Y', or 'change by Z from now'. Prefer absolute checks like 'is above X at the deadline'.",
     "- Keep the writing concise and user-facing.",
     `- Write all user-facing strings in ${outputLanguage}.`,
     "",
@@ -312,6 +473,7 @@ export function sanitizeGeneratedDrafts(args: {
       : "";
 
   const seenClaims = new Set<string>();
+  let filteredUnsupportedShape = false;
   const candidates: SourceClaimDraftCandidate[] = Array.isArray(args.payload.candidates)
     ? args.payload.candidates.flatMap((candidate) => {
         if (!candidate || typeof candidate !== "object") {
@@ -366,6 +528,18 @@ export function sanitizeGeneratedDrafts(args: {
           return [];
         }
 
+        if (
+          isUnsupportedDraftShape({
+            claimText,
+            sideA,
+            sideB,
+            settlementRule,
+          })
+        ) {
+          filteredUnsupportedShape = true;
+          return [];
+        }
+
         seenClaims.add(dedupeKey);
 
         return [
@@ -385,11 +559,16 @@ export function sanitizeGeneratedDrafts(args: {
       })
     : [];
 
+  const normalizedRejectionReason =
+    candidates.length === 0 && filteredUnsupportedShape
+      ? rejectionReason || SHORT_WINDOW_CHANGE_REJECTION
+      : rejectionReason;
+
   return {
     sourceUrl: args.sourceUrl,
     sourceType: args.sourceType,
     sourceSummary,
-    rejectionReason,
+    rejectionReason: normalizedRejectionReason,
     candidates,
   };
 }

@@ -80,16 +80,13 @@ import {
   Zap,
 } from "lucide-react";
 
-const MARKET_TYPES = [
-  "binary",
-  "moneyline",
-  "spread",
-  "total",
-  "prop",
-  "custom",
-] as const;
+const MARKET_TYPES = ["binary", "moneyline", "custom"] as const;
 
-const ODDS_MODES = ["pool", "fixed"] as const;
+function normalizeSupportedMarketType(value: string): (typeof MARKET_TYPES)[number] {
+  return MARKET_TYPES.includes(value as (typeof MARKET_TYPES)[number])
+    ? (value as (typeof MARKET_TYPES)[number])
+    : "binary";
+}
 
 const VISIBILITY_TOGGLE_OPTIONS = [
   { key: "public" as const, labelKey: "visibilityPublic" as const },
@@ -151,6 +148,303 @@ function formatLocalTimeInputValue(date: Date) {
   return local.toISOString().slice(11, 16);
 }
 
+function normalizeQuestionForOutcomeDraft(value: string): string {
+  return value
+    .replace(/[¿¡]/g, "")
+    .replace(/\s+/g, " ")
+    .replace(/[?!]+$/g, "")
+    .trim();
+}
+
+function capitalizeDraftText(value: string): string {
+  if (!value) {
+    return "";
+  }
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function inferDoSupport(subject: string): "do" | "does" {
+  const normalized = subject.trim().toLowerCase();
+  if (!normalized) {
+    return "does";
+  }
+  if (/^(i|you|we|they)$/i.test(normalized)) {
+    return "do";
+  }
+  if (/\band\b/.test(normalized)) {
+    return "do";
+  }
+  return "does";
+}
+
+function toThirdPersonSingular(verb: string): string {
+  if (!verb) {
+    return verb;
+  }
+  const lower = verb.toLowerCase();
+  if (/(s|sh|ch|x|z|o)$/.test(lower)) {
+    return `${verb}es`;
+  }
+  if (/[bcdfghjklmnpqrstvwxyz]y$/.test(lower)) {
+    return `${verb.slice(0, -1)}ies`;
+  }
+  return `${verb}s`;
+}
+
+function splitSubjectAndPredicate(clause: string): { subject: string; predicate: string } | null {
+  const tokens = clause.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2) {
+    return null;
+  }
+
+  if (/^(it|there|he|she|they|we|you|i)$/i.test(tokens[0] ?? "")) {
+    return {
+      subject: tokens[0]!,
+      predicate: tokens.slice(1).join(" "),
+    };
+  }
+
+  let subjectEnd = 1;
+  if (/^(the|a|an|el|la|los|las|un|una)$/i.test(tokens[0] ?? "") && tokens.length >= 3) {
+    subjectEnd = 2;
+  }
+
+  while (subjectEnd < tokens.length - 1) {
+    const token = tokens[subjectEnd] ?? "";
+    if (/^[A-Z0-9]/.test(token) || /^(of|the|de|del|la|el|los|las|and|y)$/i.test(token)) {
+      subjectEnd += 1;
+      continue;
+    }
+    break;
+  }
+
+  return {
+    subject: tokens.slice(0, subjectEnd).join(" "),
+    predicate: tokens.slice(subjectEnd).join(" "),
+  };
+}
+
+function buildAuxiliaryOutcomePair(
+  clause: string,
+  auxiliary: string
+): { creator: string; opponent: string } | null {
+  const split = splitSubjectAndPredicate(clause);
+  if (!split) {
+    return null;
+  }
+
+  const subject = capitalizeDraftText(split.subject);
+  const predicate = split.predicate.trim();
+  if (!predicate) {
+    return null;
+  }
+
+  return {
+    creator: `${subject} ${auxiliary} ${predicate}`,
+    opponent: `${subject} ${auxiliary} not ${predicate}`,
+  };
+}
+
+function buildWeatherOutcomePair(clause: string): { creator: string; opponent: string } | null {
+  const normalized = clause
+    .trim()
+    .replace(/^it\s+/i, "")
+    .replace(/^there\s+(?:will\s+be\s+)?/i, "");
+  const weatherMatch = normalized.match(
+    /^(rain|snow|hail|drizzle|showers?|thunderstorms?|storm|fog|wind)\b(.*)$/i
+  );
+  if (!weatherMatch) {
+    return null;
+  }
+
+  const phenomenon = weatherMatch[1]!.toLowerCase();
+  const tail = weatherMatch[2]!.trim();
+  const suffix = tail ? ` ${tail}` : "";
+  return {
+    creator: `${capitalizeDraftText(phenomenon)}${suffix}`,
+    opponent: `No ${phenomenon}${suffix}`,
+  };
+}
+
+const EVENT_VERB_NOUNS: Record<string, string> = {
+  announce: "announcement",
+  publish: "publication",
+  release: "release",
+  launch: "launch",
+  list: "listing",
+  approve: "approval",
+  confirm: "confirmation",
+  unveil: "announcement",
+  file: "filing",
+  report: "report",
+};
+
+const EVENT_NOUN_HINTS = [
+  "announcement",
+  "release",
+  "launch",
+  "listing",
+  "approval",
+  "report",
+  "filing",
+  "publication",
+  "post",
+  "update",
+] as const;
+
+function splitTemporalTail(value: string): { core: string; tail: string } {
+  const match = value.match(
+    /\s+(before|by|on|at|during|this|next|after|ahead of)\b[\s\S]*$/i
+  );
+  if (!match || typeof match.index !== "number") {
+    return { core: value.trim(), tail: "" };
+  }
+
+  return {
+    core: value.slice(0, match.index).trim(),
+    tail: value.slice(match.index).trim(),
+  };
+}
+
+function trimLeadingArticle(value: string): string {
+  return value.replace(/^(a|an|the)\s+/i, "").trim();
+}
+
+function buildEventOutcomePair(clause: string): { creator: string; opponent: string } | null {
+  const split = splitSubjectAndPredicate(clause);
+  if (!split) {
+    return null;
+  }
+
+  const subject = capitalizeDraftText(split.subject);
+  const predicate = split.predicate.trim();
+  if (!predicate) {
+    return null;
+  }
+
+  const [verb = "", ...restWords] = predicate.split(/\s+/);
+  const eventNoun = EVENT_VERB_NOUNS[verb.toLowerCase()];
+  if (!eventNoun) {
+    return null;
+  }
+
+  const rest = restWords.join(" ").trim();
+  if (!rest) {
+    return null;
+  }
+
+  const { core, tail } = splitTemporalTail(rest);
+  const cleanCore = trimLeadingArticle(core);
+  const creator = `${subject} ${toThirdPersonSingular(verb)} ${rest}`;
+
+  const alreadyHasEventNoun = EVENT_NOUN_HINTS.some((hint) =>
+    cleanCore.toLowerCase().includes(hint)
+  );
+  const opponentCore = alreadyHasEventNoun
+    ? cleanCore
+    : `${cleanCore} ${eventNoun}`.trim();
+  const opponent = `No ${opponentCore}${tail ? ` ${tail}` : ""}`;
+
+  return {
+    creator,
+    opponent,
+  };
+}
+
+function buildBareVerbOutcomePair(clause: string): { creator: string; opponent: string } | null {
+  const split = splitSubjectAndPredicate(clause);
+  if (!split) {
+    return null;
+  }
+
+  const subject = capitalizeDraftText(split.subject);
+  const predicate = split.predicate.trim();
+  if (!predicate) {
+    return null;
+  }
+
+  const [verb = "", ...restWords] = predicate.split(/\s+/);
+  if (!verb) {
+    return null;
+  }
+
+  const rest = restWords.join(" ").trim();
+  const doSupport = inferDoSupport(split.subject);
+  const positiveVerb = doSupport === "does" ? toThirdPersonSingular(verb) : verb;
+  const suffix = rest ? ` ${rest}` : "";
+  return {
+    creator: `${subject} ${positiveVerb}${suffix}`,
+    opponent: `${subject} ${doSupport} not ${verb}${suffix}`,
+  };
+}
+
+function draftOutcomeSidesFromQuestion(
+  question: string,
+  locale: string
+): { creator: string; opponent: string } | null {
+  const normalized = normalizeQuestionForOutcomeDraft(question);
+  if (!normalized) {
+    return null;
+  }
+
+  const statementMatch = normalized.match(
+    /^(.+?)\s+(will|is|are|can|has|have)\s+(.+)$/i
+  );
+  if (statementMatch) {
+    const [, subject = "", auxiliary = "", predicate = ""] = statementMatch;
+    const clause = `${subject.trim()} ${predicate.trim()}`.trim();
+    const weatherDraft = buildWeatherOutcomePair(clause);
+    if (weatherDraft) {
+      return weatherDraft;
+    }
+    if (auxiliary.toLowerCase() === "will") {
+      const eventDraft = buildEventOutcomePair(clause);
+      if (eventDraft) {
+        return eventDraft;
+      }
+      const bareVerbDraft = buildBareVerbOutcomePair(clause);
+      if (bareVerbDraft) {
+        return bareVerbDraft;
+      }
+    }
+    return {
+      creator: `${capitalizeDraftText(subject.trim())} ${auxiliary.toLowerCase()} ${predicate.trim()}`,
+      opponent: `${capitalizeDraftText(subject.trim())} ${auxiliary.toLowerCase()} not ${predicate.trim()}`,
+    };
+  }
+
+  const leadingAuxiliaryMatch = normalized.match(/^(will|is|are|can|has|have)\s+(.+)$/i);
+  if (leadingAuxiliaryMatch) {
+    const [, auxiliary = "", clause = ""] = leadingAuxiliaryMatch;
+    const weatherDraft = buildWeatherOutcomePair(clause.trim());
+    if (weatherDraft) {
+      return weatherDraft;
+    }
+    if (auxiliary.toLowerCase() === "will") {
+      const eventDraft = buildEventOutcomePair(clause.trim());
+      if (eventDraft) {
+        return eventDraft;
+      }
+      const bareVerbDraft = buildBareVerbOutcomePair(clause.trim());
+      if (bareVerbDraft) {
+        return bareVerbDraft;
+      }
+    }
+    const drafted = buildAuxiliaryOutcomePair(clause.trim(), auxiliary.toLowerCase());
+    if (drafted) {
+      return drafted;
+    }
+  }
+
+  const yesPrefix = locale.startsWith("es") ? "Si - " : "Yes - ";
+  const noPrefix = "No - ";
+  const normalizedStatement = capitalizeDraftText(normalized);
+  return {
+    creator: `${yesPrefix}${normalizedStatement}`,
+    opponent: `${noPrefix}${normalizedStatement}`,
+  };
+}
+
 export default function CreatePage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -194,9 +488,6 @@ export default function CreatePage() {
   const [customStakeFocused, setCustomStakeFocused] = useState(false);
   const [category, setCategory] = useState("custom");
   const [marketType, setMarketType] = useState<string>("binary");
-  const [oddsMode, setOddsMode] = useState<string>("pool");
-  const [fixedOddsMultiple, setFixedOddsMultiple] = useState("2.00");
-  const [handicapLine, setHandicapLine] = useState("");
   const [settlementRule, setSettlementRule] = useState("");
   const [, setMaxChallengers] = useState(1);
   /** Texto del 4º slot (custom); vacío cuando el valor coincide con preset 1/2/5 para mostrar placeholder "–". */
@@ -256,7 +547,7 @@ export default function CreatePage() {
   const ticketSettlementPreview =
     settlementRule.trim() || recommendedSettlementTemplate;
   const ticketDraftId = useMemo(() => {
-    const s = `${question}|${creatorPos}|${stake}|${marketType}|${oddsMode}`;
+    const s = `${question}|${creatorPos}|${stake}|${marketType}|pool`;
     let h = 2166136261;
     for (let i = 0; i < s.length; i++) {
       h ^= s.charCodeAt(i);
@@ -266,7 +557,7 @@ export default function CreatePage() {
     const part = (n % 0xffff).toString(16).toUpperCase().padStart(4, "0");
     const suffix = String.fromCharCode(65 + (n % 26));
     return `PRV-${part}-${suffix}`;
-  }, [question, creatorPos, stake, marketType, oddsMode]);
+  }, [question, creatorPos, stake, marketType]);
   const verificationQuestionHint = t(
     `guidance.${guidanceKey}.questionHint`,
   );
@@ -276,12 +567,6 @@ export default function CreatePage() {
     isPresetStakeAmount(stake) &&
     !customStakeFocused &&
     customStakeDraft.trim() === "";
-  const isAdvancedClaim =
-    marketType !== "binary" ||
-    oddsMode !== "pool" ||
-    isOneToMany ||
-    handicapLine.trim().length > 0 ||
-    settlementRule.trim().length > 0;
   const customDeadline = useMemo(() => {
     if (!customDeadlineDate || !customDeadlineTime) {
       return "";
@@ -336,14 +621,6 @@ export default function CreatePage() {
     setCustomDeadlineTime(formatLocalTimeInputValue(presetDate));
   }
 
-  const payoutPreview = useMemo(() => {
-    const multiple = Number(fixedOddsMultiple);
-    if (!Number.isFinite(multiple) || multiple < 1) {
-      return null;
-    }
-    return Math.round(stake * multiple * 100) / 100;
-  }, [fixedOddsMultiple, stake]);
-
   useEffect(() => {
     if (isPresetStakeAmount(stake)) {
       setCustomStakeDraft("");
@@ -364,7 +641,7 @@ export default function CreatePage() {
     }
   }, [lastDraftedUrl, normalizedSourceUrl]);
   const requiresExplicitSettlementRule =
-    category === "custom" || marketType !== "binary" || handicapLine.trim().length > 0;
+    category === "custom" || marketType !== "binary";
   const questionNeedsWork =
     question.trim().length > 0 && question.trim().length < 24;
   const sourceNeedsWork =
@@ -390,6 +667,18 @@ export default function CreatePage() {
     },
     [category, creatorPos, customDeadline, opponentPos, question, settlementRule, url]
   );
+
+  function autofillOutcomeSidesFromQuestion() {
+    const drafted = draftOutcomeSidesFromQuestion(question, locale);
+    if (!drafted) {
+      toast.error(t("outcomeAutofillNeedsQuestion"));
+      return;
+    }
+
+    setCreatorPos(drafted.creator);
+    setOpponentPos(drafted.opponent);
+    toast.success(t("outcomeAutofillApplied"));
+  }
 
   const moderationKey = useMemo(() => {
     const parts = [
@@ -559,23 +848,17 @@ export default function CreatePage() {
       setOpponentPos(source.counter_position ?? source.opponent_position);
       setUrl(source.resolution_url);
       setStake(source.creator_stake ?? source.stake_amount);
-      setCategory(normalizeCategoryId(source.category || "custom"));
-      setMarketType(source.market_type ?? "binary");
-      setOddsMode(source.odds_mode ?? "pool");
-      setFixedOddsMultiple(
-        source.challenger_payout_bps && source.challenger_payout_bps > 0
-          ? (source.challenger_payout_bps / 10000).toFixed(2)
-          : "2.00"
+      const normalizedRematchMarketType = normalizeSupportedMarketType(
+        source.market_type ?? "binary"
       );
-      setHandicapLine(source.handicap_line ?? "");
+      setCategory(normalizeCategoryId(source.category || "custom"));
+      setMarketType(normalizedRematchMarketType);
       setSettlementRule(source.settlement_rule ?? "");
       setVisibility(source.is_private ? "private" : "public");
       setMaxChallengers(1);
       setMaxChallengersSlotDraft("");
       setAdvancedOpen(
-        (source.market_type ?? "binary") !== "binary" ||
-          (source.odds_mode ?? "pool") !== "pool" ||
-          Boolean(source.handicap_line) ||
+        normalizedRematchMarketType !== "binary" ||
           Boolean(source.settlement_rule)
       );
       setHydratedFromRematch(true);
@@ -698,9 +981,6 @@ export default function CreatePage() {
       setUrl(candidate.primaryResolutionSource);
       setCategory(normalizeCategoryId(candidate.category));
       setMarketType("binary");
-      setOddsMode("pool");
-      setFixedOddsMultiple("2.00");
-      setHandicapLine("");
       setSettlementRule(candidate.settlementRule);
       setMaxChallengers(1);
       setMaxChallengersSlotDraft("");
@@ -916,11 +1196,8 @@ export default function CreatePage() {
       return;
     }
 
-    const fixedMultiple = Number(fixedOddsMultiple);
-    if (oddsMode === "fixed" && (!Number.isFinite(fixedMultiple) || fixedMultiple < 1)) {
-      toast.error(t("invalidFixedOdds"));
-      return;
-    }
+    const normalizedMarketType = normalizeSupportedMarketType(marketType);
+    const normalizedOddsMode = "pool";
 
     if (!normalizedSourceUrl) {
       toast.error(t("sourceRequired"));
@@ -942,11 +1219,10 @@ export default function CreatePage() {
       deadline: deadlineTimestamp,
       stake_amount: stake,
       category,
-      market_type: marketType,
-      odds_mode: oddsMode,
-      challenger_payout_bps:
-        oddsMode === "fixed" ? Math.round(fixedMultiple * 10000) : 0,
-      handicap_line: handicapLine.trim(),
+      market_type: normalizedMarketType,
+      odds_mode: normalizedOddsMode,
+      challenger_payout_bps: 0,
+      handicap_line: "",
       settlement_rule: settlementRule.trim(),
       max_challengers: normalizedMaxChallengers,
       visibility,
@@ -995,14 +1271,13 @@ export default function CreatePage() {
             deadline: deadlineTimestamp,
             created_at: Math.floor(Date.now() / 1000),
             category,
-            market_type: marketType,
-            odds_mode: oddsMode,
+            market_type: normalizedMarketType,
+            odds_mode: normalizedOddsMode,
             max_challengers: normalizedMaxChallengers,
             is_private: isPrivate,
             settlement_rule: settlementRule.trim(),
-            handicap_line: handicapLine.trim(),
-            challenger_payout_bps:
-              oddsMode === "fixed" ? Math.round(fixedMultiple * 10000) : 0,
+            handicap_line: "",
+            challenger_payout_bps: 0,
           },
         });
         setCreated(MOCK_CREATED_VS_ID);
@@ -1283,7 +1558,6 @@ export default function CreatePage() {
                       setCreatorPos("");
                       setOpponentPos("");
                       setUrl("");
-                      setHandicapLine("");
                       setSettlementRule("");
                       setVisibility("public");
                       setCreatedExplorerTxHash("");
@@ -1626,15 +1900,31 @@ export default function CreatePage() {
                 onChange={(event) => setQuestion(event.target.value)}
               />
             </div>
-            <p
-              className={`text-xs leading-relaxed ${
-                questionNeedsWork ? "text-amber-300" : "text-pv-muted"
-              }`}
-            >
-              {questionNeedsWork
-                ? t("qualitySpecificity")
-                : verificationQuestionHint.trim() || t("questionStrengthHint")}
-            </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <p
+                className={`min-w-0 flex-1 text-xs leading-relaxed ${
+                  questionNeedsWork ? "text-amber-300" : "text-pv-muted"
+                }`}
+              >
+                {questionNeedsWork
+                  ? t("qualitySpecificity")
+                  : verificationQuestionHint.trim() || t("questionStrengthHint")}
+              </p>
+              <button
+                type="button"
+                onClick={autofillOutcomeSidesFromQuestion}
+                disabled={question.trim().length === 0}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 self-start rounded-md border border-white/[0.1] bg-white/[0.04] px-2.5 py-1.5 text-left text-[11px] font-medium leading-snug text-pv-text/90 transition-colors hover:border-white/[0.16] hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-white/[0.1] disabled:hover:bg-white/[0.04] sm:max-w-[min(100%,15rem)]"
+                aria-label={t("outcomeAutofillAction")}
+                title={t("outcomeAutofillHint")}
+              >
+                <Wand2
+                  className="size-3.5 shrink-0 text-pv-emerald/90"
+                  aria-hidden
+                />
+                <span>{t("outcomeAutofillAction")}</span>
+              </button>
+            </div>
 
             {/* Opposition split — Side A (cyan/left) vs Side B (fuchsia/right) */}
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-0">
@@ -1690,8 +1980,8 @@ export default function CreatePage() {
               </div>
             </div>
           </div>
-        </GlassCard>
-      </AnimatedItem>
+          </GlassCard>
+        </AnimatedItem>
 
       <AnimatedItem>
         <GlassCard
@@ -2056,31 +2346,6 @@ export default function CreatePage() {
                   />
 
                   <ListboxField
-                    id="create-odds-mode"
-                    label={t("oddsMode") ?? ""}
-                    value={oddsMode}
-                    options={ODDS_MODES.map((value) => ({
-                      value,
-                      label: t(`oddsModes.${value}`) ?? value,
-                    }))}
-                    onChange={setOddsMode}
-                  />
-
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-muted">
-                      {t("handicapLine")}
-                    </label>
-                    <input
-                      type="text"
-                      className="form-field-pv"
-                      placeholder={t("handicapPlaceholder")}
-                      value={handicapLine}
-                      onChange={(event) => setHandicapLine(event.target.value)}
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  <ListboxField
                     id="create-category"
                     label={t("category") ?? ""}
                     value={category}
@@ -2091,30 +2356,6 @@ export default function CreatePage() {
                     onChange={(value) => setCategory(normalizeCategoryId(value))}
                   />
                 </div>
-
-                {oddsMode === "fixed" && (
-                  <div className="space-y-3 rounded-xl border border-white/[0.08] bg-pv-bg/40 p-4 sm:p-5">
-                    <div className="space-y-2">
-                      <label className="block text-[10px] font-bold uppercase tracking-[0.16em] text-pv-emerald">
-                        {t("fixedOddsLabel")}
-                      </label>
-                      <input
-                        type="number"
-                        min={1}
-                        step="0.01"
-                        value={fixedOddsMultiple}
-                        onChange={(event) => setFixedOddsMultiple(event.target.value)}
-                        className="form-field-pv tabular-nums"
-                      />
-                    </div>
-                    <p className="text-xs leading-relaxed text-pv-muted">
-                      {t("fixedOddsHint")}
-                      {payoutPreview !== null
-                        ? ` ${t("fixedOddsPreview", { amount: payoutPreview })}`
-                        : ""}
-                    </p>
-                  </div>
-                )}
 
                 <div className="space-y-3">
                   <label
@@ -2209,7 +2450,7 @@ export default function CreatePage() {
                 <CreateChallengeTicket
                   draftId={ticketDraftId}
                   marketTypeLabel={t(`marketTypes.${marketType}`)}
-                  oddsModeLabel={t(`oddsModes.${oddsMode}`)}
+                  oddsModeLabel={t("oddsModes.pool")}
                   formatLabel={t("headToHeadSummary")}
                   visibilityLabel={
                     isPrivate ? t("visibilityPrivate") : t("visibilityPublic")
