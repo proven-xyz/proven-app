@@ -758,6 +758,7 @@
       }
     },
     "statsSectionAria": "Performance summary: challenges won, challenges lost, win rate, and total winnings",
+    "kpiStatsLoading": "Loading performance summary",
     "tabsSectionAria": "Search and filter your challenges"
   },
   "vsDetail": {

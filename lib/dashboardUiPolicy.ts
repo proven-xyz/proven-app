@@ -9,6 +9,7 @@ import { isSampleVsIdForXmtp } from "@/lib/xmtp/vs-chat-eligibility";
  *
  * - KPI: banda de 4 stats (won / lost / win rate / total winnings), mismo patrón de tarjetas
  *   que la franja de stats de la home (`page.tsx`: borde suave, `LiveStat` lg, grid + gap).
+ *   Carga inicial: `DashboardKpiSkeletonRow` reserva el mismo grid para evitar CLS hasta el snapshot.
  * - Superficies: tokens en `lib/dashboardSurface.ts` (paridad `ArenaCard`: `bg-pv-surface`,
  *   borde `white/[0.12]`, hover `#242323`) para filtros, lista, riesgo, vacíos y KPI; acentos
  *   semánticos (emerald / gold / red) solo donde aportan significado.

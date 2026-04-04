@@ -23,6 +23,7 @@ import DashboardPortfolioSection, {
   RiskAllocationProfileCard,
 } from "@/components/dashboard/DashboardPortfolioSection";
 import DashboardWalletGate from "@/components/dashboard/DashboardWalletGate";
+import DashboardKpiSkeletonRow from "@/components/dashboard/DashboardKpiSkeletonRow";
 import DashboardVSFilterBar from "@/components/dashboard/DashboardVSFilterBar";
 import { useDashboardFilterUrlState } from "@/hooks/useDashboardFilterUrlState";
 import {
@@ -211,6 +212,9 @@ export default function DashboardPageClient() {
   }
   const streakLabel = streakCount >= 2 ? `${streakCount}${streakType}` : null;
 
+  const showKpiSkeleton = loading && duels.length === 0 && !loadError;
+  const showKpiCards = duels.length > 0;
+
   return (
     <PageTransition>
       <AnimatedItem>
@@ -303,13 +307,20 @@ export default function DashboardPageClient() {
         </AnimatedItem>
       ) : null}
 
-      {duels.length > 0 ? (
+      {showKpiSkeleton || showKpiCards ? (
         <AnimatedItem>
           <section
-            className={`mb-6 ${loading ? "opacity-70" : ""}`}
+            className={`mb-6 ${showKpiCards && loading ? "opacity-70" : ""}`}
             aria-label={t("statsSectionAria")}
-            aria-busy={loading}
+            aria-busy={showKpiSkeleton}
           >
+            {showKpiSkeleton ? (
+              <>
+                <span className="sr-only">{t("kpiStatsLoading")}</span>
+                <DashboardKpiSkeletonRow />
+              </>
+            ) : (
+            <>
             {/*
               Four KPI tiles: mismo patrón visual que la franja de stats de la home
               (`page.tsx`): grid + tarjetas con borde suave y LiveStat grande.
@@ -412,6 +423,8 @@ export default function DashboardPageClient() {
                 />
               </motion.div>
             </div>
+            </>
+            )}
           </section>
         </AnimatedItem>
       ) : null}

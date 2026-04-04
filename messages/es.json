@@ -762,6 +762,7 @@
       }
     },
     "statsSectionAria": "Resumen de rendimiento: retos ganados, retos perdidos, win rate y total ganado",
+    "kpiStatsLoading": "Cargando resumen de rendimiento",
     "tabsSectionAria": "Buscar y filtrar tus desafíos"
   },
   "vsDetail": {
