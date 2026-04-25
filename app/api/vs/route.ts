@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { createApiError } from "@/lib/server/api-validation";
+import { createLogger } from "@/lib/server/logger";
 import { getVsFeedSnapshot } from "@/lib/server/vs-index";
 import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
+const logger = createLogger({ route: "/api/vs" });
 
 export async function GET(request: Request) {
   try {
@@ -32,7 +34,11 @@ export async function GET(request: Request) {
         headers: VS_CACHE_HEADERS,
       }
     );
-  } catch {
+  } catch (error) {
+    logger.error("VS feed request failed.", {
+      error,
+      requestUrl: request.url,
+    });
     return NextResponse.json(
       createApiError("internal_error", "Unable to load VS feed"),
       {

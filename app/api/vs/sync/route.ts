@@ -5,10 +5,12 @@ import {
   parseInviteKey,
   parsePositiveIntegerParam,
 } from "@/lib/server/api-validation";
+import { createLogger } from "@/lib/server/logger";
 import { triggerPostWriteRefresh } from "@/lib/server/vs-index";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
+const logger = createLogger({ route: "/api/vs/sync" });
 
 type RefreshBody = {
   claimId?: number;
@@ -53,7 +55,10 @@ export async function POST(request: Request) {
         },
       }
     );
-  } catch {
+  } catch (error) {
+    logger.error("VS sync request failed.", {
+      error,
+    });
     return NextResponse.json(
       createApiError("internal_error", "Unable to refresh VS index"),
       { status: 500 }

@@ -4,10 +4,12 @@ import {
   createApiError,
   parseAddressParam,
 } from "@/lib/server/api-validation";
+import { createLogger } from "@/lib/server/logger";
 import { getUserVsSnapshot } from "@/lib/server/vs-index";
 import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
+const logger = createLogger({ route: "/api/vs/user/[address]" });
 
 export async function GET(
   request: NextRequest,
@@ -49,7 +51,11 @@ export async function GET(
         headers: VS_CACHE_HEADERS,
       }
     );
-  } catch {
+  } catch (error) {
+    logger.error("User VS request failed.", {
+      error,
+      requestUrl: request.url,
+    });
     return NextResponse.json(
       createApiError("internal_error", "Unable to load user VS"),
       {

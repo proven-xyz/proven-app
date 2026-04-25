@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 import { createApiError } from "@/lib/server/api-validation";
 import { refreshChallengeOpportunitiesIndex } from "@/lib/server/challenge-opportunities";
+import { createLogger } from "@/lib/server/logger";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+const logger = createLogger({ route: "/api/cron/challenge-opportunities" });
 
 function isAuthorized(request: Request) {
   const expectedSecret = process.env.CRON_SECRET?.trim();
@@ -19,6 +21,9 @@ function isAuthorized(request: Request) {
 export async function GET(request: Request) {
   try {
     if (!isAuthorized(request)) {
+      logger.warn("Rejected unauthorized challenge opportunities cron request.", {
+        hasAuthorizationHeader: Boolean(request.headers.get("authorization")),
+      });
       return NextResponse.json(
         createApiError("forbidden", "Invalid cron credentials"),
         { status: 403 }
@@ -51,10 +56,16 @@ export async function GET(request: Request) {
       error instanceof Error
         ? error.message
         : "Unable to refresh challenge opportunities";
+    const status = /not configured/i.test(message) ? 503 : 500;
+
+    logger.error("Challenge opportunities cron request failed.", {
+      status,
+      error,
+    });
 
     return NextResponse.json(
       createApiError("internal_error", message),
-      { status: /not configured/i.test(message) ? 503 : 500 }
+      { status }
     );
   }
 }

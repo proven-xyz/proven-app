@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 
 import { generateClaimDrafts } from "@/lib/server/source-claim-generator";
 import { createApiError } from "@/lib/server/api-validation";
+import { createLogger } from "@/lib/server/logger";
 
 export const dynamic = "force-dynamic";
+const logger = createLogger({ route: "/api/claim-draft" });
 
 type ClaimDraftRequestBody = {
   url?: unknown;
@@ -42,6 +44,11 @@ export async function POST(request: Request) {
             )
           ? 400
           : 500;
+
+    logger.error("Claim draft request failed.", {
+      status,
+      error,
+    });
 
     return NextResponse.json(
       createApiError("claim_draft_error", message),

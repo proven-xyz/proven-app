@@ -5,11 +5,13 @@ import {
   parseInviteKey,
   parsePositiveIntegerParam,
 } from "@/lib/server/api-validation";
+import { createLogger } from "@/lib/server/logger";
 import { getVsDetailSnapshot, getVsWithInvite } from "@/lib/server/vs-index";
 import { makeContractFreshness } from "@/lib/vs-freshness";
 import { VS_CACHE_HEADERS } from "@/lib/server/vs-cache";
 
 export const dynamic = "force-dynamic";
+const logger = createLogger({ route: "/api/vs/[id]" });
 
 export async function GET(
   request: NextRequest,
@@ -82,7 +84,11 @@ export async function GET(
         headers: VS_CACHE_HEADERS,
       }
     );
-  } catch {
+  } catch (error) {
+    logger.error("VS detail request failed.", {
+      error,
+      requestUrl: request.url,
+    });
     return NextResponse.json(
       createApiError("internal_error", "Unable to load VS"),
       {

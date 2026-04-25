@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 import type { ApiErrorShape } from "@/lib/server/api-validation";
 import { createApiError } from "@/lib/server/api-validation";
 import { getChallengeOpportunities } from "@/lib/server/challenge-opportunities";
+import { createLogger } from "@/lib/server/logger";
 
 export const dynamic = "force-dynamic";
+const logger = createLogger({ route: "/api/challenge-opportunities" });
 
 function getStatusForMessage(message: string) {
   if (/not configured|not enabled/i.test(message)) {
@@ -57,10 +59,17 @@ export async function GET(request: Request) {
       error instanceof Error
         ? error.message
         : "Unable to load challenge opportunities";
+    const status = getStatusForMessage(message);
+
+    logger.error("Challenge opportunities request failed.", {
+      status,
+      error,
+      requestUrl: request.url,
+    });
 
     return NextResponse.json(
       createApiError("challenge_opportunities_error", message) as ApiErrorShape,
-      { status: getStatusForMessage(message) }
+      { status }
     );
   }
 }

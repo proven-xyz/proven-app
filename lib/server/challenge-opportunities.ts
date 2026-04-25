@@ -12,9 +12,11 @@ import type { VSData } from "@/lib/contract";
 
 import { generateClaimDrafts } from "./source-claim-generator";
 import { getVsFeed } from "./vs-index";
+import { createLogger } from "./logger";
 
 const OPPORTUNITY_TTL_MS = 24 * 60 * 60 * 1000;
 const EXISTING_CLAIMS_TIMEOUT_MS = 5000;
+const logger = createLogger({ scope: "challenge-opportunities" });
 
 function normalizeComparableText(value: string) {
   return value
@@ -207,7 +209,9 @@ async function buildChallengeOpportunitiesForLocale(locale: "en" | "es") {
   );
 
   if (configurationFailure && !generatedDrafts.some((result) => result.status === "fulfilled")) {
-    console.warn("Challenge opportunities generator is quota-limited; using stored seeds.", configurationFailure.reason);
+    logger.warn("Challenge opportunities generator is quota-limited; using stored seeds.", {
+      reason: configurationFailure.reason,
+    });
   }
 
   const aiOpportunities = generatedDrafts.flatMap((result, index) => {
@@ -315,9 +319,12 @@ export async function getChallengeOpportunities(options?: {
         limit,
       });
     } catch (error) {
-      console.warn(
+      logger.warn(
         `Challenge opportunities seed refresh failed for locale ${locale}; returning cached rows.`,
-        error
+        {
+          locale,
+          error,
+        }
       );
     }
   }

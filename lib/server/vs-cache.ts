@@ -10,10 +10,12 @@ import {
   getVSSummaries,
   type VSData,
 } from "@/lib/contract";
+import { createLogger } from "@/lib/server/logger";
 
 const ACTIVE_STATES = new Set<VSData["state"]>(["open", "accepted"]);
 const VS_PAGE_SIZE = 50;
 const VS_FULL_REBUILD_MS = 5 * 60 * 1000;
+const logger = createLogger({ scope: "vs-cache" });
 
 export const VS_REVALIDATE_SECONDS = 15;
 export const VS_CACHE_HEADERS = {
@@ -130,7 +132,10 @@ async function writeSnapshotToDisk(snapshot: VSSnapshot) {
     await writeFile(snapshotPath, JSON.stringify(snapshot), "utf8");
   } catch (error) {
     // Vercel's project filesystem is read-only; keep serving from memory if disk persistence fails.
-    console.warn("Unable to persist VS snapshot to disk.", error);
+    logger.warn("Unable to persist VS snapshot to disk.", {
+      error,
+      snapshotPath,
+    });
   }
 }
 
