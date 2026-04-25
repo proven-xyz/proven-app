@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.2",
+    "@sentry/nextjs": "^10.49.0",
     "@xmtp/browser-sdk": "^7.0.0",
     "framer-motion": "^12.38.0",
     "genlayer-js": "^0.27.3",
@@ -32,6 +33,7 @@
     "next": "^16.2.1",
     "next-intl": "^4.8.3",
     "nextjs-toploader": "^3.9.17",
+    "posthog-js": "^1.369.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "server-only": "^0.0.1",

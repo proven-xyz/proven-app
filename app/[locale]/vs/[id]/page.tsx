@@ -6,6 +6,12 @@ import { useParams, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import {
+  trackClaimCancelled,
+  trackClaimChallenged,
+  trackResolveRequested,
+  trackResolvedClaimViewed,
+} from "@/lib/analytics";
 import { useWallet } from "@/lib/wallet";
 import {
   acceptVS,
@@ -703,6 +709,7 @@ export default function VSDetailPage() {
   /** Tracks whether a resolve tx was fired so we can reveal the verdict once the state arrives. */
   const pendingResolveRef = useRef(false);
   const attemptedFinalizeResolveTxRef = useRef<string | null>(null);
+  const trackedResolvedVsIdsRef = useRef<Set<number>>(new Set());
   const [pendingResolveTxHash, setPendingResolveTxHash] = useState<string | null>(null);
   const [, setHasAttemptedResolve] = useState(false);
 
@@ -809,6 +816,24 @@ export default function VSDetailPage() {
     const timer = setTimeout(() => setShowVerdict(false), 4000);
     return () => clearTimeout(timer);
   }, [vs]);
+
+  useEffect(() => {
+    if (isSampleVS || !vs || vs.state !== "resolved") {
+      return;
+    }
+
+    if (trackedResolvedVsIdsRef.current.has(vs.id)) {
+      return;
+    }
+
+    trackedResolvedVsIdsRef.current.add(vs.id);
+    trackResolvedClaimViewed({
+      claim_id: vs.id,
+      category: vs.category,
+      winner_side: vs.winner_side ?? null,
+      visibility: isVSPrivate(vs) ? "private" : "public",
+    });
+  }, [isSampleVS, vs]);
 
   useEffect(() => {
     if (!pendingResolveTxHash || isSampleVS) {
@@ -1172,6 +1197,13 @@ export default function VSDetailPage() {
 
       const result = await acceptVS(address!, vsId, challengeStakeValue, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
+      trackClaimChallenged({
+        claim_id: vsId,
+        category: liveVS.category,
+        stake_amount: challengeStakeValue,
+        tx_status: isPending ? "pending" : "confirmed",
+        visibility: isVSPrivate(liveVS) ? "private" : "public",
+      });
 
       toast.success(
         isPending
@@ -1223,6 +1255,14 @@ export default function VSDetailPage() {
     try {
       const result = await requestResolveVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
+      trackResolveRequested({
+        claim_id: vsId,
+        category: vs?.category ?? null,
+        tx_status: isPending ? "pending" : "confirmed",
+        resolution_mode: willTriggerResolution
+          ? "resolution_triggered"
+          : "request_recorded",
+      });
       setHasAttemptedResolve(willTriggerResolution);
       toast.success(
         willTriggerResolution
@@ -1321,6 +1361,11 @@ export default function VSDetailPage() {
     try {
       const result = await cancelVS(address!, vsId, inviteKey);
       const isPending = "pending" in result && Boolean(result.pending);
+      trackClaimCancelled({
+        claim_id: vsId,
+        category: vs?.category ?? null,
+        tx_status: isPending ? "pending" : "confirmed",
+      });
       toast.success(
         isPending ? t("submittedPending") : t("cancelledToast"),
         (result.explorerTxHash || result.txHash) ? { description: `Tx: ${(result.explorerTxHash || result.txHash).slice(0, 10)}...${(result.explorerTxHash || result.txHash).slice(-8)}` } : undefined

@@ -13,6 +13,7 @@ import {
 import { motion } from "framer-motion";
 import { useLocale, useMessages, useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { trackClaimCreated } from "@/lib/analytics";
 import { useWallet } from "@/lib/wallet";
 import {
   createClaim,
@@ -1288,6 +1289,17 @@ export default function CreatePage() {
         if (inviteKey) {
           rememberPrivateInviteKey(MOCK_CREATED_VS_ID, inviteKey);
         }
+        trackClaimCreated({
+          claim_id: MOCK_CREATED_VS_ID,
+          category,
+          market_type: normalizedMarketType,
+          stake_amount: stake,
+          visibility,
+          is_private: isPrivate,
+          is_rematch: Boolean(rematchId),
+          mode: "demo",
+          tx_status: "confirmed",
+        });
         setMockOverlayPhase("closed");
         mockFlowTimersRef.current = [];
         toast.success(t("createSuccessHeadline"));
@@ -1306,6 +1318,17 @@ export default function CreatePage() {
         rematchId
           ? await createRematch(address!, rematchId, params)
           : await createClaim(address!, params);
+      trackClaimCreated({
+        claim_id: result.claimId ?? null,
+        category,
+        market_type: normalizedMarketType,
+        stake_amount: stake,
+        visibility,
+        is_private: isPrivate,
+        is_rematch: Boolean(rematchId),
+        mode: "live",
+        tx_status: result.pending ? "pending" : "confirmed",
+      });
 
       toast.success(
         result.pending

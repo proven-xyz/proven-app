@@ -1,7 +1,19 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import { getAddress } from "viem";
+import {
+  identifyWallet,
+  resetAnalyticsIdentity,
+  trackWalletConnected,
+} from "@/lib/analytics";
 import { ensureGenlayerWalletChain, getWalletChainParams } from "./genlayer";
 
 interface WalletCtx {
@@ -37,6 +49,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [chainId, setChainId] = useState<string | null>(null);
+  const lastTrackedAddressRef = useRef<string | null>(null);
   const expectedChainId = getWalletChainParams().chainId.toLowerCase();
 
   const isCorrectNetwork =
@@ -72,6 +85,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const disconnect = useCallback(() => { setAddress(null); setError(null); }, []);
+
+  useEffect(() => {
+    if (!address) {
+      lastTrackedAddressRef.current = null;
+      resetAnalyticsIdentity();
+      return;
+    }
+
+    identifyWallet(address);
+
+    const normalizedAddress = normalizeWalletAddress(address);
+    if (lastTrackedAddressRef.current !== normalizedAddress) {
+      trackWalletConnected(address);
+      lastTrackedAddressRef.current = normalizedAddress;
+    }
+  }, [address]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && (window as any).ethereum) {
