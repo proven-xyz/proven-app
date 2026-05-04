@@ -76,8 +76,17 @@ next-env.d.ts
 # ========================
 # Agent skills
 # ========================
+.agents/
+AGENTS.md
+AGENT_PROMPT.md
 skills-lock.json
 codex-genlayer-skills-full/
+
+# ========================
+# Project notes
+# ========================
+deep-research-report.md
+implementation-checklist.md
 
 # ========================
 # Misc
